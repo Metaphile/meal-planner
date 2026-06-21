@@ -158,7 +158,8 @@ function PlanRow({ entry, meal }: { entry: PlanEntry; meal?: Meal }) {
             {...attributes}
             {...listeners}
             aria-label="Drag to reorder"
-            className="shrink-0 cursor-grab touch-none px-1 text-muted active:cursor-grabbing"
+            // 44px hit area; negative margin keeps it from inflating the row.
+            className="-my-2 grid h-11 w-9 shrink-0 cursor-grab touch-none place-items-center rounded-lg text-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-brand active:cursor-grabbing"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
               <circle cx="9" cy="6" r="1.6" />
@@ -202,14 +203,19 @@ function IncludeToggle({
       aria-checked={on}
       aria-label="Include in ingredients"
       onClick={onToggle}
-      className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
-        on ? 'bg-brand' : 'bg-surface-2'
-      }`}
+      // 44px hit area for thumbs; negative margin keeps the row height tight.
+      className="-my-2 grid h-11 w-12 shrink-0 place-items-center rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
     >
       <span
-        className="absolute left-0 top-0.5 h-6 w-6 rounded-full bg-bg transition-transform"
-        style={{ transform: on ? 'translateX(22px)' : 'translateX(2px)' }}
-      />
+        className={`relative h-7 w-12 rounded-full transition-colors duration-200 ease-out ${
+          on ? 'bg-brand' : 'bg-surface-2'
+        }`}
+      >
+        <span
+          className="absolute left-0 top-0.5 h-6 w-6 rounded-full bg-bg shadow-sm transition-transform duration-200 ease-out"
+          style={{ transform: on ? 'translateX(22px)' : 'translateX(2px)' }}
+        />
+      </span>
     </button>
   )
 }
