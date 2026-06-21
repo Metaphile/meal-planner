@@ -23,12 +23,16 @@ const tabs: { to: string; label: string; icon: ReactNode }[] = [
   {
     to: '/meals',
     label: 'Meals',
+    // Fork + spoon. Fork = three tines + head bar + stem (so the middle tine
+    // is explicit). Spoon = an elliptical bowl (rounded on all sides) + handle.
     icon: (
-      <path
-        d="M5 3v7a3 3 0 0 0 3 3m0-10v18M8 13v8M18 3c-2 0-3 2-3 5s1 5 3 5m0 0v8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+      <g strokeLinecap="round" strokeLinejoin="round">
+        <path d="M5 3v4M8 3v4M11 3v4" />
+        <path d="M5 7h6" />
+        <path d="M8 7v13" />
+        <ellipse cx="16" cy="7" rx="3" ry="4" />
+        <path d="M16 11v9" />
+      </g>
     ),
   },
   {
