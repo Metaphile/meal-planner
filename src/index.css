@@ -1,0 +1,63 @@
+@import 'tailwindcss';
+
+/* ---- Theme tokens -------------------------------------------------------- */
+@theme {
+  --color-bg: #0b0f0e;
+  --color-surface: #11201c;
+  --color-surface-2: #16302a;
+  --color-border: #24463e;
+  --color-brand: #14b8a6;
+  --color-brand-strong: #0f766e;
+  --color-text: #ecfdf5;
+  --color-muted: #8fb3a8;
+  --color-danger: #ef4444;
+}
+
+/* ---- Base ---------------------------------------------------------------- */
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+  /* Disable the tap-highlight and overscroll glow for a native feel. */
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+}
+
+/* Respect iOS safe areas (notch / home indicator). */
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Inputs inherit our font and avoid the iOS zoom-on-focus (needs >=16px). */
+input,
+textarea,
+select,
+button {
+  font: inherit;
+  color: inherit;
+}
+input,
+textarea,
+select {
+  font-size: 16px;
+}
+
+/* Utility: momentum scrolling containers used by lists. */
+.scroll-y {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
