@@ -207,7 +207,7 @@ function IncludeToggle({
       }`}
     >
       <span
-        className="absolute top-0.5 h-6 w-6 rounded-full bg-bg transition-transform"
+        className="absolute left-0 top-0.5 h-6 w-6 rounded-full bg-bg transition-transform"
         style={{ transform: on ? 'translateX(22px)' : 'translateX(2px)' }}
       />
     </button>
