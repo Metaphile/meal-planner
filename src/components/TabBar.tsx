@@ -35,17 +35,6 @@ const tabs: { to: string; label: string; icon: ReactNode }[] = [
       </g>
     ),
   },
-  {
-    to: '/ingredients',
-    label: 'Ingredients',
-    icon: (
-      <path
-        d="M6 8h12l-1 11a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L6 8Zm3 0V6a3 3 0 0 1 6 0v2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    ),
-  },
 ]
 
 export function TabBar() {

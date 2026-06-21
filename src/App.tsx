@@ -10,7 +10,6 @@ const RecipeEditPage = lazy(() => import('./routes/RecipeEditPage'))
 const MealsPage = lazy(() => import('./routes/MealsPage'))
 const MealEditPage = lazy(() => import('./routes/MealEditPage'))
 const MealPlanPage = lazy(() => import('./routes/MealPlanPage'))
-const IngredientsPage = lazy(() => import('./routes/IngredientsPage'))
 
 export default function App() {
   const hydrated = useStore((s) => s.hydrated)
@@ -39,7 +38,11 @@ export default function App() {
               <Route path="/meals/new" element={<MealEditPage />} />
               <Route path="/meals/:id" element={<MealEditPage />} />
               <Route path="/plan" element={<MealPlanPage />} />
-              <Route path="/ingredients" element={<IngredientsPage />} />
+              {/* Ingredients now live on the Plan view; keep the path working. */}
+              <Route
+                path="/ingredients"
+                element={<Navigate to="/plan" replace />}
+              />
               <Route path="*" element={<Navigate to="/plan" replace />} />
             </Routes>
           </Suspense>

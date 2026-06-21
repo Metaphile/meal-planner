@@ -19,6 +19,7 @@ import { useStore } from '../store/store'
 import { useMealMap } from '../store/selectors'
 import { useSwipeToRemove } from '../lib/useSwipeToRemove'
 import { EmptyState, PageHeader } from '../components/ui'
+import { IngredientsList } from '../components/IngredientsList'
 import type { Meal, PlanEntry } from '../data/types'
 
 export default function MealPlanPage() {
@@ -109,6 +110,16 @@ export default function MealPlanPage() {
               </ul>
             </SortableContext>
           </DndContext>
+
+          {/* Ingredients, consolidated below the plan for an at-a-glance view. */}
+          <div className="mt-6 mb-3 flex items-center gap-3">
+            <div className="h-px flex-1 bg-border" />
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">
+              Ingredients
+            </h2>
+            <div className="h-px flex-1 bg-border" />
+          </div>
+          <IngredientsList />
         </div>
       )}
 
