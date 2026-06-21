@@ -57,7 +57,7 @@ export default function MealPlanPage() {
           <button
             onClick={() => setAdding(true)}
             disabled={meals.length === 0}
-            className="rounded-full bg-brand px-3 py-1.5 text-sm font-semibold text-bg active:scale-95 disabled:opacity-40"
+            className="rounded-full bg-brand px-3 py-1.5 text-sm font-semibold text-on-brand active:scale-95 disabled:opacity-40"
           >
             + Add
           </button>
@@ -76,7 +76,7 @@ export default function MealPlanPage() {
             meals.length === 0 ? (
               <Link
                 to="/meals/new"
-                className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-bg"
+                className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-on-brand"
               >
                 New meal
               </Link>

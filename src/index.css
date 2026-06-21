@@ -1,16 +1,18 @@
 @import 'tailwindcss';
 
 /* ---- Theme tokens -------------------------------------------------------- */
+/* Light theme: white background, mint-green accents. */
 @theme {
-  --color-bg: #0b0f0e;
-  --color-surface: #11201c;
-  --color-surface-2: #16302a;
-  --color-border: #24463e;
-  --color-brand: #14b8a6;
-  --color-brand-strong: #0f766e;
-  --color-text: #ecfdf5;
-  --color-muted: #8fb3a8;
-  --color-danger: #ef4444;
+  --color-bg: #ffffff;
+  --color-surface: #f4faf8; /* cards / inputs */
+  --color-surface-2: #e6f5ef; /* chips / toggle-off track */
+  --color-border: #d3ebe2;
+  --color-brand: #10b981; /* mint-green accent (fills, tracks, active) */
+  --color-brand-strong: #c7f0e0; /* light mint highlight (selected rows) */
+  --color-on-brand: #06281f; /* readable text/icons on mint fills */
+  --color-text: #102a23; /* near-black green for primary text */
+  --color-muted: #5c7d71; /* muted green-gray */
+  --color-danger: #dc2626;
 }
 
 /* ---- Base ---------------------------------------------------------------- */

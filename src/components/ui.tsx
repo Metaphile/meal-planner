@@ -51,7 +51,7 @@ export function PrimaryButton({
       type={type}
       onClick={onClick}
       disabled={disabled}
-      className={`rounded-full bg-brand px-4 py-2 text-sm font-semibold text-bg transition active:scale-95 disabled:opacity-40 ${className}`}
+      className={`rounded-full bg-brand px-4 py-2 text-sm font-semibold text-on-brand transition active:scale-95 disabled:opacity-40 ${className}`}
     >
       {children}
     </button>

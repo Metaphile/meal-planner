@@ -16,7 +16,7 @@ export default function MealsPage() {
         action={
           <Link
             to="/meals/new"
-            className="rounded-full bg-brand px-3 py-1.5 text-sm font-semibold text-bg active:scale-95"
+            className="rounded-full bg-brand px-3 py-1.5 text-sm font-semibold text-on-brand active:scale-95"
           >
             + New
           </Link>
