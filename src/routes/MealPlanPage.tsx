@@ -7,6 +7,7 @@ import {
   useSensor,
   useSensors,
   type DragEndEvent,
+  type Modifier,
 } from '@dnd-kit/core'
 import {
   SortableContext,
@@ -21,6 +22,13 @@ import { useSwipeToRemove } from '../lib/useSwipeToRemove'
 import { EmptyState, PageHeader } from '../components/ui'
 import { IngredientsList } from '../components/IngredientsList'
 import type { Meal, PlanEntry } from '../data/types'
+
+// Lock reordering to the vertical axis — the plan is a flat list, so sideways
+// drift is just noise (and would fight the swipe-to-remove gesture).
+const restrictToVerticalAxis: Modifier = ({ transform }) => ({
+  ...transform,
+  x: 0,
+})
 
 export default function MealPlanPage() {
   const plan = useStore((s) => s.plan)
@@ -93,6 +101,7 @@ export default function MealPlanPage() {
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
+            modifiers={[restrictToVerticalAxis]}
             onDragEnd={onDragEnd}
           >
             <SortableContext
@@ -168,6 +177,13 @@ function PlanRow({ entry, meal }: { entry: PlanEntry; meal?: Meal }) {
           <button
             {...attributes}
             {...listeners}
+            // Keep the handle's gesture for reordering only: stop it bubbling to
+            // the swipe-to-remove handler on the card, then run dnd's own
+            // listener so dragging still starts.
+            onPointerDown={(e) => {
+              e.stopPropagation()
+              listeners?.onPointerDown?.(e)
+            }}
             aria-label="Drag to reorder"
             // 44px hit area; negative margin keeps it from inflating the row.
             className="-my-2 grid h-11 w-9 shrink-0 cursor-grab touch-none place-items-center rounded-lg text-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-brand active:cursor-grabbing"
