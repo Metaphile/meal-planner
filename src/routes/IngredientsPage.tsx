@@ -1,5 +1,5 @@
 import { useAggregatedIngredients, useIncludedCount } from '../store/selectors'
-import { EmptyState, PageHeader } from '../components/ui'
+import { EmptyState, PageHeader, Tag } from '../components/ui'
 
 export default function IngredientsPage() {
   const ingredients = useAggregatedIngredients()
@@ -25,9 +25,16 @@ export default function IngredientsPage() {
             {ingredients.map((ing) => (
               <li
                 key={`${ing.name}|${ing.unit ?? ''}`}
-                className="flex items-baseline justify-between gap-3 border-b border-border bg-surface px-4 py-3 last:border-b-0"
+                className="flex items-start justify-between gap-3 border-b border-border bg-surface px-4 py-3 last:border-b-0"
               >
-                <span className="text-text">{ing.name}</span>
+                <div className="min-w-0">
+                  <div className="text-text">{ing.name}</div>
+                  <div className="mt-1.5 flex flex-wrap gap-1">
+                    {ing.meals.map((meal) => (
+                      <Tag key={meal}>{meal}</Tag>
+                    ))}
+                  </div>
+                </div>
                 <span className="shrink-0 text-sm text-muted">
                   {formatAmount(ing.quantity, ing.unit)}
                 </span>
