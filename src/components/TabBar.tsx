@@ -20,21 +20,6 @@ const tabs: { to: string; label: string; icon: ReactNode }[] = [
       />
     ),
   },
-  {
-    to: '/meals',
-    label: 'Meals',
-    // Fork + spoon. Fork = three tines + head bar + stem (so the middle tine
-    // is explicit). Spoon = an elliptical bowl (rounded on all sides) + handle.
-    icon: (
-      <g strokeLinecap="round" strokeLinejoin="round">
-        <path d="M5 3v4M8 3v4M11 3v4" />
-        <path d="M5 7h6" />
-        <path d="M8 7v13" />
-        <ellipse cx="16" cy="7" rx="3" ry="4" />
-        <path d="M16 11v9" />
-      </g>
-    ),
-  },
 ]
 
 export function TabBar() {

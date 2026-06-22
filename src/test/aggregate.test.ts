@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { aggregateIngredients } from '../data/aggregate'
-import type { Meal, PlanEntry, Recipe } from '../data/types'
+import type { MealComponent, PlanMeal, Recipe } from '../data/types'
 
 const recipes: Recipe[] = [
   {
@@ -23,133 +23,123 @@ const recipes: Recipe[] = [
       { name: 'Salt' },
     ],
   },
-]
-
-const meals: Meal[] = [
   {
-    id: 'm-breakfast',
-    name: 'Pancakes & Bacon',
-    components: [
-      { kind: 'recipe', recipeId: 'r-pancakes' },
-      { kind: 'item', name: 'Bacon', quantity: 6, unit: 'slice' }, // simple item
+    id: 'r-casserole',
+    title: 'Broccoli Casserole',
+    tags: [],
+    ingredients: [
+      { name: 'Broccoli', quantity: 1, unit: 'cup' },
+      { name: 'Cheese', quantity: 1, unit: 'cup' },
     ],
   },
-  {
-    id: 'm-tacos',
-    name: 'Taco Night',
-    components: [{ kind: 'recipe', recipeId: 'r-tacos' }],
-  },
 ]
 
-const entry = (over: Partial<PlanEntry>): PlanEntry => ({
-  id: 'p-' + Math.random(),
-  mealId: 'm-breakfast',
+let cid = 0
+const rc = (recipeId: string): MealComponent => ({
+  id: `c${cid++}`,
+  kind: 'recipe',
+  recipeId,
+})
+const item = (name: string, quantity?: number, unit?: string): MealComponent => ({
+  id: `c${cid++}`,
+  kind: 'item',
+  name,
+  quantity,
+  unit,
+})
+
+let mid = 0
+const meal = (components: MealComponent[], include = true): PlanMeal => ({
+  id: `m${mid++}`,
   position: 0,
-  includeInIngredients: true,
-  ...over,
+  includeInIngredients: include,
+  components,
 })
 
 describe('aggregateIngredients', () => {
-  it('merges same name + unit across recipe and simple-item sources', () => {
-    const out = aggregateIngredients([entry({})], meals, recipes)
-    // recipe bacon (2 slice) + simple-item bacon (6 slice) => 8 slice
+  it('merges same name + unit across recipe and item sources, tagging both', () => {
+    const out = aggregateIngredients(
+      [meal([rc('r-pancakes'), item('Bacon', 6, 'slice')])],
+      recipes,
+    )
+    // recipe bacon (2 slice) + item bacon (6 slice) => 8 slice, tagged by both
     const bacon = out.find((i) => i.name === 'Bacon')
     expect(bacon).toEqual({
       name: 'Bacon',
       unit: 'slice',
       quantity: 8,
-      meals: ['Pancakes & Bacon'],
+      sources: ['Bacon', 'Pancakes'],
     })
   })
 
   it('keeps same name with different units as separate lines', () => {
-    const out = aggregateIngredients(
-      [entry({ mealId: 'm-tacos' })],
-      meals,
-      recipes,
-    )
+    const out = aggregateIngredients([meal([rc('r-tacos')])], recipes)
     const flours = out.filter((i) => i.name === 'Flour')
     expect(flours).toHaveLength(2)
     expect(flours).toEqual(
       expect.arrayContaining([
-        { name: 'Flour', unit: 'cup', quantity: 1, meals: ['Taco Night'] },
-        { name: 'Flour', unit: 'g', quantity: 200, meals: ['Taco Night'] },
+        { name: 'Flour', unit: 'cup', quantity: 1, sources: ['Tacos'] },
+        { name: 'Flour', unit: 'g', quantity: 200, sources: ['Tacos'] },
       ]),
     )
   })
 
   it('reports no quantity when no contributing line had one', () => {
-    const out = aggregateIngredients([entry({})], meals, recipes)
+    const out = aggregateIngredients([meal([rc('r-pancakes')])], recipes)
     const salt = out.find((i) => i.name === 'Salt')
     expect(salt).toEqual({
       name: 'Salt',
       unit: undefined,
       quantity: undefined,
-      meals: ['Pancakes & Bacon'],
+      sources: ['Pancakes'],
     })
   })
 
-  it('skips entries excluded from the ingredients list', () => {
+  it('tags by recipe title; standalone item by its own name (broccoli case)', () => {
     const out = aggregateIngredients(
-      [entry({ includeInIngredients: false })],
-      meals,
+      [meal([rc('r-casserole'), item('broccoli', 1, 'cup')])],
       recipes,
     )
-    expect(out).toEqual([])
+    const broccoli = out.find((i) => i.name === 'Broccoli')
+    expect(broccoli?.quantity).toBe(2)
+    expect(broccoli?.unit).toBe('cup')
+    expect(broccoli?.sources).toHaveLength(2)
+    expect(broccoli?.sources).toEqual(
+      expect.arrayContaining(['Broccoli Casserole', 'broccoli']),
+    )
   })
 
-  it('skips missing meal and recipe references safely', () => {
+  it('suppresses a lone self-referential item tag', () => {
     const out = aggregateIngredients(
-      [entry({ mealId: 'does-not-exist' })],
-      meals,
+      [meal([item('Garlic bread', 4, 'slice')])],
       recipes,
     )
-    expect(out).toEqual([])
-
-    const orphanMeal: Meal = {
-      id: 'm-x',
-      name: 'X',
-      components: [{ kind: 'recipe', recipeId: 'gone' }],
-    }
-    const out2 = aggregateIngredients(
-      [entry({ mealId: 'm-x' })],
-      [orphanMeal],
-      recipes,
-    )
-    expect(out2).toEqual([])
+    const gb = out.find((i) => i.name === 'Garlic bread')
+    expect(gb).toEqual({
+      name: 'Garlic bread',
+      unit: 'slice',
+      quantity: 4,
+      sources: [],
+    })
   })
 
-  it('sums quantities across multiple included meals and sorts by name', () => {
+  it('skips excluded meals and missing recipe refs safely', () => {
+    expect(
+      aggregateIngredients([meal([rc('r-pancakes')], false)], recipes),
+    ).toEqual([])
+    expect(aggregateIngredients([meal([rc('gone')])], recipes)).toEqual([])
+  })
+
+  it('sums across meals, de-dupes sources, and sorts by name', () => {
     const out = aggregateIngredients(
-      [
-        entry({ id: 'a', mealId: 'm-breakfast', position: 0 }),
-        entry({ id: 'b', mealId: 'm-tacos', position: 1 }),
-      ],
-      meals,
+      [meal([rc('r-pancakes')]), meal([rc('r-pancakes')])],
       recipes,
     )
-    // Flour: pancakes 2 cup + tacos 1 cup => 3 cup, plus tacos 200 g separately
-    const flourCup = out.find((i) => i.name === 'Flour' && i.unit === 'cup')
-    expect(flourCup?.quantity).toBe(3)
-    // ...and it's tagged with both contributing meals, sorted.
-    expect(flourCup?.meals).toEqual(['Pancakes & Bacon', 'Taco Night'])
+    const flour = out.find((i) => i.name === 'Flour' && i.unit === 'cup')
+    expect(flour?.quantity).toBe(4)
+    expect(flour?.sources).toEqual(['Pancakes']) // deduped, not ['Pancakes','Pancakes']
 
     const names = out.map((i) => i.name)
     expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b)))
-  })
-
-  it('tags a line with a meal only once even when planned multiple times', () => {
-    const out = aggregateIngredients(
-      [
-        entry({ id: 'a', mealId: 'm-tacos', position: 0 }),
-        entry({ id: 'b', mealId: 'm-tacos', position: 1 }),
-      ],
-      meals,
-      recipes,
-    )
-    const flourCup = out.find((i) => i.name === 'Flour' && i.unit === 'cup')
-    // Quantity sums across both entries, but the meal tag is deduped.
-    expect(flourCup?.quantity).toBe(2)
-    expect(flourCup?.meals).toEqual(['Taco Night'])
   })
 })

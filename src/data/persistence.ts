@@ -1,5 +1,5 @@
 import { db, type TableName } from './db'
-import type { Dataset, Meal, PlanEntry, Recipe } from './types'
+import type { Dataset, PlanMeal, Recipe } from './types'
 
 /**
  * Write-behind persistence. The store is the source of truth; mutations call
@@ -14,13 +14,12 @@ import type { Dataset, Meal, PlanEntry, Recipe } from './types'
 const FLUSH_DELAY_MS = 150
 
 type Pending = {
-  puts: Map<string, Recipe | Meal | PlanEntry>
+  puts: Map<string, Recipe | PlanMeal>
   deletes: Set<string>
 }
 
 const queues: Record<TableName, Pending> = {
   recipes: { puts: new Map(), deletes: new Set() },
-  meals: { puts: new Map(), deletes: new Set() },
   plan: { puts: new Map(), deletes: new Set() },
 }
 
@@ -28,24 +27,16 @@ let timer: ReturnType<typeof setTimeout> | null = null
 let flushing: Promise<void> | null = null
 
 export async function hydrate(): Promise<Dataset> {
-  const [recipes, meals, plan] = await Promise.all([
+  const [recipes, plan] = await Promise.all([
     db.recipes.toArray(),
-    db.meals.toArray(),
     db.plan.toArray(),
   ])
-  return { recipes, meals, plan }
+  return { recipes, plan }
 }
 
-export function enqueuePut(
-  table: 'recipes',
-  item: Recipe,
-): void
-export function enqueuePut(table: 'meals', item: Meal): void
-export function enqueuePut(table: 'plan', item: PlanEntry): void
-export function enqueuePut(
-  table: TableName,
-  item: Recipe | Meal | PlanEntry,
-): void {
+export function enqueuePut(table: 'recipes', item: Recipe): void
+export function enqueuePut(table: 'plan', item: PlanMeal): void
+export function enqueuePut(table: TableName, item: Recipe | PlanMeal): void {
   const q = queues[table]
   q.deletes.delete(item.id)
   q.puts.set(item.id, item)
@@ -106,11 +97,10 @@ async function doFlush(): Promise<void> {
 
 /** Replace the entire dataset (used by seeding). */
 export async function replaceAll(data: Dataset): Promise<void> {
-  await db.transaction('rw', db.recipes, db.meals, db.plan, async () => {
-    await Promise.all([db.recipes.clear(), db.meals.clear(), db.plan.clear()])
+  await db.transaction('rw', db.recipes, db.plan, async () => {
+    await Promise.all([db.recipes.clear(), db.plan.clear()])
     await Promise.all([
       db.recipes.bulkAdd(data.recipes),
-      db.meals.bulkAdd(data.meals),
       db.plan.bulkAdd(data.plan),
     ])
   })

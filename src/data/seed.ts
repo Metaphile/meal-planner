@@ -105,70 +105,24 @@ export const seedData: Dataset = {
       ],
     },
   ],
-  meals: [
-    {
-      id: 'm-pancakes-bacon',
-      name: 'Pancakes & Bacon',
-      components: [
-        { kind: 'recipe', recipeId: 'r-pancakes' },
-        { kind: 'item', name: 'Bacon', quantity: 8, unit: 'slice' },
-      ],
-    },
-    {
-      id: 'm-taco-night',
-      name: 'Taco Night',
-      components: [
-        { kind: 'recipe', recipeId: 'r-tacos' },
-        { kind: 'recipe', recipeId: 'r-salad' },
-      ],
-    },
-    {
-      id: 'm-spaghetti-night',
-      name: 'Spaghetti Night',
-      components: [
-        { kind: 'recipe', recipeId: 'r-spaghetti' },
-        { kind: 'recipe', recipeId: 'r-salad' },
-        { kind: 'item', name: 'Garlic bread', quantity: 4, unit: 'slice' },
-      ],
-    },
-    {
-      id: 'm-stir-fry',
-      name: 'Stir-Fry Dinner',
-      components: [
-        { kind: 'recipe', recipeId: 'r-stirfry' },
-        { kind: 'item', name: 'Edamame', quantity: 1, unit: 'cup' },
-      ],
-    },
-    {
-      id: 'm-grilled-cheese-lunch',
-      name: 'Grilled Cheese & Soup',
-      components: [
-        { kind: 'recipe', recipeId: 'r-grilledcheese' },
-        { kind: 'item', name: 'Tomato soup', quantity: 2, unit: 'cup' },
-      ],
-    },
-    {
-      id: 'm-big-breakfast',
-      name: 'Big Breakfast',
-      components: [
-        { kind: 'recipe', recipeId: 'r-pancakes' },
-        { kind: 'item', name: 'Bacon', quantity: 6, unit: 'slice' },
-        { kind: 'item', name: 'Orange juice', quantity: 2, unit: 'cup' },
-      ],
-    },
-  ],
+  // The plan is a flat list of anonymous meals; each meal groups components
+  // (recipe refs and/or simple items). A single recipe can be its own meal.
   plan: [
     {
-      id: 'p-1',
-      mealId: 'm-pancakes-bacon',
+      id: 'pm-1',
       position: 0,
       includeInIngredients: true,
+      components: [{ id: 'c-1', kind: 'recipe', recipeId: 'r-stirfry' }],
     },
     {
-      id: 'p-2',
-      mealId: 'm-taco-night',
+      id: 'pm-2',
       position: 1,
       includeInIngredients: true,
+      components: [
+        { id: 'c-2', kind: 'recipe', recipeId: 'r-tacos' },
+        { id: 'c-3', kind: 'recipe', recipeId: 'r-salad' },
+        { id: 'c-4', kind: 'item', name: 'Tortilla chips', quantity: 1, unit: 'bag' },
+      ],
     },
   ],
 }

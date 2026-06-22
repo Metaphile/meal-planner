@@ -2,9 +2,9 @@ import { useAggregatedIngredients, useIncludedCount } from '../store/selectors'
 import { Tag } from './ui'
 
 /**
- * Read-only aggregated ingredients, with each line tagged by the meals that
- * contribute to it. Presentational — pulls straight from the memoized selector
- * so it can be dropped into the Plan view (or a standalone page).
+ * Read-only aggregated ingredients, with each line tagged by its sources —
+ * the recipes that call for it and/or standalone items by their own name.
+ * Presentational — pulls straight from the memoized selector.
  */
 export function IngredientsList() {
   const ingredients = useAggregatedIngredients()
@@ -33,11 +33,13 @@ export function IngredientsList() {
           >
             <div className="min-w-0">
               <div className="text-text">{ing.name}</div>
-              <div className="mt-1.5 flex flex-wrap gap-1">
-                {ing.meals.map((meal) => (
-                  <Tag key={meal}>{meal}</Tag>
-                ))}
-              </div>
+              {ing.sources.length > 0 && (
+                <div className="mt-1.5 flex flex-wrap gap-1">
+                  {ing.sources.map((source) => (
+                    <Tag key={source}>{source}</Tag>
+                  ))}
+                </div>
+              )}
             </div>
             <span className="shrink-0 text-sm text-muted">
               {formatAmount(ing.quantity, ing.unit)}

@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { Meal, PlanEntry, Recipe } from '../data/types'
+import type { Ingredient, MealComponent, PlanMeal, Recipe } from '../data/types'
 import {
   enqueueDelete,
   enqueuePut,
@@ -11,49 +11,57 @@ import { newId } from '../lib/id'
 
 interface AppState {
   recipes: Recipe[]
-  meals: Meal[]
-  plan: PlanEntry[]
+  plan: PlanMeal[]
   hydrated: boolean
 
   init: () => Promise<void>
 
-  // Recipes
+  // Recipes (the durable library)
   upsertRecipe: (recipe: Recipe) => void
   deleteRecipe: (id: string) => void
 
-  // Meals
-  upsertMeal: (meal: Meal) => void
-  deleteMeal: (id: string) => void
-
-  // Plan
-  addMealToPlan: (mealId: string) => void
-  removePlanEntry: (id: string) => void
-  togglePlanInclude: (id: string) => void
-  /** Commit a new order (array of plan-entry ids, in display order). */
+  // Plan meals (anonymous groups that live only on the plan)
+  addRecipeToPlan: (recipeId: string) => void
+  addEmptyMeal: () => void
+  removePlanMeal: (mealId: string) => void
+  togglePlanInclude: (mealId: string) => void
+  /** New meal order, by id, in display order. */
   reorderPlan: (orderedIds: string[]) => void
+
+  // Components within a meal
+  addRecipeToMeal: (mealId: string, recipeId: string) => void
+  addItemToMeal: (mealId: string, item: Ingredient) => void
+  removeComponent: (mealId: string, componentId: string) => void
+  /**
+   * Move a component to `toMealId` at `toIndex`, finding its current meal
+   * automatically. State-only (no persistence) so it can run cheaply on every
+   * drag-over frame; call `commitPlan()` once on drop to persist.
+   */
+  moveComponent: (componentId: string, toMealId: string, toIndex: number) => void
+  /** Persist every plan meal (used to commit a drag once it ends). */
+  commitPlan: () => void
+}
+
+/** Append a meal at the end of the plan. */
+function makeMeal(components: MealComponent[], position: number): PlanMeal {
+  return { id: newId(), position, includeInIngredients: true, components }
 }
 
 export const useStore = create<AppState>((set, get) => ({
   recipes: [],
-  meals: [],
   plan: [],
   hydrated: false,
 
   init: async () => {
     if (get().hydrated) return
     let data = await hydrate()
-    // First run: seed once so the app isn't empty.
-    if (
-      data.recipes.length === 0 &&
-      data.meals.length === 0 &&
-      data.plan.length === 0
-    ) {
+    // First run only: seed so the app isn't empty.
+    if (data.recipes.length === 0 && data.plan.length === 0) {
       await replaceAll(seedData)
       data = seedData
     }
     set({
       recipes: [...data.recipes].sort((a, b) => a.title.localeCompare(b.title)),
-      meals: [...data.meals].sort((a, b) => a.name.localeCompare(b.name)),
       plan: [...data.plan].sort((a, b) => a.position - b.position),
       hydrated: true,
     })
@@ -72,60 +80,43 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   deleteRecipe: (id) => {
+    // Plan components referencing this recipe become dangling refs, which the
+    // aggregation and UI both handle safely (shown as "deleted recipe").
     set((s) => ({ recipes: s.recipes.filter((r) => r.id !== id) }))
     enqueueDelete('recipes', id)
   },
 
-  upsertMeal: (meal) => {
-    set((s) => {
-      const others = s.meals.filter((m) => m.id !== meal.id)
-      return {
-        meals: [...others, meal].sort((a, b) => a.name.localeCompare(b.name)),
-      }
-    })
-    enqueuePut('meals', meal)
+  addRecipeToPlan: (recipeId) => {
+    const meal = makeMeal(
+      [{ id: newId(), kind: 'recipe', recipeId }],
+      get().plan.length,
+    )
+    set((s) => ({ plan: [...s.plan, meal] }))
+    enqueuePut('plan', meal)
   },
 
-  deleteMeal: (id) => {
-    // Remove the meal and any plan entries that referenced it.
-    const orphans = get().plan.filter((p) => p.mealId === id)
-    set((s) => ({
-      meals: s.meals.filter((m) => m.id !== id),
-      plan: s.plan.filter((p) => p.mealId !== id),
-    }))
-    enqueueDelete('meals', id)
-    orphans.forEach((p) => enqueueDelete('plan', p.id))
+  addEmptyMeal: () => {
+    const meal = makeMeal([], get().plan.length)
+    set((s) => ({ plan: [...s.plan, meal] }))
+    enqueuePut('plan', meal)
   },
 
-  addMealToPlan: (mealId) => {
-    const position = get().plan.length
-    const entry: PlanEntry = {
-      id: newId(),
-      mealId,
-      position,
-      includeInIngredients: true,
-    }
-    set((s) => ({ plan: [...s.plan, entry] }))
-    enqueuePut('plan', entry)
-  },
-
-  removePlanEntry: (id) => {
-    // Drop the entry, then renumber positions so they stay contiguous.
-    const remaining = get()
-      .plan.filter((p) => p.id !== id)
+  removePlanMeal: (mealId) => {
+    const renumbered = get()
+      .plan.filter((m) => m.id !== mealId)
       .sort((a, b) => a.position - b.position)
-    const renumbered = remaining.map((p, i) => ({ ...p, position: i }))
+      .map((m, i) => ({ ...m, position: i }))
     set({ plan: renumbered })
-    enqueueDelete('plan', id)
-    renumbered.forEach((p) => enqueuePut('plan', p))
+    enqueueDelete('plan', mealId)
+    renumbered.forEach((m) => enqueuePut('plan', m))
   },
 
-  togglePlanInclude: (id) => {
-    let updated: PlanEntry | undefined
+  togglePlanInclude: (mealId) => {
+    let updated: PlanMeal | undefined
     set((s) => ({
-      plan: s.plan.map((p) => {
-        if (p.id !== id) return p
-        updated = { ...p, includeInIngredients: !p.includeInIngredients }
+      plan: s.plan.map((m) => {
+        if (m.id !== mealId) return m
+        updated = { ...m, includeInIngredients: !m.includeInIngredients }
         return updated
       }),
     }))
@@ -133,14 +124,81 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   reorderPlan: (orderedIds) => {
-    const byId = new Map(get().plan.map((p) => [p.id, p]))
+    const byId = new Map(get().plan.map((m) => [m.id, m]))
     const renumbered = orderedIds
       .map((id, i) => {
-        const entry = byId.get(id)
-        return entry ? { ...entry, position: i } : undefined
+        const meal = byId.get(id)
+        return meal ? { ...meal, position: i } : undefined
       })
-      .filter((p): p is PlanEntry => p !== undefined)
+      .filter((m): m is PlanMeal => m !== undefined)
     set({ plan: renumbered })
-    renumbered.forEach((p) => enqueuePut('plan', p))
+    renumbered.forEach((m) => enqueuePut('plan', m))
+  },
+
+  addRecipeToMeal: (mealId, recipeId) => {
+    const component: MealComponent = { id: newId(), kind: 'recipe', recipeId }
+    let updated: PlanMeal | undefined
+    set((s) => ({
+      plan: s.plan.map((m) => {
+        if (m.id !== mealId) return m
+        updated = { ...m, components: [...m.components, component] }
+        return updated
+      }),
+    }))
+    if (updated) enqueuePut('plan', updated)
+  },
+
+  addItemToMeal: (mealId, item) => {
+    const component: MealComponent = { id: newId(), kind: 'item', ...item }
+    let updated: PlanMeal | undefined
+    set((s) => ({
+      plan: s.plan.map((m) => {
+        if (m.id !== mealId) return m
+        updated = { ...m, components: [...m.components, component] }
+        return updated
+      }),
+    }))
+    if (updated) enqueuePut('plan', updated)
+  },
+
+  removeComponent: (mealId, componentId) => {
+    let updated: PlanMeal | undefined
+    set((s) => ({
+      plan: s.plan.map((m) => {
+        if (m.id !== mealId) return m
+        updated = {
+          ...m,
+          components: m.components.filter((c) => c.id !== componentId),
+        }
+        return updated
+      }),
+    }))
+    if (updated) enqueuePut('plan', updated)
+  },
+
+  moveComponent: (componentId, toMealId, toIndex) => {
+    set((s) => {
+      // Clone touched arrays so React/zustand see new references.
+      const plan = s.plan.map((m) => ({ ...m, components: [...m.components] }))
+      let moved: MealComponent | undefined
+      for (const m of plan) {
+        const i = m.components.findIndex((c) => c.id === componentId)
+        if (i !== -1) {
+          moved = m.components[i]
+          m.components.splice(i, 1)
+          break
+        }
+      }
+      if (!moved) return {}
+      const to = plan.find((m) => m.id === toMealId)
+      if (!to) return {}
+      const at = Math.max(0, Math.min(toIndex, to.components.length))
+      to.components.splice(at, 0, moved)
+      return { plan }
+    })
+  },
+
+  commitPlan: () => {
+    get().plan.forEach((m) => enqueuePut('plan', m))
   },
 }))

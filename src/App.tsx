@@ -7,8 +7,6 @@ import { useStore } from './store/store'
 // small — each tab's code loads on demand.
 const RecipesPage = lazy(() => import('./routes/RecipesPage'))
 const RecipeEditPage = lazy(() => import('./routes/RecipeEditPage'))
-const MealsPage = lazy(() => import('./routes/MealsPage'))
-const MealEditPage = lazy(() => import('./routes/MealEditPage'))
 const MealPlanPage = lazy(() => import('./routes/MealPlanPage'))
 
 export default function App() {
@@ -34,15 +32,14 @@ export default function App() {
               <Route path="/recipes" element={<RecipesPage />} />
               <Route path="/recipes/new" element={<RecipeEditPage />} />
               <Route path="/recipes/:id" element={<RecipeEditPage />} />
-              <Route path="/meals" element={<MealsPage />} />
-              <Route path="/meals/new" element={<MealEditPage />} />
-              <Route path="/meals/:id" element={<MealEditPage />} />
               <Route path="/plan" element={<MealPlanPage />} />
-              {/* Ingredients now live on the Plan view; keep the path working. */}
+              {/* Ingredients live on the Plan view, and saved Meals are gone;
+                  keep the old paths working by redirecting to the plan. */}
               <Route
                 path="/ingredients"
                 element={<Navigate to="/plan" replace />}
               />
+              <Route path="/meals/*" element={<Navigate to="/plan" replace />} />
               <Route path="*" element={<Navigate to="/plan" replace />} />
             </Routes>
           </Suspense>
