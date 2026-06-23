@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   DndContext,
@@ -312,6 +312,41 @@ function IncludeToggle({
   )
 }
 
+function RecipePickRow({
+  title,
+  onAdd,
+}: {
+  title: string
+  onAdd: () => void
+}) {
+  // Transient "Added ✓" flash so a quick tap gives clear feedback even when
+  // the press-down state is too brief to notice.
+  const [added, setAdded] = useState(false)
+  const timer = useRef<ReturnType<typeof setTimeout>>()
+  useEffect(() => () => clearTimeout(timer.current), [])
+
+  const add = () => {
+    onAdd()
+    setAdded(true)
+    clearTimeout(timer.current)
+    timer.current = setTimeout(() => setAdded(false), 1200)
+  }
+
+  return (
+    <button
+      onClick={add}
+      className={`flex items-center justify-between rounded-lg border px-3 py-2 text-left transition active:scale-[0.99] ${
+        added ? 'border-brand bg-surface-2 text-brand' : 'border-border bg-bg'
+      }`}
+    >
+      <span className="truncate">{title}</span>
+      <span className="shrink-0 pl-2 font-medium text-brand">
+        {added ? 'Added ✓' : '+'}
+      </span>
+    </button>
+  )
+}
+
 function AddToMealSheet({
   mealId,
   onClose,
@@ -423,14 +458,11 @@ function AddToMealSheet({
             </p>
           ) : (
             filtered.map((r) => (
-              <button
+              <RecipePickRow
                 key={r.id}
-                onClick={() => addRecipeToMeal(mealId, r.id)}
-                className="flex items-center justify-between rounded-lg border border-border bg-bg px-3 py-2 text-left active:scale-[0.99]"
-              >
-                <span className="truncate">{r.title}</span>
-                <span className="shrink-0 pl-2 text-brand">+</span>
-              </button>
+                title={r.title}
+                onAdd={() => addRecipeToMeal(mealId, r.id)}
+              />
             ))
           )}
         </div>
