@@ -147,7 +147,9 @@ function MealCard({
     <li
       ref={setNodeRef}
       style={{
-        transform: CSS.Transform.toString(transform),
+        // Translate only — Transform.toString would add scaleX/scaleY to fit
+        // the swapped slot, squishing/stretching variable-height meal cards.
+        transform: CSS.Translate.toString(transform),
         transition,
         zIndex: isDragging ? 10 : undefined,
       }}
