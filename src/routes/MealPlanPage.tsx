@@ -1,16 +1,12 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   DndContext,
-  DragOverlay,
   PointerSensor,
   closestCenter,
   useSensor,
   useSensors,
-  type CollisionDetection,
   type DragEndEvent,
-  type DragOverEvent,
-  type DragStartEvent,
   type Modifier,
 } from '@dnd-kit/core'
 import {
@@ -27,8 +23,7 @@ import { EmptyState, PageHeader, PrimaryButton, TextInput } from '../components/
 import { IngredientsList } from '../components/IngredientsList'
 import type { MealComponent, PlanMeal, Recipe } from '../data/types'
 
-// Reordering is locked to the vertical axis: the plan and each meal's component
-// list are flat vertical lists, so sideways drift is just noise.
+// Meals reorder chronologically; lock the drag to the vertical axis.
 const restrictToVerticalAxis: Modifier = ({ transform }) => ({
   ...transform,
   x: 0,
@@ -39,96 +34,23 @@ export default function MealPlanPage() {
   const recipeMap = useRecipeMap()
   const addEmptyMeal = useStore((s) => s.addEmptyMeal)
   const reorderPlan = useStore((s) => s.reorderPlan)
-  const moveComponent = useStore((s) => s.moveComponent)
-  const commitPlan = useStore((s) => s.commitPlan)
-
-  const [activeId, setActiveId] = useState<string | null>(null)
 
   const ordered = useMemo(
     () => [...plan].sort((a, b) => a.position - b.position),
     [plan],
   )
 
-  // Latest meal-id set for the collision strategy (avoids stale closures).
-  const mealIdsRef = useRef<Set<string>>(new Set())
-  mealIdsRef.current = new Set(ordered.map((m) => m.id))
-  const isMealId = (id: string) => mealIdsRef.current.has(id)
-  const mealOfComponent = (componentId: string) =>
-    ordered.find((m) => m.components.some((c) => c.id === componentId))?.id
-
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
   )
 
-  // Keep the two drag levels from interfering: a meal drag only collides with
-  // other meals; a component drag collides with everything (meals + items).
-  const collisionDetection: CollisionDetection = useCallback((args) => {
-    if (mealIdsRef.current.has(String(args.active.id))) {
-      const containers = args.droppableContainers.filter((c) =>
-        mealIdsRef.current.has(String(c.id)),
-      )
-      return closestCenter({ ...args, droppableContainers: containers })
-    }
-    return closestCenter(args)
-  }, [])
-
-  const activeMeal = activeId && isMealId(activeId)
-    ? ordered.find((m) => m.id === activeId)
-    : null
-  const activeComponent =
-    activeId && !isMealId(activeId)
-      ? ordered
-          .flatMap((m) => m.components)
-          .find((c) => c.id === activeId)
-      : null
-
-  const onDragStart = (e: DragStartEvent) => setActiveId(String(e.active.id))
-
-  // Cross-meal component moves happen live here; within-meal reorder is left to
-  // the SortableContext preview and committed on drop.
-  const onDragOver = (e: DragOverEvent) => {
-    const activeId = String(e.active.id)
-    if (isMealId(activeId) || !e.over) return
-    const overId = String(e.over.id)
-
-    const fromMeal = mealOfComponent(activeId)
-    const toMeal = isMealId(overId) ? overId : mealOfComponent(overId)
-    if (!fromMeal || !toMeal || fromMeal === toMeal) return
-
-    const target = ordered.find((m) => m.id === toMeal)
-    if (!target) return
-    const overIdx = isMealId(overId)
-      ? target.components.length
-      : target.components.findIndex((c) => c.id === overId)
-    moveComponent(activeId, toMeal, overIdx < 0 ? target.components.length : overIdx)
-  }
-
   const onDragEnd = (e: DragEndEvent) => {
-    const activeId = String(e.active.id)
-    const overId = e.over ? String(e.over.id) : null
-    setActiveId(null)
-    if (!overId) return
-
-    if (isMealId(activeId)) {
-      // Meal reorder.
-      if (activeId !== overId && isMealId(overId)) {
-        const ids = ordered.map((m) => m.id)
-        const from = ids.indexOf(activeId)
-        const to = ids.indexOf(overId)
-        if (from !== -1 && to !== -1) reorderPlan(arrayMove(ids, from, to))
-      }
-      return
-    }
-
-    // Component: settle its final position within its (possibly new) meal.
-    const mealId = mealOfComponent(activeId)
-    const overMeal = isMealId(overId) ? overId : mealOfComponent(overId)
-    if (mealId && overMeal === mealId && !isMealId(overId) && overId !== activeId) {
-      const meal = ordered.find((m) => m.id === mealId)!
-      const to = meal.components.findIndex((c) => c.id === overId)
-      if (to !== -1) moveComponent(activeId, mealId, to)
-    }
-    commitPlan() // persist the drag once, off the interaction path
+    const { active, over } = e
+    if (!over || active.id === over.id) return
+    const ids = ordered.map((m) => m.id)
+    const from = ids.indexOf(String(active.id))
+    const to = ids.indexOf(String(over.id))
+    if (from !== -1 && to !== -1) reorderPlan(arrayMove(ids, from, to))
   }
 
   return (
@@ -161,17 +83,14 @@ export default function MealPlanPage() {
       ) : (
         <div className="scroll-y flex-1 px-4 py-3">
           <p className="mb-2 text-xs text-muted">
-            Drag a meal’s handle to reorder · drag an item between meals · swipe
-            a meal right to remove · toggle the switch to include it below.
+            Drag a meal’s handle to reorder · swipe a meal right to remove ·
+            toggle the switch to include it below.
           </p>
           <DndContext
             sensors={sensors}
-            collisionDetection={collisionDetection}
+            collisionDetection={closestCenter}
             modifiers={[restrictToVerticalAxis]}
-            onDragStart={onDragStart}
-            onDragOver={onDragOver}
             onDragEnd={onDragEnd}
-            onDragCancel={() => setActiveId(null)}
           >
             <SortableContext
               items={ordered.map((m) => m.id)}
@@ -183,21 +102,6 @@ export default function MealPlanPage() {
                 ))}
               </ul>
             </SortableContext>
-
-            <DragOverlay>
-              {activeMeal ? (
-                <div className="rounded-xl border border-border bg-surface px-3 py-3 shadow-lg">
-                  <div className="text-sm text-muted">
-                    Meal · {activeMeal.components.length} item
-                    {activeMeal.components.length === 1 ? '' : 's'}
-                  </div>
-                </div>
-              ) : activeComponent ? (
-                <div className="rounded-lg border border-border bg-surface px-3 py-2 shadow-lg">
-                  {componentLabel(activeComponent, recipeMap)}
-                </div>
-              ) : null}
-            </DragOverlay>
           </DndContext>
 
           {/* Ingredients, consolidated below the plan for an at-a-glance view. */}
@@ -224,6 +128,7 @@ function MealCard({
 }) {
   const removePlanMeal = useStore((s) => s.removePlanMeal)
   const togglePlanInclude = useStore((s) => s.togglePlanInclude)
+  const removeComponent = useStore((s) => s.removeComponent)
   const [adding, setAdding] = useState(false)
 
   const { ref: swipeRef, handlers } = useSwipeToRemove<HTMLDivElement>(() =>
@@ -246,7 +151,7 @@ function MealCard({
         transition,
         zIndex: isDragging ? 10 : undefined,
       }}
-      className={isDragging ? 'opacity-40' : undefined}
+      className={isDragging ? 'opacity-80' : undefined}
     >
       <div className="relative overflow-hidden rounded-xl">
         <div className="pointer-events-none absolute inset-0 flex items-center pl-4 text-sm font-medium text-danger">
@@ -258,7 +163,7 @@ function MealCard({
           style={{ touchAction: 'pan-y' }}
           className="relative rounded-xl border border-border bg-surface"
         >
-          {/* Meal header: drag handle · spacer · + · include toggle */}
+          {/* Meal header: drag handle · count · + · include toggle */}
           <div className="flex items-center gap-2 px-3 py-2">
             <button
               {...attributes}
@@ -299,7 +204,7 @@ function MealCard({
             />
           </div>
 
-          {/* Components */}
+          {/* Components — a plain list; order isn't meaningful */}
           <div className="px-3 pb-3">
             {meal.components.length === 0 ? (
               <button
@@ -309,21 +214,16 @@ function MealCard({
                 Add a recipe or item
               </button>
             ) : (
-              <SortableContext
-                items={meal.components.map((c) => c.id)}
-                strategy={verticalListSortingStrategy}
-              >
-                <ul className="flex flex-col gap-1.5">
-                  {meal.components.map((component) => (
-                    <ComponentRow
-                      key={component.id}
-                      mealId={meal.id}
-                      component={component}
-                      recipeMap={recipeMap}
-                    />
-                  ))}
-                </ul>
-              </SortableContext>
+              <ul className="flex flex-col gap-1.5">
+                {meal.components.map((component) => (
+                  <ComponentRow
+                    key={component.id}
+                    component={component}
+                    recipeMap={recipeMap}
+                    onRemove={() => removeComponent(meal.id, component.id)}
+                  />
+                ))}
+              </ul>
             )}
           </div>
         </div>
@@ -337,54 +237,25 @@ function MealCard({
 }
 
 function ComponentRow({
-  mealId,
   component,
   recipeMap,
+  onRemove,
 }: {
-  mealId: string
   component: MealComponent
   recipeMap: Map<string, Recipe>
+  onRemove: () => void
 }) {
-  const removeComponent = useStore((s) => s.removeComponent)
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: component.id })
-
   return (
     <li
-      ref={setNodeRef}
-      style={{ transform: CSS.Transform.toString(transform), transition }}
-      // Stop any press on a component from arming the meal's swipe-to-remove.
+      // Stop a press here from arming the meal's swipe-to-remove.
       onPointerDown={(e) => e.stopPropagation()}
-      className={`flex items-center gap-2 rounded-lg bg-surface-2 px-2 py-2 ${
-        isDragging ? 'opacity-40' : ''
-      }`}
+      className="flex items-center gap-2 rounded-lg bg-surface-2 px-3 py-2"
     >
-      <button
-        {...attributes}
-        {...listeners}
-        aria-label="Drag item"
-        className="-my-1 grid h-9 w-7 shrink-0 cursor-grab touch-none place-items-center rounded text-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-brand active:cursor-grabbing"
-      >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-          <circle cx="9" cy="7" r="1.5" />
-          <circle cx="15" cy="7" r="1.5" />
-          <circle cx="9" cy="12" r="1.5" />
-          <circle cx="15" cy="12" r="1.5" />
-          <circle cx="9" cy="17" r="1.5" />
-          <circle cx="15" cy="17" r="1.5" />
-        </svg>
-      </button>
       <span className="min-w-0 flex-1 truncate text-sm">
         {componentLabel(component, recipeMap)}
       </span>
       <button
-        onClick={() => removeComponent(mealId, component.id)}
+        onClick={onRemove}
         aria-label="Remove item"
         className="grid h-8 w-8 shrink-0 place-items-center rounded text-muted active:scale-95"
       >

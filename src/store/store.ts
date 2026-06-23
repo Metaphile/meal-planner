@@ -32,14 +32,6 @@ interface AppState {
   addRecipeToMeal: (mealId: string, recipeId: string) => void
   addItemToMeal: (mealId: string, item: Ingredient) => void
   removeComponent: (mealId: string, componentId: string) => void
-  /**
-   * Move a component to `toMealId` at `toIndex`, finding its current meal
-   * automatically. State-only (no persistence) so it can run cheaply on every
-   * drag-over frame; call `commitPlan()` once on drop to persist.
-   */
-  moveComponent: (componentId: string, toMealId: string, toIndex: number) => void
-  /** Persist every plan meal (used to commit a drag once it ends). */
-  commitPlan: () => void
 }
 
 /** Append a meal at the end of the plan. */
@@ -174,31 +166,5 @@ export const useStore = create<AppState>((set, get) => ({
       }),
     }))
     if (updated) enqueuePut('plan', updated)
-  },
-
-  moveComponent: (componentId, toMealId, toIndex) => {
-    set((s) => {
-      // Clone touched arrays so React/zustand see new references.
-      const plan = s.plan.map((m) => ({ ...m, components: [...m.components] }))
-      let moved: MealComponent | undefined
-      for (const m of plan) {
-        const i = m.components.findIndex((c) => c.id === componentId)
-        if (i !== -1) {
-          moved = m.components[i]
-          m.components.splice(i, 1)
-          break
-        }
-      }
-      if (!moved) return {}
-      const to = plan.find((m) => m.id === toMealId)
-      if (!to) return {}
-      const at = Math.max(0, Math.min(toIndex, to.components.length))
-      to.components.splice(at, 0, moved)
-      return { plan }
-    })
-  },
-
-  commitPlan: () => {
-    get().plan.forEach((m) => enqueuePut('plan', m))
   },
 }))
