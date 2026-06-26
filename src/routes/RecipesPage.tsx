@@ -2,12 +2,16 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { useStore } from '../store/store'
+import { useAuth } from '../auth/AuthProvider'
 import { EmptyState, PageHeader, Tag, TextInput } from '../components/ui'
 import type { Recipe } from '../data/types'
 
 export default function RecipesPage() {
   const recipes = useStore((s) => s.recipes)
   const addRecipeToPlan = useStore((s) => s.addRecipeToPlan)
+  const { hasCapability } = useAuth()
+  const canEditRecipes = hasCapability('edit_recipes')
+  const canEditPlan = hasCapability('edit_plan')
   const [query, setQuery] = useState('')
   const navigate = useNavigate()
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -35,12 +39,14 @@ export default function RecipesPage() {
       <PageHeader
         title="Recipes"
         action={
-          <Link
-            to="/recipes/new"
-            className="rounded-full bg-brand px-3 py-1.5 text-sm font-semibold text-on-brand active:scale-95"
-          >
-            + New
-          </Link>
+          canEditRecipes ? (
+            <Link
+              to="/recipes/new"
+              className="rounded-full bg-brand px-3 py-1.5 text-sm font-semibold text-on-brand active:scale-95"
+            >
+              + New
+            </Link>
+          ) : undefined
         }
       />
 
@@ -86,7 +92,8 @@ export default function RecipesPage() {
                 >
                   <RecipeRow
                     recipe={recipe}
-                    onEdit={() => navigate(`/recipes/${recipe.id}`)}
+                    canAddToPlan={canEditPlan}
+                    onOpen={() => navigate(`/recipes/${recipe.id}`)}
                     onAddToPlan={() => addRecipeToPlan(recipe.id)}
                   />
                 </div>
@@ -101,11 +108,13 @@ export default function RecipesPage() {
 
 function RecipeRow({
   recipe,
-  onEdit,
+  canAddToPlan,
+  onOpen,
   onAddToPlan,
 }: {
   recipe: Recipe
-  onEdit: () => void
+  canAddToPlan: boolean
+  onOpen: () => void
   onAddToPlan: () => void
 }) {
   const [added, setAdded] = useState(false)
@@ -122,7 +131,7 @@ function RecipeRow({
   return (
     <div className="flex items-stretch gap-2 rounded-xl border border-border bg-surface">
       <button
-        onClick={onEdit}
+        onClick={onOpen}
         className="min-w-0 flex-1 px-4 py-3 text-left transition active:scale-[0.99]"
       >
         <div className="truncate font-medium">{recipe.title}</div>
@@ -136,15 +145,17 @@ function RecipeRow({
           ))}
         </div>
       </button>
-      <button
-        onClick={add}
-        aria-label={`Add ${recipe.title} to plan`}
-        className={`my-2 mr-2 shrink-0 self-center rounded-full px-3 py-2 text-sm font-semibold transition active:scale-95 ${
-          added ? 'bg-surface-2 text-brand' : 'bg-brand text-on-brand'
-        }`}
-      >
-        {added ? 'Added ✓' : '+ Plan'}
-      </button>
+      {canAddToPlan && (
+        <button
+          onClick={add}
+          aria-label={`Add ${recipe.title} to plan`}
+          className={`my-2 mr-2 shrink-0 self-center rounded-full px-3 py-2 text-sm font-semibold transition active:scale-95 ${
+            added ? 'bg-surface-2 text-brand' : 'bg-brand text-on-brand'
+          }`}
+        >
+          {added ? 'Added ✓' : '+ Plan'}
+        </button>
+      )}
     </div>
   )
 }

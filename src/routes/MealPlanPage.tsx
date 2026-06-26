@@ -18,6 +18,7 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import { useStore } from '../store/store'
 import { useRecipeMap } from '../store/selectors'
+import { useAuth } from '../auth/AuthProvider'
 import { useSwipeToRemove } from '../lib/useSwipeToRemove'
 import { EmptyState, PageHeader, PrimaryButton, TextInput } from '../components/ui'
 import { IngredientsList } from '../components/IngredientsList'
@@ -34,6 +35,8 @@ export default function MealPlanPage() {
   const recipeMap = useRecipeMap()
   const addEmptyMeal = useStore((s) => s.addEmptyMeal)
   const reorderPlan = useStore((s) => s.reorderPlan)
+  const { hasCapability } = useAuth()
+  const canEdit = hasCapability('edit_plan')
 
   const ordered = useMemo(
     () => [...plan].sort((a, b) => a.position - b.position),
@@ -58,19 +61,25 @@ export default function MealPlanPage() {
       <PageHeader
         title="Plan"
         action={
-          <button
-            onClick={addEmptyMeal}
-            className="rounded-full bg-brand px-3 py-1.5 text-sm font-semibold text-on-brand active:scale-95"
-          >
-            + Meal
-          </button>
+          canEdit ? (
+            <button
+              onClick={addEmptyMeal}
+              className="rounded-full bg-brand px-3 py-1.5 text-sm font-semibold text-on-brand active:scale-95"
+            >
+              + Meal
+            </button>
+          ) : undefined
         }
       />
 
       {ordered.length === 0 ? (
         <EmptyState
           title="Your plan is empty"
-          hint="Tap “+ Meal” to start one, or add a recipe straight from the Recipes tab."
+          hint={
+            canEdit
+              ? 'Tap “+ Meal” to start one, or add a recipe straight from the Recipes tab.'
+              : 'No meals are planned yet.'
+          }
           action={
             <Link
               to="/recipes"
@@ -82,10 +91,12 @@ export default function MealPlanPage() {
         />
       ) : (
         <div className="scroll-y flex-1 px-4 py-3">
-          <p className="mb-2 text-xs text-muted">
-            Drag a meal’s handle to reorder · swipe a meal right to remove ·
-            toggle the switch to include it below.
-          </p>
+          {canEdit && (
+            <p className="mb-2 text-xs text-muted">
+              Drag a meal’s handle to reorder · swipe a meal right to remove ·
+              toggle the switch to include it below.
+            </p>
+          )}
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
@@ -98,7 +109,12 @@ export default function MealPlanPage() {
             >
               <ul className="flex flex-col gap-3">
                 {ordered.map((meal) => (
-                  <MealCard key={meal.id} meal={meal} recipeMap={recipeMap} />
+                  <MealCard
+                    key={meal.id}
+                    meal={meal}
+                    recipeMap={recipeMap}
+                    canEdit={canEdit}
+                  />
                 ))}
               </ul>
             </SortableContext>
@@ -122,9 +138,11 @@ export default function MealPlanPage() {
 function MealCard({
   meal,
   recipeMap,
+  canEdit,
 }: {
   meal: PlanMeal
   recipeMap: Map<string, Recipe>
+  canEdit: boolean
 }) {
   const removePlanMeal = useStore((s) => s.removePlanMeal)
   const togglePlanInclude = useStore((s) => s.togglePlanInclude)
@@ -160,32 +178,34 @@ function MealCard({
           Remove
         </div>
         <div
-          ref={swipeRef}
-          {...handlers}
+          ref={canEdit ? swipeRef : undefined}
+          {...(canEdit ? handlers : {})}
           style={{ touchAction: 'pan-y' }}
           className="relative rounded-xl border border-border bg-surface"
         >
           {/* Meal header: drag handle · count · + · include toggle */}
           <div className="flex items-center gap-2 px-3 py-2">
-            <button
-              {...attributes}
-              {...listeners}
-              onPointerDown={(e) => {
-                e.stopPropagation()
-                listeners?.onPointerDown?.(e)
-              }}
-              aria-label="Drag meal to reorder"
-              className="-my-1 grid h-10 w-8 shrink-0 cursor-grab touch-none place-items-center rounded-lg text-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-brand active:cursor-grabbing"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                <circle cx="9" cy="6" r="1.6" />
-                <circle cx="15" cy="6" r="1.6" />
-                <circle cx="9" cy="12" r="1.6" />
-                <circle cx="15" cy="12" r="1.6" />
-                <circle cx="9" cy="18" r="1.6" />
-                <circle cx="15" cy="18" r="1.6" />
-              </svg>
-            </button>
+            {canEdit && (
+              <button
+                {...attributes}
+                {...listeners}
+                onPointerDown={(e) => {
+                  e.stopPropagation()
+                  listeners?.onPointerDown?.(e)
+                }}
+                aria-label="Drag meal to reorder"
+                className="-my-1 grid h-10 w-8 shrink-0 cursor-grab touch-none place-items-center rounded-lg text-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-brand active:cursor-grabbing"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                  <circle cx="9" cy="6" r="1.6" />
+                  <circle cx="15" cy="6" r="1.6" />
+                  <circle cx="9" cy="12" r="1.6" />
+                  <circle cx="15" cy="12" r="1.6" />
+                  <circle cx="9" cy="18" r="1.6" />
+                  <circle cx="15" cy="18" r="1.6" />
+                </svg>
+              </button>
+            )}
 
             <span className="flex-1 text-xs text-muted">
               {meal.components.length === 0
@@ -193,15 +213,18 @@ function MealCard({
                 : `${meal.components.length} item${meal.components.length === 1 ? '' : 's'}`}
             </span>
 
-            <button
-              onClick={() => setAdding(true)}
-              aria-label="Add to meal"
-              className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-surface-2 text-lg leading-none text-brand active:scale-95"
-            >
-              +
-            </button>
+            {canEdit && (
+              <button
+                onClick={() => setAdding(true)}
+                aria-label="Add to meal"
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-surface-2 text-lg leading-none text-brand active:scale-95"
+              >
+                +
+              </button>
+            )}
             <IncludeToggle
               on={meal.includeInIngredients}
+              disabled={!canEdit}
               onToggle={() => togglePlanInclude(meal.id)}
             />
           </div>
@@ -209,12 +232,16 @@ function MealCard({
           {/* Components — a plain list; order isn't meaningful */}
           <div className="px-3 pb-3">
             {meal.components.length === 0 ? (
-              <button
-                onClick={() => setAdding(true)}
-                className="w-full rounded-lg border border-dashed border-border py-3 text-sm text-muted active:scale-[0.99]"
-              >
-                Add a recipe or item
-              </button>
+              canEdit ? (
+                <button
+                  onClick={() => setAdding(true)}
+                  className="w-full rounded-lg border border-dashed border-border py-3 text-sm text-muted active:scale-[0.99]"
+                >
+                  Add a recipe or item
+                </button>
+              ) : (
+                <p className="py-2 text-sm text-muted">No items.</p>
+              )
             ) : (
               <ul className="flex flex-col gap-1.5">
                 {meal.components.map((component) => (
@@ -222,6 +249,7 @@ function MealCard({
                     key={component.id}
                     component={component}
                     recipeMap={recipeMap}
+                    canEdit={canEdit}
                     onRemove={() => removeComponent(meal.id, component.id)}
                   />
                 ))}
@@ -241,10 +269,12 @@ function MealCard({
 function ComponentRow({
   component,
   recipeMap,
+  canEdit,
   onRemove,
 }: {
   component: MealComponent
   recipeMap: Map<string, Recipe>
+  canEdit: boolean
   onRemove: () => void
 }) {
   return (
@@ -256,13 +286,15 @@ function ComponentRow({
       <span className="min-w-0 flex-1 truncate text-sm">
         {componentLabel(component, recipeMap)}
       </span>
-      <button
-        onClick={onRemove}
-        aria-label="Remove item"
-        className="grid h-8 w-8 shrink-0 place-items-center rounded text-muted active:scale-95"
-      >
-        ✕
-      </button>
+      {canEdit && (
+        <button
+          onClick={onRemove}
+          aria-label="Remove item"
+          className="grid h-8 w-8 shrink-0 place-items-center rounded text-muted active:scale-95"
+        >
+          ✕
+        </button>
+      )}
     </li>
   )
 }
@@ -286,17 +318,22 @@ function formatItemAmount(quantity?: number, unit?: string): string {
 function IncludeToggle({
   on,
   onToggle,
+  disabled = false,
 }: {
   on: boolean
   onToggle: () => void
+  disabled?: boolean
 }) {
   return (
     <button
       role="switch"
       aria-checked={on}
+      aria-disabled={disabled}
       aria-label="Include in ingredients"
-      onClick={onToggle}
-      className="-my-2 grid h-11 w-12 shrink-0 place-items-center rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
+      onClick={disabled ? undefined : onToggle}
+      className={`-my-2 grid h-11 w-12 shrink-0 place-items-center rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface ${
+        disabled ? 'cursor-default opacity-60' : ''
+      }`}
     >
       <span
         className={`relative h-7 w-12 rounded-full transition-colors duration-200 ease-out ${
