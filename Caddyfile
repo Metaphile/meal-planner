@@ -1,0 +1,7 @@
+# Public HTTPS via automatic Let's Encrypt for your domain, proxying to
+# PocketBase. flush_interval -1 keeps PocketBase's realtime (SSE) unbuffered.
+{$DOMAIN} {
+	reverse_proxy pocketbase:8090 {
+		flush_interval -1
+	}
+}

@@ -1,0 +1,48 @@
+# Production stack for the Raspberry Pi. `docker compose up -d --build` builds
+# the PWA+PocketBase image and starts Caddy for automatic HTTPS.
+#
+# Requires a .env file next to this one with at least:
+#   DOMAIN=yourname.duckdns.org
+# and (only if you use the optional ddns profile):
+#   DUCKDNS_SUBDOMAIN=yourname
+#   DUCKDNS_TOKEN=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+services:
+  pocketbase:
+    build:
+      context: .
+    restart: unless-stopped
+    volumes:
+      - pb_data:/pb/pb_data # the one thing to back up
+    expose:
+      - '8090'
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+    environment:
+      - DOMAIN=${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - pocketbase
+
+  # Optional: keep your DuckDNS record pointed at your home IP. Opt in with:
+  #   docker compose --profile ddns up -d
+  # (skip if your router already does dynamic DNS).
+  duckdns:
+    profiles: ['ddns']
+    image: lscr.io/linuxserver/duckdns:latest
+    restart: unless-stopped
+    environment:
+      - SUBDOMAINS=${DUCKDNS_SUBDOMAIN}
+      - TOKEN=${DUCKDNS_TOKEN}
+
+volumes:
+  pb_data:
+  caddy_data:
+  caddy_config:
