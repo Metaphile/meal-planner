@@ -31,6 +31,26 @@ services:
     depends_on:
       - pocketbase
 
+  # One-off: bootstrap the first admin (talks to PocketBase over the internal
+  # network, so it works on the Pi without NAT-loopback to your public URL):
+  #   PB_SUPERUSER_EMAIL=you@example.com PB_SUPERUSER_PASSWORD='...' \
+  #   ADMIN_NAME="Adam" docker compose --profile seed run --rm seed-admin
+  seed-admin:
+    profiles: ['seed']
+    image: node:20-alpine
+    working_dir: /app
+    volumes:
+      - ./backend:/app:ro
+    environment:
+      - PB_URL=http://pocketbase:8090
+      - APP_URL=https://${DOMAIN}
+      - PB_SUPERUSER_EMAIL=${PB_SUPERUSER_EMAIL:-}
+      - PB_SUPERUSER_PASSWORD=${PB_SUPERUSER_PASSWORD:-}
+      - ADMIN_NAME=${ADMIN_NAME:-Admin}
+    entrypoint: ['node', 'seed-admin.mjs']
+    depends_on:
+      - pocketbase
+
   # Optional: keep your DuckDNS record pointed at your home IP. Opt in with:
   #   docker compose --profile ddns up -d
   # (skip if your router already does dynamic DNS).

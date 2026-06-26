@@ -54,18 +54,18 @@ docker compose restart pocketbase
 
 ## 5. Bootstrap the first family admin
 
-Run the seed script from any machine that has Node + this repo (e.g. your
-laptop) — it talks to the public URL:
+Run the seed via Compose, on the Pi. It reaches PocketBase over the internal
+Docker network (don't point it at your public URL from inside your home — most
+routers block that NAT loopback):
 
 ```sh
-PB_URL=https://yourname.duckdns.org \
 PB_SUPERUSER_EMAIL=you@example.com \
 PB_SUPERUSER_PASSWORD='a-strong-password' \
-APP_URL=https://yourname.duckdns.org \
-npm run seed-admin "Adam"
+ADMIN_NAME="Adam" \
+docker compose --profile seed run --rm seed-admin
 ```
 
-It prints a one-time invite link. Open it once on your phone → you're signed in
+It prints a one-time invite link (using your public `APP_URL`). Open it once on your phone → you're signed in
 as the first admin (and the starter recipes/plan are seeded). From **Account →
 Manage family**, add your wife (set her role to Admin) and the kids (members
 with the capabilities you choose); share each person their invite link.
