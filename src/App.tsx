@@ -2,20 +2,28 @@ import { Suspense, lazy, useEffect } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { TabBar } from './components/TabBar'
 import { useStore } from './store/store'
+import { useAuth } from './auth/AuthProvider'
 
 // Route-level code splitting keeps the initial bundle (and time-to-interactive)
 // small — each tab's code loads on demand.
 const RecipesPage = lazy(() => import('./routes/RecipesPage'))
 const RecipeEditPage = lazy(() => import('./routes/RecipeEditPage'))
 const MealPlanPage = lazy(() => import('./routes/MealPlanPage'))
+const AccountPage = lazy(() => import('./routes/AccountPage'))
+const InvitePage = lazy(() => import('./routes/InvitePage'))
 
 export default function App() {
+  const { ready, user } = useAuth()
   const hydrated = useStore((s) => s.hydrated)
   const init = useStore((s) => s.init)
 
+  // Hydrate the local store only once signed in.
   useEffect(() => {
-    void init()
-  }, [init])
+    if (user) void init()
+  }, [user, init])
+
+  // Auth state not yet determined → hold a neutral splash.
+  if (!ready) return <Splash />
 
   return (
     <div className="flex h-full flex-col bg-bg text-text">
@@ -23,29 +31,60 @@ export default function App() {
         className="relative flex-1 overflow-hidden"
         style={{ paddingTop: 'var(--safe-top)' }}
       >
-        {!hydrated ? (
+        {user && !hydrated ? (
           <BootSkeleton />
         ) : (
           <Suspense fallback={<PageSpinner />}>
             <Routes>
-              <Route path="/" element={<Navigate to="/plan" replace />} />
-              <Route path="/recipes" element={<RecipesPage />} />
-              <Route path="/recipes/new" element={<RecipeEditPage />} />
-              <Route path="/recipes/:id" element={<RecipeEditPage />} />
-              <Route path="/plan" element={<MealPlanPage />} />
-              {/* Ingredients live on the Plan view, and saved Meals are gone;
-                  keep the old paths working by redirecting to the plan. */}
-              <Route
-                path="/ingredients"
-                element={<Navigate to="/plan" replace />}
-              />
-              <Route path="/meals/*" element={<Navigate to="/plan" replace />} />
-              <Route path="*" element={<Navigate to="/plan" replace />} />
+              {/* Always available so an invite link works while signed out. */}
+              <Route path="/invite" element={<InvitePage />} />
+              {user ? (
+                <>
+                  <Route path="/" element={<Navigate to="/plan" replace />} />
+                  <Route path="/recipes" element={<RecipesPage />} />
+                  <Route path="/recipes/new" element={<RecipeEditPage />} />
+                  <Route path="/recipes/:id" element={<RecipeEditPage />} />
+                  <Route path="/plan" element={<MealPlanPage />} />
+                  <Route path="/account" element={<AccountPage />} />
+                  {/* Old paths → plan. */}
+                  <Route
+                    path="/ingredients"
+                    element={<Navigate to="/plan" replace />}
+                  />
+                  <Route
+                    path="/meals/*"
+                    element={<Navigate to="/plan" replace />}
+                  />
+                  <Route path="*" element={<Navigate to="/plan" replace />} />
+                </>
+              ) : (
+                <Route path="*" element={<SignedOut />} />
+              )}
             </Routes>
           </Suspense>
         )}
       </main>
-      <TabBar />
+      {user && <TabBar />}
+    </div>
+  )
+}
+
+function SignedOut() {
+  return (
+    <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
+      <h1 className="text-xl font-semibold">Meal Planner</h1>
+      <p className="max-w-xs text-sm text-muted">
+        This is a private family app. Open the invite link a family admin shared
+        with you to sign in on this device.
+      </p>
+    </div>
+  )
+}
+
+function Splash() {
+  return (
+    <div className="flex h-full items-center justify-center bg-bg text-muted">
+      <div className="animate-pulse text-sm">Meal Planner</div>
     </div>
   )
 }
