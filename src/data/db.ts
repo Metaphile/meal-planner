@@ -1,14 +1,26 @@
 import Dexie, { type EntityTable } from 'dexie'
 import type { PlanMeal, Recipe } from './types'
 
+export type TableName = 'recipes' | 'plan'
+
+/** A pending remote write, persisted so offline edits survive a reload. */
+export interface OutboxRow {
+  id?: number
+  collection: TableName
+  key: string
+  op: 'put' | 'delete'
+  data?: Recipe | PlanMeal
+}
+
 /**
- * IndexedDB schema. This is the *persistence* layer only — the UI never reads
- * from here on the render path. We load it once on boot and write to it in the
- * background (see persistence.ts).
+ * IndexedDB is the local cache (for instant boot + offline) plus an outbox of
+ * writes waiting to reach PocketBase. The UI never reads from here on the
+ * render path — see persistence.ts.
  */
 export const db = new Dexie('meal-planner') as Dexie & {
   recipes: EntityTable<Recipe, 'id'>
   plan: EntityTable<PlanMeal, 'id'>
+  outbox: EntityTable<OutboxRow, 'id'>
 }
 
 db.version(1).stores({
@@ -32,4 +44,16 @@ db.version(2)
   })
   .upgrade((tx) => tx.table('plan').clear())
 
-export type TableName = 'recipes' | 'plan'
+// v3: add the outbox (offline write queue). recipes/plan become a cache of the
+// authoritative PocketBase data, so clear the old local-only rows once — a
+// fresh pull repopulates them.
+db.version(3)
+  .stores({
+    recipes: 'id, title',
+    plan: 'id, position',
+    outbox: '++id',
+  })
+  .upgrade(async (tx) => {
+    await tx.table('recipes').clear()
+    await tx.table('plan').clear()
+  })

@@ -4,10 +4,12 @@ import {
   enqueueDelete,
   enqueuePut,
   hydrate,
-  replaceAll,
+  startSync,
 } from '../data/persistence'
-import { seedData } from '../data/seed'
 import { newId } from '../lib/id'
+
+const byTitle = (a: Recipe, b: Recipe) => a.title.localeCompare(b.title)
+const byPosition = (a: PlanMeal, b: PlanMeal) => a.position - b.position
 
 interface AppState {
   recipes: Recipe[]
@@ -46,17 +48,25 @@ export const useStore = create<AppState>((set, get) => ({
 
   init: async () => {
     if (get().hydrated) return
-    let data = await hydrate()
-    // First run only: seed so the app isn't empty.
-    if (data.recipes.length === 0 && data.plan.length === 0) {
-      await replaceAll(seedData)
-      data = seedData
-    }
+    // 1. Instant paint from the local cache (works offline).
+    const cached = await hydrate()
     set({
-      recipes: [...data.recipes].sort((a, b) => a.title.localeCompare(b.title)),
-      plan: [...data.plan].sort((a, b) => a.position - b.position),
+      recipes: [...cached.recipes].sort(byTitle),
+      plan: [...cached.plan].sort(byPosition),
       hydrated: true,
     })
+    // 2. Reconcile with PocketBase + subscribe to realtime updates. Keeps the
+    //    cache if we're offline.
+    try {
+      await startSync((data) => {
+        set({
+          recipes: [...data.recipes].sort(byTitle),
+          plan: [...data.plan].sort(byPosition),
+        })
+      })
+    } catch {
+      // Offline or sync unavailable — the cached data above still works.
+    }
   },
 
   upsertRecipe: (recipe) => {
