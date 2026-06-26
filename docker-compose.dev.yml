@@ -1,0 +1,13 @@
+# Development: run PocketBase in a container (no bare install on the dev
+# machine). The frontend dev server runs on the host via `npm run dev` pointed
+# at VITE_PB_URL=http://localhost:8090.
+services:
+  pocketbase:
+    build:
+      context: ./backend
+    ports:
+      - '8090:8090'
+    volumes:
+      - ./backend/pb_data:/pb/pb_data
+      - ./backend/pb_migrations:/pb/pb_migrations
+      - ./backend/pb_hooks:/pb/pb_hooks

@@ -30,3 +30,7 @@ dev-dist/
 
 # TypeScript incremental build cache
 *.tsbuildinfo
+
+# PocketBase runtime data (SQLite db, uploads, generated types) — not source.
+# pb_migrations/ and pb_hooks/ ARE committed.
+backend/pb_data/

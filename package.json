@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "typecheck": "tsc -b --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "seed-admin": "node backend/seed-admin.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.1.0",
@@ -17,6 +18,7 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@tanstack/react-virtual": "^3.10.8",
     "dexie": "^4.0.10",
+    "pocketbase": "^0.27.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.28.0",
