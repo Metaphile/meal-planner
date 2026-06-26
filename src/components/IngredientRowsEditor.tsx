@@ -1,4 +1,53 @@
+import { useState } from 'react'
 import type { Ingredient } from '../data/types'
+
+function fmtQty(value: number | undefined): string {
+  return value === undefined ? '' : String(value)
+}
+
+function parseQty(text: string): number | undefined {
+  const t = text.trim()
+  if (t === '') return undefined
+  const n = Number(t)
+  return Number.isNaN(n) ? undefined : n
+}
+
+/**
+ * Quantity field that keeps the raw text you're typing so in-progress decimals
+ * (e.g. "1." on the way to "1.5") survive — a plain controlled number input
+ * reformats "1." back to "1" and eats the decimal point. The numeric value is
+ * parsed underneath. External value changes (e.g. a row removed, shifting
+ * indices) are adopted, but not when they match the number the draft already
+ * represents.
+ */
+function QuantityInput({
+  value,
+  onChange,
+}: {
+  value: number | undefined
+  onChange: (quantity: number | undefined) => void
+}) {
+  const [draft, setDraft] = useState(() => fmtQty(value))
+  const [prevValue, setPrevValue] = useState(value)
+  if (value !== prevValue) {
+    setPrevValue(value)
+    if (parseQty(draft) !== value) setDraft(fmtQty(value))
+  }
+
+  return (
+    <input
+      value={draft}
+      onChange={(e) => {
+        setDraft(e.target.value)
+        onChange(parseQty(e.target.value))
+      }}
+      inputMode="decimal"
+      placeholder="Qty"
+      aria-label="Quantity"
+      className="w-16 rounded-lg border border-border bg-surface px-2 py-2 text-center focus:border-brand focus:outline-none"
+    />
+  )
+}
 
 /**
  * Controlled editor for a list of ingredient rows (name + optional qty + unit).
@@ -32,16 +81,9 @@ export function IngredientRowsEditor({
             aria-label="Ingredient name"
             className="min-w-0 flex-1 rounded-lg border border-border bg-surface px-3 py-2 focus:border-brand focus:outline-none"
           />
-          <input
-            value={row.quantity ?? ''}
-            onChange={(e) => {
-              const v = e.target.value.trim()
-              update(i, { quantity: v === '' ? undefined : Number(v) })
-            }}
-            inputMode="decimal"
-            placeholder="Qty"
-            aria-label="Quantity"
-            className="w-16 rounded-lg border border-border bg-surface px-2 py-2 text-center focus:border-brand focus:outline-none"
+          <QuantityInput
+            value={row.quantity}
+            onChange={(quantity) => update(i, { quantity })}
           />
           <input
             value={row.unit ?? ''}
