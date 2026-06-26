@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { useAuth } from '../auth/AuthProvider'
 import { CAPABILITIES } from '../auth/capabilities'
 import { PageHeader, Tag } from '../components/ui'
@@ -21,7 +22,15 @@ export default function AccountPage() {
           </div>
         </div>
 
-        {/* Phase 3 adds admin user management (people + invites) here. */}
+        {isAdmin && (
+          <Link
+            to="/admin"
+            className="flex items-center justify-between rounded-xl border border-border bg-surface px-4 py-3 active:scale-[0.99]"
+          >
+            <span className="font-medium">Manage family</span>
+            <span className="text-muted">›</span>
+          </Link>
+        )}
 
         <button
           onClick={signOut}

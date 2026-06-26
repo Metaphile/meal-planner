@@ -10,10 +10,11 @@ const RecipesPage = lazy(() => import('./routes/RecipesPage'))
 const RecipeEditPage = lazy(() => import('./routes/RecipeEditPage'))
 const MealPlanPage = lazy(() => import('./routes/MealPlanPage'))
 const AccountPage = lazy(() => import('./routes/AccountPage'))
+const AdminPage = lazy(() => import('./routes/AdminPage'))
 const InvitePage = lazy(() => import('./routes/InvitePage'))
 
 export default function App() {
-  const { ready, user } = useAuth()
+  const { ready, user, isAdmin } = useAuth()
   const hydrated = useStore((s) => s.hydrated)
   const init = useStore((s) => s.init)
 
@@ -46,6 +47,12 @@ export default function App() {
                   <Route path="/recipes/:id" element={<RecipeEditPage />} />
                   <Route path="/plan" element={<MealPlanPage />} />
                   <Route path="/account" element={<AccountPage />} />
+                  <Route
+                    path="/admin"
+                    element={
+                      isAdmin ? <AdminPage /> : <Navigate to="/account" replace />
+                    }
+                  />
                   {/* Old paths → plan. */}
                   <Route
                     path="/ingredients"
