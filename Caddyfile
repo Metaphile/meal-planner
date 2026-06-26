@@ -1,6 +1,10 @@
-# Public HTTPS via automatic Let's Encrypt for your domain, proxying to
-# PocketBase. flush_interval -1 keeps PocketBase's realtime (SSE) unbuffered.
+# Public HTTPS via Let's Encrypt using the DNS-01 challenge (DuckDNS), so no
+# inbound port 80 is needed — Pi-hole can keep it. Only 443 is exposed.
+# flush_interval -1 keeps PocketBase's realtime (SSE) unbuffered.
 {$DOMAIN} {
+	tls {
+		dns duckdns {env.DUCKDNS_TOKEN}
+	}
 	reverse_proxy pocketbase:8090 {
 		flush_interval -1
 	}

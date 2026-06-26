@@ -12,8 +12,9 @@ up.
 - Docker + Docker Compose plugin: `curl -fsSL https://get.docker.com | sh`
 - A free domain via **DuckDNS** (https://www.duckdns.org) → e.g.
   `yourname.duckdns.org`. Note your token.
-- Your home router forwarding **ports 80 and 443** to the Pi (Let's Encrypt and
-  the app need these reachable from the internet).
+- Your home router forwarding **port 443** to the Pi. (Caddy uses the ACME
+  **DNS-01** challenge via DuckDNS, so it does **not** need port 80 — which means
+  this happily coexists with Pi-hole or anything else already using port 80.)
 
 ## 1. Get the code on the Pi
 
@@ -27,11 +28,13 @@ Create a `.env` next to `docker-compose.yml`:
 
 ```sh
 DOMAIN=yourname.duckdns.org
-# Only if you want the container to update DuckDNS for you (skip if your
-# router already does dynamic DNS):
-DUCKDNS_SUBDOMAIN=yourname
-DUCKDNS_TOKEN=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+DUCKDNS_TOKEN=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx  # required: Caddy uses it for the DNS-01 cert challenge
+DUCKDNS_SUBDOMAIN=yourname                          # only for the optional ddns updater (keeps your A record current)
 ```
+
+`DUCKDNS_TOKEN` is now required (Caddy needs it to issue the certificate). The A
+record for `DOMAIN` must still point at your home IP — either via your router's
+dynamic DNS or the optional `ddns` profile below.
 
 ## 3. Start it
 
@@ -39,9 +42,10 @@ DUCKDNS_TOKEN=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 docker compose up -d --build          # add: --profile ddns  (to run the DuckDNS updater)
 ```
 
-The first build compiles the PWA and downloads PocketBase for the Pi's arch — it
-takes a few minutes. Caddy fetches a TLS certificate automatically once your
-domain resolves to the Pi and 80/443 are reachable.
+The first build compiles the PWA, downloads PocketBase, and builds Caddy with
+the DuckDNS plugin — a few minutes. Caddy then obtains a TLS certificate via the
+DNS-01 challenge (no port 80 needed). Confirm success with
+`docker compose logs caddy | grep -i "certificate obtained"`.
 
 ## 4. Create the PocketBase superuser (server operator)
 
@@ -91,8 +95,15 @@ Schema changes ship as PocketBase migrations in the image and apply on startup.
 
 ## Notes / troubleshooting
 
-- **HTTPS not issuing:** confirm `DOMAIN` resolves to your home IP and ports
-  80/443 are forwarded to the Pi; check `docker compose logs caddy`.
+- **Coexisting with Pi-hole (or anything on port 80):** fine — Caddy uses the
+  DNS-01 challenge and only needs port 443. Don't forward 80.
+- **HTTPS not issuing — `dial udp …:53: network is unreachable` in caddy logs:**
+  the containers can't do DNS. Give Docker a working resolver: create
+  `/etc/docker/daemon.json` with `{ "dns": ["1.1.1.1", "8.8.8.8"] }`, then
+  `sudo systemctl restart docker && docker compose up -d`.
+- **HTTPS not issuing — DNS-01/DuckDNS errors:** confirm `DUCKDNS_TOKEN` is set
+  and matches your DuckDNS account, and that `DOMAIN` is your DuckDNS subdomain.
+  Check `docker compose logs caddy`.
 - **superuser auth fails right after `upsert`:** restart the pocketbase
   container so the running server picks up the new account (step 4 does this).
 - **Members never need passwords** — they sign in via invite links and stay

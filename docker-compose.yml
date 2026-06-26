@@ -17,13 +17,14 @@ services:
       - '8090'
 
   caddy:
-    image: caddy:2-alpine
+    build:
+      context: ./caddy # Caddy + DuckDNS DNS plugin (for the DNS-01 challenge)
     restart: unless-stopped
     ports:
-      - '80:80'
-      - '443:443'
+      - '443:443' # no port 80 — DNS-01 doesn't need it, so Pi-hole keeps 80
     environment:
       - DOMAIN=${DOMAIN}
+      - DUCKDNS_TOKEN=${DUCKDNS_TOKEN}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
