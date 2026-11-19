@@ -262,11 +262,14 @@ export default function RecipesPage() {
   const headerRef = useRef<HTMLDivElement>(null)
   const wheel = useMemo(() => fitWheel(stageH), [stageH])
   const bounds = useMemo(() => boundsOf(wheel, items, !!q), [wheel, items, q])
+  // The card in hand, by recipe id (editing it can move it to another
+  // letter, or delete it, while it's out).
   const [open, setOpen] = useState<{
-    index: number
+    key: string
     recipe: Recipe
     origin: CardOrigin
   } | null>(null)
+  const indexOf = (key: string) => items.findIndex((it) => it.key === key)
 
   /** Rim distance of item i below the top of the screen (negative = gone
    *  over the top), for the drum at position `pos`. */
@@ -279,7 +282,7 @@ export default function RecipesPage() {
   // Per frame: place every card on the wheel. Transform/opacity-only writes,
   // skipped when unchanged.
   const raf = useRef(0)
-  const lifted = useRef(-1) // the card being taken out / put back / held
+  const lifted = useRef<string | null>(null) // key of the card out of the box
   const paint = useCallback(() => {
     raf.current = 0
     const drum = drumRef.current
@@ -287,7 +290,7 @@ export default function RecipesPage() {
     const st = drum.get()
     for (let i = 0; i < items.length; i++) {
       const el = itemEls.current[i]
-      if (!el || i === lifted.current) continue
+      if (!el || items[i].key === lifted.current) continue
       const v = rimPos(i, st)
       const on = v >= -wheel.overTop && v <= wheel.visible + wheel.underBottom
       if (on !== shown.current[i]) {
@@ -450,14 +453,14 @@ export default function RecipesPage() {
       const wrap = itemEls.current[index]
       if (it.kind !== 'card' || !wrap || busy.current) return
       busy.current = true
-      lifted.current = index
+      lifted.current = it.key
       // Whole card, trimmed only below its rod (so as it slides up it comes
       // out from behind the cards in front, and nothing swings out below).
       wrap.style.height = 'auto'
       wrap.style.overflow = 'visible'
       wrap.style.clipPath = `inset(-4000px -24px calc(100% - ${CARD_H}px) -24px)`
       flushSync(() =>
-        setOpen({ index, recipe: it.recipe, origin: originOf(index) }),
+        setOpen({ key: it.key, recipe: it.recipe, origin: originOf(index) }),
       )
     },
     [items, originOf],
@@ -466,19 +469,27 @@ export default function RecipesPage() {
   // The card has flown back into its slot: drop the flight's leftovers.
   const onClosed = useCallback(() => {
     if (!open) return
-    const wrap = itemEls.current[open.index]
-    const card = cardEl(open.index)
+    // (Gone if it was deleted while out.)
+    const i = indexOf(open.key)
+    const wrap = i >= 0 ? itemEls.current[i] : null
+    const card = i >= 0 ? cardEl(i) : undefined
     for (const el of [card, wrap, card?.querySelector('.rolodex-dim')])
       el?.getAnimations().forEach((a) => a.cancel())
     if (wrap) {
-      wrap.style.height = `${rodOffset(items[open.index])}px`
+      wrap.style.height = `${rodOffset(items[i])}px`
       wrap.style.overflow = 'clip'
       wrap.style.clipPath = ''
     }
-    lifted.current = -1
+    lifted.current = null
+    // Back on the wheel: place it afresh (it wasn't painted while out, and
+    // editing may have moved it to another letter).
+    lastPose.current = []
+    lastZ.current = []
+    shown.current = []
+    paint()
     flushSync(() => setOpen(null))
     busy.current = false
-  }, [open, items])
+  }, [open, items, paint])
 
   // If the cards change under us (e.g. a sync), drop any half-done lift.
   useEffect(() => {
@@ -503,8 +514,6 @@ export default function RecipesPage() {
   const setItemEl = useCallback((i: number, el: HTMLDivElement | null) => {
     itemEls.current[i] = el
   }, [])
-
-  const openItem = open ? items[open.index] : undefined
 
   const closeSearch = () => {
     setSearching(false)
@@ -612,13 +621,16 @@ export default function RecipesPage() {
         </div>
       </>
 
-      {open && openItem?.kind === 'card' && (
+      {open && (
         <CardDetail
           key={open.recipe.id}
           recipe={open.recipe}
           origin={open.origin}
-          getOrigin={() => originOf(open.index)}
-          getRolodexCard={() => cardEl(open.index)}
+          getOrigin={() => originOf(indexOf(open.key))}
+          getRolodexCard={() => {
+            const i = indexOf(open.key)
+            return i >= 0 ? cardEl(i) : undefined
+          }}
           canEditRecipes={canEditRecipes}
           canEditPlan={canEditPlan}
           onClosed={onClosed}

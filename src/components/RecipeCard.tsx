@@ -8,10 +8,12 @@ import {
   type ReactNode,
   type Ref,
 } from 'react'
-import { createPortal } from 'react-dom'
+import { createPortal, flushSync } from 'react-dom'
 import { Link } from 'react-router-dom'
 import { useStore } from '../store/store'
 import type { Ingredient, Recipe } from '../data/types'
+import { IngredientRowsEditor } from './IngredientRowsEditor'
+import { ConfirmDialog } from './ui'
 import { arcThrough, sampleTimes, type Arc } from '../lib/arc'
 
 /**
@@ -152,16 +154,167 @@ export const RecipeCard = forwardRef<HTMLDivElement, CardProps>(
   },
 )
 
+const EDIT_CLASS =
+  'rounded-full border border-[#d8cdb6] px-4 py-1.5 text-sm font-medium leading-5 active:scale-95'
+
 export function EditRecipeLink({ recipeId }: { recipeId: string }) {
   return (
-    <Link
-      to={`/recipes/${recipeId}`}
-      className="rounded-full border border-[#d8cdb6] px-4 py-1.5 text-sm font-medium leading-5 active:scale-95"
-    >
+    <Link to={`/recipes/${recipeId}`} className={EDIT_CLASS}>
       Edit
     </Link>
   )
 }
+
+/** Edit, on a card in hand: turns the card over to its back. (Looks exactly
+ *  like EditRecipeLink, which the same card shows in the rolodex.) */
+export function EditButton({ onEdit }: { onEdit: () => void }) {
+  return (
+    <button type="button" onClick={onEdit} className={EDIT_CLASS}>
+      Edit
+    </button>
+  )
+}
+
+/**
+ * The back of a card: the recipe written out on paper fields to edit. Nothing
+ * reaches the store until Save.
+ */
+const RecipeCardBack = forwardRef<
+  HTMLDivElement,
+  {
+    recipe: Recipe
+    onCancel: () => void
+    onSaved: () => void
+    onDeleted: () => void
+  } & HTMLAttributes<HTMLDivElement>
+>(function RecipeCardBack(
+  { recipe, onCancel, onSaved, onDeleted, className = '', style, ...rest },
+  ref,
+) {
+  const upsertRecipe = useStore((s) => s.upsertRecipe)
+  const deleteRecipe = useStore((s) => s.deleteRecipe)
+  const [title, setTitle] = useState(recipe.title)
+  const [ingredients, setIngredients] = useState<Ingredient[]>(
+    recipe.ingredients.length ? recipe.ingredients : [{ name: '' }],
+  )
+  const [notes, setNotes] = useState(recipe.notes ?? '')
+  const [tagsText, setTagsText] = useState(recipe.tags.join(', '))
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
+
+  const save = () => {
+    upsertRecipe({
+      ...recipe,
+      title: title.trim(),
+      ingredients: ingredients
+        .map((i) => ({ ...i, name: i.name.trim() }))
+        .filter((i) => i.name.length > 0),
+      notes: notes.trim() || undefined,
+      tags: tagsText
+        .split(',')
+        .map((t) => t.trim())
+        .filter(Boolean),
+    })
+    onSaved()
+  }
+
+  const label =
+    'paper-serif mb-1 block text-[13px] font-semibold uppercase tracking-wider text-[#8a8170]'
+
+  return (
+    <div
+      ref={ref}
+      {...rest}
+      className={`paper-card relative flex flex-col text-left ${className}`}
+      style={{ minHeight: CARD_H, ...style }}
+    >
+      <div className="relative flex flex-1 flex-col">
+        <div className="paper-frame" />
+        <div className="px-5 pt-3.5">
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Recipe title"
+            aria-label="Title"
+            className="paper-serif paper-rule w-full bg-transparent pb-1.5 text-[19px] font-semibold leading-[25px] placeholder:font-normal placeholder:italic placeholder:text-ink-faint focus:outline-none"
+          />
+        </div>
+        <div className="mx-5 mt-3.5 mb-4 flex flex-col gap-4">
+          <div>
+            <span className={label}>Ingredients</span>
+            <IngredientRowsEditor
+              rows={ingredients}
+              onChange={setIngredients}
+            />
+          </div>
+          <label className="block">
+            <span className={label}>Notes</span>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={6}
+              placeholder="Prep tips, substitutions…"
+              className="paper-lines block w-full resize-none bg-transparent leading-[22px] placeholder:italic placeholder:text-ink-faint focus:outline-none"
+            />
+          </label>
+          <label className="block">
+            <span className={label}>Tags</span>
+            <input
+              value={tagsText}
+              onChange={(e) => setTagsText(e.target.value)}
+              placeholder="dinner, kid-friendly"
+              className="w-full rounded-lg border border-border bg-surface px-3 py-2 placeholder:text-ink-faint focus:border-kraft-edge focus:outline-none"
+            />
+          </label>
+        </div>
+      </div>
+
+      <div className="flex shrink-0 items-center gap-2 px-4 pb-3 pt-1.5">
+        <button
+          type="button"
+          onClick={() => setConfirmingDelete(true)}
+          className="px-1 py-1.5 text-sm font-medium leading-5 text-danger active:opacity-60"
+        >
+          Delete
+        </button>
+        <span className="flex-1" />
+        <button type="button" onClick={onCancel} className={EDIT_CLASS}>
+          Cancel
+        </button>
+        <button
+          type="button"
+          onClick={save}
+          disabled={!title.trim()}
+          className="rounded-full border border-kraft-edge bg-brand px-4 py-1.5 text-sm font-semibold leading-5 text-on-brand transition active:scale-95 disabled:opacity-40"
+        >
+          Save
+        </button>
+      </div>
+
+      {/* (On the body: a fixed dialog inside a turned card would be placed
+          relative to the card.) */}
+      {confirmingDelete &&
+        createPortal(
+          <ConfirmDialog
+            title="Delete recipe?"
+            message={
+              <>
+                “{recipe.title}” will be deleted for everyone. This can’t be
+                undone.
+              </>
+            }
+            confirmLabel="Delete"
+            onConfirm={() => {
+              setConfirmingDelete(false)
+              deleteRecipe(recipe.id)
+              onDeleted()
+            }}
+            onCancel={() => setConfirmingDelete(false)}
+          />,
+          document.body,
+        )}
+    </div>
+  )
+})
 
 /** Where the card sits in the rolodex (screen space). */
 export interface CardOrigin {
@@ -184,11 +337,19 @@ export interface CardOrigin {
   shade: number
 }
 
+/** The face not showing: out of the layout, over the other (inline, so it
+ *  beats a card's own `relative`). */
+const OFF_LAYOUT = {
+  position: 'absolute',
+  top: 0,
+  left: 0,
+  right: 0,
+} as const
+
 const EASE_OUT = 'cubic-bezier(0.2, 0.9, 0.25, 1)'
 const STAND = 'cubic-bezier(0.4, 0, 0.2, 1)' // standing up off / back onto the wheel
 
 const pose = (dy: number) => `translate(0px, ${dy}px)`
-
 
 /**
  * The lifted card. One continuous motion takes the card from wherever it
@@ -200,6 +361,10 @@ const pose = (dy: number) => `translate(0px, ${dy}px)`
  * same kind of path in reverse and lays it back onto the wheel. Tap the shade
  * or pull the card down to put it back. All motion is keyframes — nothing
  * renders mid-flight.
+ *
+ * Edit turns the card over: its back has the recipe on paper fields. Save or
+ * Cancel turns it back. While it's turned over it stays in hand (the shade
+ * and pulling down don't put it away; Escape cancels).
  */
 export function CardDetail({
   recipe,
@@ -220,13 +385,23 @@ export function CardDetail({
   getRolodexCard: () => HTMLElement | undefined
   canEditRecipes: boolean
   canEditPlan: boolean
-  /** Replaces the card's usual actions. `dismiss` fades the card away instead
-   *  of putting it back (for when it's leaving, e.g. removed from a meal);
-   *  onClosed follows either way. */
-  renderActions?: (dismiss: () => void) => ReactNode
+  /** Replaces the card's usual actions (Add to Meal · Edit). `dismiss` fades
+   *  the card away instead of putting it back (for when it's leaving, e.g.
+   *  removed from a meal; onClosed follows either way); `edit` turns it over. */
+  renderActions?: (api: { dismiss: () => void; edit: () => void }) => ReactNode
   onClosed: () => void
 }) {
-  const cardRef = useRef<HTMLDivElement>(null)
+  // Show the recipe as it is now (it may be edited while in hand).
+  const live = useStore((s) => s.recipes.find((r) => r.id === recipe.id))
+  const shown = live ?? recipe
+  const cardRef = useRef<HTMLDivElement>(null) // flies (wraps both faces)
+  const flipRef = useRef<HTMLDivElement>(null) // turns over
+  const frontRef = useRef<HTMLDivElement>(null)
+  const backRef = useRef<HTMLDivElement>(null)
+  const [editing, setEditing] = useState(false) // the back is there
+  const [facing, setFacing] = useState<'front' | 'back'>('front')
+  const editingRef = useRef(false)
+  const flipping = useRef(false)
   const shadeRef = useRef<HTMLDivElement>(null) // the shadow over the rolodex
   const scrollRef = useRef<HTMLDivElement>(null) // the card scrolls in this
   const restTop = useRef(0)
@@ -394,7 +569,11 @@ export function CardDetail({
     card.getAnimations().forEach((a) => a.cancel())
     const from = card.style.transform || pose(0)
     card.style.transform = ''
-    const timing = { duration: 220, easing: EASE_OUT, fill: 'forwards' as const }
+    const timing = {
+      duration: 220,
+      easing: EASE_OUT,
+      fill: 'forwards' as const,
+    }
     const anim = card.animate(
       [
         { opacity: 1, transform: from },
@@ -409,9 +588,86 @@ export function CardDetail({
     anim.onfinish = () => onClosedRef.current()
   }
 
-  // Escape puts the card back.
+  /**
+   * Turn the card over (to its back, to edit) or back. It turns about its
+   * vertical centre line, speeding up into edge-on and slowing out of it;
+   * the faces swap places in the layout at the edge-on instant, where a
+   * change of height can't be seen. At rest the turned card is drawn flat
+   * (no 3D transforms on its fields, so typing in them is ordinary).
+   */
+  const flip = (toBack: boolean) => {
+    if (flipping.current || closing.current) return
+    if (toBack === editingRef.current) return
+    flipping.current = true
+    const flipper = flipRef.current!
+    if (toBack) {
+      editingRef.current = true
+      flushSync(() => setEditing(true)) // mount the back, out of the layout
+    }
+    const front = frontRef.current!
+    const back = backRef.current!
+    // Into 3D: both faces present, the back turned away.
+    front.style.visibility = ''
+    back.style.visibility = ''
+    back.style.transform = 'rotateY(180deg)'
+    flipper.style.transform = toBack ? '' : 'rotateY(180deg)'
+    const from = toBack ? 0 : 180
+    const mid = toBack ? 90 : 90
+    const to = toBack ? 180 : 0
+    const first = flipper.animate(
+      [
+        { transform: `rotateY(${from}deg)` },
+        { transform: `rotateY(${mid}deg)` },
+      ],
+      {
+        duration: 210,
+        easing: 'cubic-bezier(0.55, 0, 1, 0.45)',
+        fill: 'forwards',
+      },
+    )
+    first.onfinish = () => {
+      // Edge-on: swap which face holds the layout.
+      flushSync(() => setFacing(toBack ? 'back' : 'front'))
+      const second = flipper.animate(
+        [
+          { transform: `rotateY(${mid}deg)` },
+          { transform: `rotateY(${to}deg)` },
+        ],
+        {
+          duration: 270,
+          easing: 'cubic-bezier(0, 0.55, 0.45, 1)',
+          fill: 'forwards',
+        },
+      )
+      first.cancel()
+      second.onfinish = () => {
+        // At rest, flat: the facing side untransformed, the other hidden.
+        flipper.style.transform = ''
+        back.style.transform = ''
+        second.cancel()
+        if (toBack) {
+          front.style.visibility = 'hidden'
+        } else {
+          back.style.visibility = 'hidden'
+          editingRef.current = false
+          flushSync(() => setEditing(false))
+        }
+        flipping.current = false
+      }
+    }
+  }
+  const flipRefFn = useRef(flip)
+  flipRefFn.current = flip
+  const edit = () => flipRefFn.current(true)
+  const unedit = () => flipRefFn.current(false)
+
+  // Escape puts the card back (or, turned over, cancels the edit).
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && closeRef.current()
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      if (editingRef.current) flipRefFn.current(false)
+      else closeRef.current()
+    }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
@@ -437,7 +693,12 @@ export function CardDetail({
       !d.fromScroller || (scrollRef.current?.scrollTop ?? 0) <= 0
 
     const start = (x: number, y: number, target: EventTarget | null) => {
-      if (closing.current) return
+      if (closing.current || editingRef.current) {
+        // Turned over (or leaving): no pulling it away.
+        d.active = false
+        d.decided = true
+        return
+      }
       d.active = false
       d.decided = false
       d.fromScroller = !!scrollRef.current?.contains(target as Node)
@@ -545,6 +806,8 @@ export function CardDetail({
         className="scroll-y no-scrollbar absolute inset-x-0 bottom-0"
         style={{ top: origin.viewTop }}
         onClick={(e) => {
+          // (Turned over, it stays in hand until Save or Cancel.)
+          if (editingRef.current) return
           if (!cardRef.current?.contains(e.target as Node)) close()
         }}
       >
@@ -554,23 +817,64 @@ export function CardDetail({
             paddingBottom: 'calc(var(--safe-bottom) + 32px)',
           }}
         >
-          <RecipeCard
+          <div
             ref={cardRef}
-            recipe={recipe}
-            canEditPlan={canEditPlan}
-            canEditRecipes={canEditRecipes}
-            actions={renderActions?.(dismiss)}
             role="dialog"
             aria-modal="true"
-            aria-label={recipe.title}
-            className="select-none"
+            aria-label={shown.title}
             style={{
               // Same column as in the rolodex, so nothing scales.
               marginLeft: origin.left,
               width: origin.width,
               willChange: 'transform',
+              perspective: '1600px',
             }}
-          />
+          >
+            <div
+              ref={flipRef}
+              className="relative"
+              style={{ transformStyle: 'preserve-3d' }}
+            >
+              <RecipeCard
+                ref={frontRef}
+                recipe={shown}
+                canEditPlan={canEditPlan}
+                canEditRecipes={canEditRecipes}
+                actions={
+                  renderActions ? (
+                    renderActions({ dismiss, edit })
+                  ) : (
+                    <>
+                      {canEditPlan && <AddToMealButton recipeId={shown.id} />}
+                      {canEditRecipes && <EditButton onEdit={edit} />}
+                    </>
+                  )
+                }
+                aria-hidden={facing === 'back' || undefined}
+                className="select-none"
+                style={{
+                  backfaceVisibility: 'hidden',
+                  ...(facing === 'front' ? {} : OFF_LAYOUT),
+                }}
+              />
+              {editing && (
+                <RecipeCardBack
+                  ref={backRef}
+                  recipe={shown}
+                  onCancel={unedit}
+                  onSaved={unedit}
+                  onDeleted={() => {
+                    editingRef.current = false
+                    dismiss()
+                  }}
+                  style={{
+                    backfaceVisibility: 'hidden',
+                    ...(facing === 'back' ? {} : OFF_LAYOUT),
+                  }}
+                />
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </div>,

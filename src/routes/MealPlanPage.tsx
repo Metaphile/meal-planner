@@ -25,6 +25,7 @@ import { EmptyState, PageHeader } from '../components/ui'
 import { IngredientsList } from '../components/IngredientsList'
 import {
   CardDetail,
+  EditButton,
   EditRecipeLink,
   RecipeCard,
   type CardOrigin,
@@ -292,7 +293,12 @@ function MealPocket({
                 aria-label="Drag meal to reorder"
                 className="-my-1 -ml-1 grid h-10 w-8 shrink-0 cursor-grab touch-none place-items-center rounded-lg text-kraft-edge focus:outline-none focus-visible:ring-2 focus-visible:ring-kraft-ink active:cursor-grabbing"
               >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                >
                   <circle cx="9" cy="6" r="1.6" />
                   <circle cx="15" cy="6" r="1.6" />
                   <circle cx="9" cy="12" r="1.6" />
@@ -320,7 +326,9 @@ function MealPocket({
 
           {cards.length === 0 && slip.length === 0 ? (
             <p className="paper-serif mb-2.5 rounded-lg border border-dashed border-kraft-edge px-3 py-4 text-center italic text-kraft-ink/70">
-              {canEdit ? 'Empty — tap + Add to fill it.' : 'Nothing in this meal yet.'}
+              {canEdit
+                ? 'Empty — tap + Add to fill it.'
+                : 'Nothing in this meal yet.'}
             </p>
           ) : (
             <>
@@ -411,12 +419,11 @@ function MealPocket({
           getOrigin={() => originOf(lift.componentId)}
           getRolodexCard={() =>
             slots.current.get(lift.componentId)?.firstElementChild as
-              | HTMLElement
-              | undefined
+              HTMLElement | undefined
           }
           canEditPlan={canEdit}
           canEditRecipes={canEditRecipes}
-          renderActions={(dismiss) => (
+          renderActions={({ dismiss, edit }) => (
             <PocketCardActions
               recipeId={lift.recipe.id}
               canEdit={canEdit}
@@ -425,6 +432,7 @@ function MealPocket({
                 removing.current = true
                 dismiss()
               }}
+              onEdit={edit}
             />
           )}
           onClosed={onClosed}
@@ -438,17 +446,20 @@ function MealPocket({
   )
 }
 
-/** A card taken out of a meal: take it out of the meal, or edit it. */
+/** A card taken out of a meal: take it out of the meal, or edit it (in hand,
+ *  Edit turns the card over; in the pocket it's the same-looking link). */
 function PocketCardActions({
   recipeId,
   canEdit,
   canEditRecipes,
   onRemove,
+  onEdit,
 }: {
   recipeId: string
   canEdit: boolean
   canEditRecipes: boolean
   onRemove?: () => void
+  onEdit?: () => void
 }) {
   return (
     <>
@@ -460,7 +471,12 @@ function PocketCardActions({
           Remove from meal
         </button>
       )}
-      {canEditRecipes && <EditRecipeLink recipeId={recipeId} />}
+      {canEditRecipes &&
+        (onEdit ? (
+          <EditButton onEdit={onEdit} />
+        ) : (
+          <EditRecipeLink recipeId={recipeId} />
+        ))}
     </>
   )
 }
