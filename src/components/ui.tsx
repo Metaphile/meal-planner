@@ -81,11 +81,10 @@ export function GhostButton({
   )
 }
 
-export function TextInput(
-  props: React.InputHTMLAttributes<HTMLInputElement>,
-) {
+export function TextInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
+      autoComplete="off"
       {...props}
       className={`w-full rounded-lg border border-border bg-surface px-3 py-2 text-text placeholder:text-muted/60 focus:border-kraft-edge focus:outline-none ${
         props.className ?? ''

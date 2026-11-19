@@ -722,7 +722,8 @@ function AddToMealSheet({
               onChange={(e) => setItemName(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && stageItem()}
               placeholder="e.g. Steamed broccoli"
-              aria-label="Item name"
+              aria-label="Misc item"
+              autoComplete="off"
               className="min-w-0 flex-1 rounded-lg border border-paper-edge bg-paper px-3 py-2 placeholder:text-ink-faint focus:border-kraft-edge focus:outline-none"
             />
             <input
@@ -731,6 +732,7 @@ function AddToMealSheet({
               inputMode="decimal"
               placeholder="Qty"
               aria-label="Quantity"
+              autoComplete="off"
               className="w-14 rounded-lg border border-paper-edge bg-paper px-2 py-2 text-center placeholder:text-ink-faint focus:border-kraft-edge focus:outline-none"
             />
             <input
@@ -738,6 +740,8 @@ function AddToMealSheet({
               onChange={(e) => setItemUnit(e.target.value)}
               placeholder="Unit"
               aria-label="Unit"
+              autoComplete="off"
+              autoCapitalize="none"
               className="w-16 rounded-lg border border-paper-edge bg-paper px-2 py-2 placeholder:text-ink-faint focus:border-kraft-edge focus:outline-none"
             />
             <button

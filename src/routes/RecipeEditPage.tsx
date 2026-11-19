@@ -73,7 +73,8 @@ export default function RecipeEditPage() {
       />
 
       <div className="scroll-y flex-1 space-y-5 px-4 py-4">
-        <Field label="Title">
+        {/* (Not "Title" or "Name": Safari would offer to AutoFill a contact.) */}
+        <Field label="Recipe">
           <TextInput
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -119,11 +120,7 @@ export default function RecipeEditPage() {
         className="border-t border-border bg-surface px-4 py-3"
         style={{ paddingBottom: 'calc(var(--safe-bottom) + 0.75rem)' }}
       >
-        <PrimaryButton
-          onClick={save}
-          disabled={!canSave}
-          className="w-full"
-        >
+        <PrimaryButton onClick={save} disabled={!canSave} className="w-full">
           {existing ? 'Save changes' : 'Add recipe'}
         </PrimaryButton>
       </div>

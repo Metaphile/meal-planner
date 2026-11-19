@@ -530,7 +530,8 @@ export default function RecipesPage() {
             onKeyDown={(e) => e.key === 'Escape' && closeSearch()}
             inputMode="search"
             enterKeyHint="search"
-            placeholder="Title, tag or ingredient"
+            placeholder="Recipe, tag or ingredient"
+            autoComplete="off"
             aria-label="Search recipes"
             className="h-9 min-w-0 flex-1 rounded-lg border border-paper-edge bg-paper px-3 placeholder:text-ink-faint focus:border-kraft-edge focus:outline-none"
           />

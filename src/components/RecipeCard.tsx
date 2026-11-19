@@ -2,6 +2,7 @@ import {
   forwardRef,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type HTMLAttributes,
@@ -175,6 +176,140 @@ export function EditButton({ onEdit }: { onEdit: () => void }) {
   )
 }
 
+/** Units offered for an ingredient, in a fixed order (so they're always where
+ *  you left them); any others your recipes use follow. */
+const COMMON_UNITS = [
+  'tsp',
+  'tbsp',
+  'cup',
+  'oz',
+  'lb',
+  'g',
+  'kg',
+  'ml',
+  'l',
+  'pinch',
+  'clove',
+  'slice',
+  'can',
+  'stalk',
+  'bunch',
+  'pkg',
+]
+
+/**
+ * An ingredient's unit, picked rather than typed: tapping it opens a small
+ * paper menu of units (no keyboard, so nothing for the phone to autofill).
+ * "Other…" writes one in; "None" clears it.
+ */
+function UnitCell({
+  value,
+  onChange,
+  units,
+  className,
+}: {
+  value: string | undefined
+  onChange: (unit: string | undefined) => void
+  units: string[]
+  className: string
+}) {
+  const [menu, setMenu] = useState(false)
+  const [typing, setTyping] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  // Tapping anywhere else closes the menu.
+  useEffect(() => {
+    if (!menu) return
+    const onDown = (e: PointerEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setMenu(false)
+    }
+    document.addEventListener('pointerdown', onDown, true)
+    return () => document.removeEventListener('pointerdown', onDown, true)
+  }, [menu])
+
+  if (typing) {
+    return (
+      <input
+        autoFocus
+        value={value ?? ''}
+        onChange={(e) => onChange(e.target.value || undefined)}
+        onBlur={() => setTyping(false)}
+        onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+        aria-label="Unit"
+        autoComplete="off"
+        autoCapitalize="none"
+        className={className}
+      />
+    )
+  }
+
+  const chip =
+    'rounded-full border px-2.5 py-1 text-sm leading-5 active:scale-95'
+  return (
+    <div ref={ref} className="relative min-w-0">
+      <button
+        type="button"
+        onClick={() => setMenu((m) => !m)}
+        aria-haspopup="listbox"
+        aria-expanded={menu}
+        aria-label={value ? `Unit: ${value}` : 'Choose a unit'}
+        className={`${className} block w-full truncate text-left`}
+      >
+        {value ?? ''}
+      </button>
+      {menu && (
+        <div
+          role="listbox"
+          aria-label="Units"
+          className="paper-card absolute top-full right-0 z-20 mt-1 flex w-[15.5rem] flex-wrap gap-1.5 p-2.5"
+        >
+          {units.map((u) => (
+            <button
+              key={u}
+              type="button"
+              role="option"
+              aria-selected={u === value}
+              onClick={() => {
+                onChange(u)
+                setMenu(false)
+              }}
+              className={`${chip} ${
+                u === value
+                  ? 'border-kraft-edge bg-kraft text-kraft-ink'
+                  : 'border-paper-edge bg-paper text-ink'
+              }`}
+            >
+              {u}
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={() => {
+              setMenu(false)
+              setTyping(true)
+            }}
+            className={`${chip} border-paper-edge bg-paper italic text-ink-soft`}
+          >
+            Other…
+          </button>
+          {value && (
+            <button
+              type="button"
+              onClick={() => {
+                onChange(undefined)
+                setMenu(false)
+              }}
+              className={`${chip} border-paper-edge bg-paper italic text-ink-soft`}
+            >
+              None
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 const blank = (i: Ingredient) =>
   !i.name.trim() && i.quantity === undefined && !i.unit
 /** Always exactly one empty line at the end, to write the next one on. */
@@ -205,6 +340,17 @@ function IngredientTable({
   onChange: (rows: Ingredient[]) => void
   headClass: string
 }) {
+  // The common units, then any others your recipes use.
+  const recipes = useStore((s) => s.recipes)
+  const units = useMemo(() => {
+    const extra = new Set<string>()
+    for (const r of recipes)
+      for (const ing of r.ingredients)
+        if (ing.unit && !COMMON_UNITS.includes(ing.unit)) extra.add(ing.unit)
+    for (const row of rows)
+      if (row.unit && !COMMON_UNITS.includes(row.unit)) extra.add(row.unit)
+    return [...COMMON_UNITS, ...[...extra].sort()]
+  }, [recipes, rows])
   const set = (rs: Ingredient[]) => onChange(withSpareLine(rs))
   const update = (i: number, patch: Partial<Ingredient>) =>
     set(rows.map((r, idx) => (idx === i ? { ...r, ...patch } : r)))
@@ -242,7 +388,10 @@ function IngredientTable({
               value={row.name}
               onChange={(e) => update(i, { name: e.target.value })}
               placeholder={spare ? 'Add ingredient…' : 'Ingredient'}
-              aria-label="Ingredient name"
+              // (No "name" in the label: Safari would offer to AutoFill a
+              // contact.)
+              aria-label="Ingredient"
+              autoComplete="off"
               className={`${cell} pr-1`}
             />
             <QuantityInput
@@ -251,10 +400,10 @@ function IngredientTable({
               placeholder=""
               className={`${cell} ${rule} pr-1 text-right`}
             />
-            <input
-              value={row.unit ?? ''}
-              onChange={(e) => update(i, { unit: e.target.value || undefined })}
-              aria-label="Unit"
+            <UnitCell
+              value={row.unit}
+              onChange={(unit) => update(i, { unit })}
+              units={units}
               className={`${cell} ${rule} pl-1.5`}
             />
             {spare ? (
@@ -334,8 +483,11 @@ const RecipeCardBack = forwardRef<
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="Recipe title"
-            aria-label="Title"
+            // (No "name" or "title" here: Safari would offer to AutoFill a
+            // contact.)
+            placeholder="Recipe"
+            aria-label="Recipe"
+            autoComplete="off"
             className="paper-serif paper-rule w-full bg-transparent pb-1.5 text-[19px] font-semibold leading-[25px] placeholder:font-normal placeholder:italic placeholder:text-ink-faint focus:outline-none"
           />
         </div>
@@ -352,6 +504,7 @@ const RecipeCardBack = forwardRef<
               onChange={(e) => setNotes(e.target.value)}
               rows={6}
               placeholder="Prep tips, substitutions…"
+              autoComplete="off"
               className="paper-lines block w-full resize-none bg-transparent leading-[22px] placeholder:italic placeholder:text-ink-faint focus:outline-none"
             />
           </label>
@@ -361,6 +514,7 @@ const RecipeCardBack = forwardRef<
               value={tagsText}
               onChange={(e) => setTagsText(e.target.value)}
               placeholder="dinner, kid-friendly"
+              autoComplete="off"
               className="block h-[22px] w-full border-b border-line-blue bg-transparent leading-[21px] placeholder:italic placeholder:text-ink-faint focus:bg-kraft/15 focus:outline-none"
             />
           </label>

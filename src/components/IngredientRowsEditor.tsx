@@ -48,6 +48,7 @@ export function QuantityInput({
       inputMode="decimal"
       placeholder={placeholder}
       aria-label="Quantity"
+      autoComplete="off"
       className={className}
     />
   )
@@ -82,7 +83,8 @@ export function IngredientRowsEditor({
             value={row.name}
             onChange={(e) => update(i, { name: e.target.value })}
             placeholder="Ingredient"
-            aria-label="Ingredient name"
+            aria-label="Ingredient"
+            autoComplete="off"
             className="min-w-0 flex-1 rounded-lg border border-border bg-surface px-3 py-2 focus:border-kraft-edge focus:outline-none"
           />
           <QuantityInput
@@ -94,6 +96,8 @@ export function IngredientRowsEditor({
             onChange={(e) => update(i, { unit: e.target.value || undefined })}
             placeholder="Unit"
             aria-label="Unit"
+            autoComplete="off"
+            autoCapitalize="none"
             className="w-20 rounded-lg border border-border bg-surface px-2 py-2 focus:border-kraft-edge focus:outline-none"
           />
           <button
