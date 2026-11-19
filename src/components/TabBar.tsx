@@ -4,7 +4,7 @@ import type { ReactNode } from 'react'
 const tabs: { to: string; label: string; icon: ReactNode }[] = [
   {
     to: '/plan',
-    label: 'Plan',
+    label: 'Meals',
     icon: (
       <path d="M4 7h16M4 12h16M4 17h10" strokeLinecap="round" />
     ),

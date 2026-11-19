@@ -5,6 +5,7 @@ import { useAuth } from '../auth/AuthProvider'
 import { newId } from '../lib/id'
 import { IngredientRowsEditor } from '../components/IngredientRowsEditor'
 import {
+  ConfirmDialog,
   GhostButton,
   PageHeader,
   PrimaryButton,
@@ -37,6 +38,7 @@ export default function RecipeEditPage() {
     existing?.ingredients ?? [{ name: '' }],
   )
   const [notes, setNotes] = useState(existing?.notes ?? '')
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
 
   const canSave = title.trim().length > 0
 
@@ -80,14 +82,6 @@ export default function RecipeEditPage() {
           />
         </Field>
 
-        <Field label="Tags" hint="Comma-separated (e.g. breakfast, vegetarian)">
-          <TextInput
-            value={tagsText}
-            onChange={(e) => setTagsText(e.target.value)}
-            placeholder="breakfast, kid-friendly"
-          />
-        </Field>
-
         <Field label="Ingredients">
           <IngredientRowsEditor rows={ingredients} onChange={setIngredients} />
         </Field>
@@ -102,10 +96,19 @@ export default function RecipeEditPage() {
           />
         </Field>
 
+        <Field label="Tags" hint="Comma-separated (e.g. breakfast, vegetarian)">
+          <TextInput
+            value={tagsText}
+            onChange={(e) => setTagsText(e.target.value)}
+            placeholder="breakfast, kid-friendly"
+          />
+        </Field>
+
         {existing && (
           <button
-            onClick={remove}
-            className="text-sm font-medium text-danger active:scale-95"
+            type="button"
+            onClick={() => setConfirmingDelete(true)}
+            className="rounded-full bg-danger px-4 py-2 text-sm font-semibold text-white transition active:scale-95"
           >
             Delete recipe
           </button>
@@ -124,6 +127,21 @@ export default function RecipeEditPage() {
           {existing ? 'Save changes' : 'Add recipe'}
         </PrimaryButton>
       </div>
+
+      {confirmingDelete && existing && (
+        <ConfirmDialog
+          title="Delete recipe?"
+          message={
+            <>
+              “{existing.title}” will be deleted for everyone. This can’t be
+              undone.
+            </>
+          }
+          confirmLabel="Delete"
+          onConfirm={remove}
+          onCancel={() => setConfirmingDelete(false)}
+        />
+      )}
     </div>
   )
 }

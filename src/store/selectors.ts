@@ -26,11 +26,6 @@ export function useAggregatedIngredients(): AggregatedIngredient[] {
   })
 }
 
-/** Count of plan meals currently feeding the ingredients list. */
-export function useIncludedCount(): number {
-  return useStore((s) => s.plan.filter((m) => m.includeInIngredients).length)
-}
-
 /** Recipe lookup, used to render recipe titles inside plan components. */
 export function useRecipeMap(): Map<string, Recipe> {
   return useStore((s) => {

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   DndContext,
@@ -16,13 +16,19 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { useStore } from '../store/store'
+import { useStore, type NewComponent } from '../store/store'
 import { useRecipeMap } from '../store/selectors'
 import { useAuth } from '../auth/AuthProvider'
 import { useSwipeToRemove } from '../lib/useSwipeToRemove'
-import { EmptyState, PageHeader, PrimaryButton, TextInput } from '../components/ui'
+import {
+  EmptyState,
+  PageHeader,
+  PrimaryButton,
+  TextInput,
+} from '../components/ui'
 import { IngredientsList } from '../components/IngredientsList'
-import type { MealComponent, PlanMeal, Recipe } from '../data/types'
+import type { Ingredient, MealComponent, PlanMeal, Recipe } from '../data/types'
+import { newId } from '../lib/id'
 
 // Meals reorder chronologically; lock the drag to the vertical axis.
 const restrictToVerticalAxis: Modifier = ({ transform }) => ({
@@ -59,7 +65,7 @@ export default function MealPlanPage() {
   return (
     <div className="flex h-full flex-col">
       <PageHeader
-        title="Plan"
+        title="Meals"
         action={
           canEdit ? (
             <button
@@ -91,12 +97,6 @@ export default function MealPlanPage() {
         />
       ) : (
         <div className="scroll-y flex-1 px-4 py-3">
-          {canEdit && (
-            <p className="mb-2 text-xs text-muted">
-              Drag a meal’s handle to reorder · swipe a meal right to remove ·
-              toggle the switch to include it below.
-            </p>
-          )}
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
@@ -174,14 +174,11 @@ function MealCard({
       className={isDragging ? 'opacity-80' : undefined}
     >
       <div className="relative overflow-hidden rounded-xl">
-        <div className="pointer-events-none absolute inset-0 flex items-center pl-4 text-sm font-medium text-danger">
-          Remove
-        </div>
         <div
           ref={canEdit ? swipeRef : undefined}
           {...(canEdit ? handlers : {})}
           style={{ touchAction: 'pan-y' }}
-          className="relative rounded-xl border border-border bg-surface"
+          className="peer relative z-10 rounded-xl border border-border bg-surface"
         >
           {/* Meal header: drag handle · count · + · include toggle */}
           <div className="flex items-center gap-2 px-3 py-2">
@@ -196,7 +193,12 @@ function MealCard({
                 aria-label="Drag meal to reorder"
                 className="-my-1 grid h-10 w-8 shrink-0 cursor-grab touch-none place-items-center rounded-lg text-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-brand active:cursor-grabbing"
               >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                >
                   <circle cx="9" cy="6" r="1.6" />
                   <circle cx="15" cy="6" r="1.6" />
                   <circle cx="9" cy="12" r="1.6" />
@@ -207,19 +209,14 @@ function MealCard({
               </button>
             )}
 
-            <span className="flex-1 text-xs text-muted">
-              {meal.components.length === 0
-                ? 'Empty meal'
-                : `${meal.components.length} item${meal.components.length === 1 ? '' : 's'}`}
-            </span>
+            <span className="flex-1" />
 
             {canEdit && (
               <button
                 onClick={() => setAdding(true)}
-                aria-label="Add to meal"
-                className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-surface-2 text-lg leading-none text-brand active:scale-95"
+                className="h-9 shrink-0 rounded-full bg-surface-2 px-3.5 text-sm font-semibold text-brand active:scale-95"
               >
-                +
+                Add
               </button>
             )}
             <IncludeToggle
@@ -230,19 +227,8 @@ function MealCard({
           </div>
 
           {/* Components — a plain list; order isn't meaningful */}
-          <div className="px-3 pb-3">
-            {meal.components.length === 0 ? (
-              canEdit ? (
-                <button
-                  onClick={() => setAdding(true)}
-                  className="w-full rounded-lg border border-dashed border-border py-3 text-sm text-muted active:scale-[0.99]"
-                >
-                  Add a recipe or item
-                </button>
-              ) : (
-                <p className="py-2 text-sm text-muted">No items.</p>
-              )
-            ) : (
+          {meal.components.length > 0 && (
+            <div className="px-3 pb-3">
               <ul className="flex flex-col gap-1.5">
                 {meal.components.map((component) => (
                   <ComponentRow
@@ -254,8 +240,16 @@ function MealCard({
                   />
                 ))}
               </ul>
-            )}
-          </div>
+            </div>
+          )}
+        </div>
+        {/* Revealed behind the card as it's swiped right. Hidden otherwise so
+            its red can't fringe the card's rounded corners. */}
+        <div
+          aria-hidden
+          className="pointer-events-none invisible absolute inset-0 z-0 flex items-center rounded-xl bg-danger pl-5 text-lg text-white peer-data-swiping:visible"
+        >
+          Remove
         </div>
       </div>
 
@@ -306,8 +300,12 @@ function componentLabel(
   if (component.kind === 'recipe') {
     return recipeMap.get(component.recipeId)?.title ?? '(deleted recipe)'
   }
-  const amount = formatItemAmount(component.quantity, component.unit)
-  return amount ? `${component.name} · ${amount}` : component.name
+  return itemLabel(component)
+}
+
+function itemLabel(item: Ingredient): string {
+  const amount = formatItemAmount(item.quantity, item.unit)
+  return amount ? `${item.name} · ${amount}` : item.name
 }
 
 function formatItemAmount(quantity?: number, unit?: string): string {
@@ -349,41 +347,61 @@ function IncludeToggle({
   )
 }
 
-function RecipePickRow({
-  title,
-  onAdd,
+/** A full-width on/off row used for both recipes and misc items in the sheet. */
+function ToggleRow({
+  label,
+  on,
+  onToggle,
 }: {
-  title: string
-  onAdd: () => void
+  label: string
+  on: boolean
+  onToggle: () => void
 }) {
-  // Transient "Added ✓" flash so a quick tap gives clear feedback even when
-  // the press-down state is too brief to notice.
-  const [added, setAdded] = useState(false)
-  const timer = useRef<ReturnType<typeof setTimeout>>()
-  useEffect(() => () => clearTimeout(timer.current), [])
-
-  const add = () => {
-    onAdd()
-    setAdded(true)
-    clearTimeout(timer.current)
-    timer.current = setTimeout(() => setAdded(false), 1200)
-  }
-
   return (
     <button
-      onClick={add}
-      className={`flex items-center justify-between rounded-lg border px-3 py-2 text-left transition active:scale-[0.99] ${
-        added ? 'border-brand bg-surface-2 text-brand' : 'border-border bg-bg'
+      aria-pressed={on}
+      onClick={onToggle}
+      className={`flex shrink-0 items-center justify-between gap-2 rounded-lg border px-3 py-2 text-left transition active:scale-[0.99] ${
+        on ? 'border-brand bg-surface-2 text-brand' : 'border-border bg-bg'
       }`}
     >
-      <span className="truncate">{title}</span>
-      <span className="shrink-0 pl-2 font-medium text-brand">
-        {added ? 'Added ✓' : '+'}
+      <span className="truncate">{label}</span>
+      <span
+        aria-hidden
+        className={`grid h-5 w-5 shrink-0 place-items-center rounded-full border transition-colors ${
+          on ? 'border-brand bg-brand text-white' : 'border-border bg-bg'
+        }`}
+      >
+        {on && (
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="3.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M5 12.5l4.5 4.5L19 7.5" />
+          </svg>
+        )}
       </span>
     </button>
   )
 }
 
+interface StagedItem {
+  key: string
+  item: Ingredient
+  on: boolean
+}
+
+/**
+ * Stages recipes and misc items as toggles; nothing touches the meal until
+ * Done, which commits everything toggled on in a single write. Tapping the
+ * backdrop discards the selection.
+ */
 function AddToMealSheet({
   mealId,
   onClose,
@@ -392,12 +410,13 @@ function AddToMealSheet({
   onClose: () => void
 }) {
   const recipes = useStore((s) => s.recipes)
-  const addRecipeToMeal = useStore((s) => s.addRecipeToMeal)
-  const addItemToMeal = useStore((s) => s.addItemToMeal)
+  const addComponentsToMeal = useStore((s) => s.addComponentsToMeal)
   const [query, setQuery] = useState('')
   const [itemName, setItemName] = useState('')
   const [itemQty, setItemQty] = useState('')
   const [itemUnit, setItemUnit] = useState('')
+  const [miscItems, setMiscItems] = useState<StagedItem[]>([])
+  const [pickedRecipes, setPickedRecipes] = useState<string[]>([])
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -409,18 +428,46 @@ function AddToMealSheet({
     )
   }, [recipes, query])
 
-  const addItem = () => {
+  const stagedCount =
+    pickedRecipes.length + miscItems.filter((m) => m.on).length
+
+  const stageItem = () => {
     const name = itemName.trim()
     if (!name) return
     const qty = itemQty.trim()
-    addItemToMeal(mealId, {
+    const item: Ingredient = {
       name,
       quantity: qty === '' ? undefined : Number(qty),
       unit: itemUnit.trim() || undefined,
-    })
+    }
+    setMiscItems((items) => [...items, { key: newId(), item, on: true }])
     setItemName('')
     setItemQty('')
     setItemUnit('')
+  }
+
+  const toggleItem = (key: string) =>
+    setMiscItems((items) =>
+      items.map((m) => (m.key === key ? { ...m, on: !m.on } : m)),
+    )
+
+  const toggleRecipe = (id: string) =>
+    setPickedRecipes((ids) =>
+      ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id],
+    )
+
+  const done = () => {
+    const additions: NewComponent[] = [
+      ...pickedRecipes.map((recipeId) => ({
+        kind: 'recipe' as const,
+        recipeId,
+      })),
+      ...miscItems
+        .filter((m) => m.on)
+        .map((m) => ({ kind: 'item' as const, ...m.item })),
+    ]
+    addComponentsToMeal(mealId, additions)
+    onClose()
   }
 
   return (
@@ -435,21 +482,24 @@ function AddToMealSheet({
       >
         <div className="flex items-center justify-between px-4 pt-4">
           <h2 className="text-base font-semibold">Add to meal</h2>
-          <button onClick={onClose} className="text-sm text-muted">
+          <button
+            onClick={done}
+            className={`text-sm ${stagedCount > 0 ? 'font-semibold text-brand' : 'text-muted'}`}
+          >
             Done
           </button>
         </div>
 
-        {/* Add a simple item */}
+        {/* Misc items: the form stages an item as a toggle (on by default) */}
         <div className="border-b border-border px-4 py-3">
           <div className="mb-1.5 text-xs font-medium uppercase tracking-wide text-muted">
-            Simple item
+            Misc item
           </div>
           <div className="flex items-center gap-2">
             <input
               value={itemName}
               onChange={(e) => setItemName(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && addItem()}
+              onKeyDown={(e) => e.key === 'Enter' && stageItem()}
               placeholder="e.g. Steamed broccoli"
               aria-label="Item name"
               className="min-w-0 flex-1 rounded-lg border border-border bg-bg px-3 py-2 focus:border-brand focus:outline-none"
@@ -469,13 +519,25 @@ function AddToMealSheet({
               aria-label="Unit"
               className="w-16 rounded-lg border border-border bg-bg px-2 py-2 focus:border-brand focus:outline-none"
             />
-            <PrimaryButton onClick={addItem} disabled={!itemName.trim()}>
+            <PrimaryButton onClick={stageItem} disabled={!itemName.trim()}>
               Add
             </PrimaryButton>
           </div>
+          {miscItems.length > 0 && (
+            <div className="mt-2 flex flex-col gap-2">
+              {miscItems.map((m) => (
+                <ToggleRow
+                  key={m.key}
+                  label={itemLabel(m.item)}
+                  on={m.on}
+                  onToggle={() => toggleItem(m.key)}
+                />
+              ))}
+            </div>
+          )}
         </div>
 
-        {/* Add recipes */}
+        {/* Recipes */}
         <div className="px-4 pt-3">
           <div className="mb-2 text-xs font-medium uppercase tracking-wide text-muted">
             Recipes
@@ -495,10 +557,11 @@ function AddToMealSheet({
             </p>
           ) : (
             filtered.map((r) => (
-              <RecipePickRow
+              <ToggleRow
                 key={r.id}
-                title={r.title}
-                onAdd={() => addRecipeToMeal(mealId, r.id)}
+                label={r.title}
+                on={pickedRecipes.includes(r.id)}
+                onToggle={() => toggleRecipe(r.id)}
               />
             ))
           )}

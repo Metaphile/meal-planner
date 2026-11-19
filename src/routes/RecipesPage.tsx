@@ -44,7 +44,7 @@ export default function RecipesPage() {
               to="/recipes/new"
               className="rounded-full bg-brand px-3 py-1.5 text-sm font-semibold text-on-brand active:scale-95"
             >
-              + New
+              Create
             </Link>
           ) : undefined
         }
@@ -148,12 +148,12 @@ function RecipeRow({
       {canAddToPlan && (
         <button
           onClick={add}
-          aria-label={`Add ${recipe.title} to plan`}
-          className={`my-2 mr-2 shrink-0 self-center rounded-full px-3 py-2 text-sm font-semibold transition active:scale-95 ${
+          aria-label={`Add ${recipe.title} to a new meal`}
+          className={`my-2 mr-2 shrink-0 self-center whitespace-nowrap rounded-full px-3 py-2 text-sm font-semibold transition active:scale-95 ${
             added ? 'bg-surface-2 text-brand' : 'bg-brand text-on-brand'
           }`}
         >
-          {added ? 'Added ✓' : '+ Plan'}
+          {added ? 'Added ✓' : 'Add to Meal'}
         </button>
       )}
     </div>

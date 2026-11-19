@@ -31,10 +31,14 @@ interface AppState {
   reorderPlan: (orderedIds: string[]) => void
 
   // Components within a meal
-  addRecipeToMeal: (mealId: string, recipeId: string) => void
-  addItemToMeal: (mealId: string, item: Ingredient) => void
+  /** Add several recipes/items to a meal in one write (the add sheet's Done). */
+  addComponentsToMeal: (mealId: string, additions: NewComponent[]) => void
   removeComponent: (mealId: string, componentId: string) => void
 }
+
+/** A meal component before it has an id. */
+export type NewComponent =
+  { kind: 'recipe'; recipeId: string } | ({ kind: 'item' } & Ingredient)
 
 /** Append a meal at the end of the plan. */
 function makeMeal(components: MealComponent[], position: number): PlanMeal {
@@ -137,26 +141,16 @@ export const useStore = create<AppState>((set, get) => ({
     renumbered.forEach((m) => enqueuePut('plan', m))
   },
 
-  addRecipeToMeal: (mealId, recipeId) => {
-    const component: MealComponent = { id: newId(), kind: 'recipe', recipeId }
+  addComponentsToMeal: (mealId, additions) => {
+    if (additions.length === 0) return
+    const components = additions.map(
+      (a) => ({ ...a, id: newId() }) as MealComponent,
+    )
     let updated: PlanMeal | undefined
     set((s) => ({
       plan: s.plan.map((m) => {
         if (m.id !== mealId) return m
-        updated = { ...m, components: [...m.components, component] }
-        return updated
-      }),
-    }))
-    if (updated) enqueuePut('plan', updated)
-  },
-
-  addItemToMeal: (mealId, item) => {
-    const component: MealComponent = { id: newId(), kind: 'item', ...item }
-    let updated: PlanMeal | undefined
-    set((s) => ({
-      plan: s.plan.map((m) => {
-        if (m.id !== mealId) return m
-        updated = { ...m, components: [...m.components, component] }
+        updated = { ...m, components: [...m.components, ...components] }
         return updated
       }),
     }))

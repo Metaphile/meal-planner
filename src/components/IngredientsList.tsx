@@ -1,4 +1,4 @@
-import { useAggregatedIngredients, useIncludedCount } from '../store/selectors'
+import { useAggregatedIngredients } from '../store/selectors'
 import { Tag } from './ui'
 
 /**
@@ -8,7 +8,6 @@ import { Tag } from './ui'
  */
 export function IngredientsList() {
   const ingredients = useAggregatedIngredients()
-  const includedCount = useIncludedCount()
 
   if (ingredients.length === 0) {
     return (
@@ -19,35 +18,28 @@ export function IngredientsList() {
   }
 
   return (
-    <>
-      <p className="mb-3 text-xs text-muted">
-        Aggregated from {includedCount} included meal
-        {includedCount === 1 ? '' : 's'}. This is a reference list — not a
-        shopping list or inventory.
-      </p>
-      <ul className="overflow-hidden rounded-xl border border-border">
-        {ingredients.map((ing) => (
-          <li
-            key={`${ing.name}|${ing.unit ?? ''}`}
-            className="flex items-start justify-between gap-3 border-b border-border bg-surface px-4 py-3 last:border-b-0"
-          >
-            <div className="min-w-0">
-              <div className="text-text">{ing.name}</div>
-              {ing.sources.length > 0 && (
-                <div className="mt-1.5 flex flex-wrap gap-1">
-                  {ing.sources.map((source) => (
-                    <Tag key={source}>{source}</Tag>
-                  ))}
-                </div>
-              )}
-            </div>
-            <span className="shrink-0 text-sm text-muted">
-              {formatAmount(ing.quantity, ing.unit)}
-            </span>
-          </li>
-        ))}
-      </ul>
-    </>
+    <ul className="overflow-hidden rounded-xl border border-border">
+      {ingredients.map((ing) => (
+        <li
+          key={`${ing.name}|${ing.unit ?? ''}`}
+          className="flex items-start justify-between gap-3 border-b border-border bg-surface px-4 py-3 last:border-b-0"
+        >
+          <div className="min-w-0">
+            <div className="text-text">{ing.name}</div>
+            {ing.sources.length > 0 && (
+              <div className="mt-1.5 flex flex-wrap gap-1">
+                {ing.sources.map((source) => (
+                  <Tag key={source}>{source}</Tag>
+                ))}
+              </div>
+            )}
+          </div>
+          <span className="shrink-0 text-sm text-muted">
+            {formatAmount(ing.quantity, ing.unit)}
+          </span>
+        </li>
+      ))}
+    </ul>
   )
 }
 

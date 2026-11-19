@@ -31,7 +31,10 @@ export function useSwipeToRemove<T extends HTMLElement>(
     if (!el) return
     const dx = Math.max(0, s.current.dx) // only rightward
     el.style.transform = `translateX(${dx}px)`
-    el.style.opacity = String(1 - Math.min(dx / (s.current.width || 1), 0.6))
+    // Lets siblings (e.g. a "Remove" banner behind the card) show only while
+    // a swipe is in progress — style with `peer-data-swiping:*`.
+    if (dx > 0) el.dataset.swiping = ''
+    else delete el.dataset.swiping
   }, [])
 
   const schedule = useCallback(() => {
@@ -80,18 +83,22 @@ export function useSwipeToRemove<T extends HTMLElement>(
     const el = ref.current
     if (!el) return
     const past = s.current.engaged && s.current.dx > s.current.width * threshold
-    el.style.transition = 'transform 160ms ease-out, opacity 160ms ease-out'
+    el.style.transition = 'transform 160ms ease-out'
     if (past) {
       el.style.transform = `translateX(${s.current.width}px)`
-      el.style.opacity = '0'
       const done = () => {
         el.removeEventListener('transitionend', done)
         onRemoveRef.current()
       }
       el.addEventListener('transitionend', done)
-    } else {
-      el.style.transform = 'translateX(0)'
-      el.style.opacity = '1'
+    } else if (el.style.transform && el.style.transform !== 'translateX(0px)') {
+      el.style.transform = 'translateX(0px)'
+      // Keep the banner visible until the card has slid back over it.
+      const settle = () => {
+        el.removeEventListener('transitionend', settle)
+        delete el.dataset.swiping
+      }
+      el.addEventListener('transitionend', settle)
     }
     s.current.engaged = false
     s.current.decided = false
