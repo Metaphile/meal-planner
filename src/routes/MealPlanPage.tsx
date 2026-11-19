@@ -237,7 +237,9 @@ function MealPocket({
     // Let the whole card rise out of its slot (trimmed only below it, where
     // the cards in front and the pocket hide it anyway). Inline overrides of
     // the slot's class, cleared when it's back.
-    slot.style.clipPath = 'inset(-4000px -24px 0 -24px)'
+    // (Still a corner's radius below the slot, like its resting clip, so
+    // the card in front's rounded corners keep showing this one behind.)
+    slot.style.clipPath = 'inset(-4000px -24px -14px -24px)'
     flushSync(() => setLift({ componentId: id, recipe, origin: originOf(id) }))
   }
 
