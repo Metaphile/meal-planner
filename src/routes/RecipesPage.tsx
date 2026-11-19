@@ -8,10 +8,11 @@ import {
   useState,
 } from 'react'
 import { flushSync } from 'react-dom'
-import { Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store/store'
+import { createDrumScroll, type DrumScroll } from '../lib/drumScroll'
 import { useAuth } from '../auth/AuthProvider'
-import { EmptyState, PageHeader } from '../components/ui'
+import { PageHeader } from '../components/ui'
 import {
   CARD_H,
   CardDetail,
@@ -28,14 +29,16 @@ import type { Recipe } from '../data/types'
  * tilt, height on screen and depth all follow from where it is around the
  * wheel: facing you at the front line, tipping back (and shrinking, and
  * shading) toward the top until it goes edge-on over it, leaning toward you
- * below. The set is a loop — a card that goes over the top comes back in at
- * the bottom (we cheat the circumference), so Z is followed by A again.
+ * below. The drum turns between two stops: A standing at the top, and the
+ * back of the box (and the blank card for a new recipe) resting near the
+ * bottom.
  *
- * Scrolling is the browser's own (real momentum): a tall spacer scrolls under
- * a pinned stage, and each frame we turn scrollTop into the wheel's rotation
- * and write one transform per card. No React renders while it spins. When it
- * comes to rest far from the middle of the spacer, it quietly re-centres
- * (invisible, since the wheel repeats every lap).
+ * Touch turns the drum under its own iOS-style physics (`lib/drumScroll`):
+ * drag, momentum, and a soft spring at the stops — even a box too short to
+ * need turning gives a little. The wheel and trackpad scroll it natively (a
+ * spacer as long as the drum's travel, under a pinned stage), so they get the
+ * Mac's own rubber band. Each change becomes one transform per card; no
+ * React renders while it turns.
  */
 
 const STRIP = 92 // arc between recipe cards: title + ~2 ingredients show
@@ -44,7 +47,6 @@ const DIVIDER_STRIP = TAB_H + 12 // tab + a sliver of the divider's edge
 // Empty letters pack tightly: their tabs are staggered across the width, so
 // they still don't collide — you just see a staircase of tabs.
 const EMPTY_DIVIDER_STRIP = 13
-const LAP_GAP = 0 // Z runs straight into A where the loop joins
 const SIDE = 16 // horizontal inset
 const TAB_W = 44 // divider tab width
 
@@ -53,8 +55,16 @@ const TAB_W = 44 // divider tab width
 const DEG = Math.PI / 180
 const PHI_TOP = -72 * DEG
 const PHI_BOTTOM = 45 * DEG
-const SPACER = 1_000_000 // scroll range; re-centred when idle
-const SPIN_MS = 260 // spinning a tapped card to the front (max)
+const SPIN_MS = 260 // turning the drum to a tapped letter (max)
+// Where the box opens (and a letter tab turns it to): the first item tipped
+// back a little, near the top (a tipped card's top only gets so close to the
+// top before it goes edge-on).
+const START_PHI = -28 * DEG
+// How far it can turn past that: down until the first recipe is well below
+// the tipped-back zone, where it's easy to read; up until the last item (the
+// blank card, or the back of the box) faces you, not leaning at the bottom.
+const REACH_FIRST_CARD_PHI = -12 * DEG
+const REACH_LAST_PHI = 16 * DEG
 
 /** Divider tabs stagger across five positions. */
 const tabLeftFrac = (n: number) => ((n % 5) * 19 + 3) / 100
@@ -62,9 +72,12 @@ const tabLeftFrac = (n: number) => ((n % 5) * 19 + 3) / 100
 type Item =
   | { kind: 'divider'; key: string; letter: string; n: number; rod: number }
   | { kind: 'card'; key: string; recipe: Recipe; rod: number }
+  /** The blank index card at the back of the box: write a new recipe. */
+  | { kind: 'blank'; key: string; rod: number }
 
 /** How far below an item's top its rod (where it hangs from the wheel) is. */
-const rodOffset = (it: Item) => (it.kind === 'card' ? CARD_H : TAB_H + CARD_H)
+const rodOffset = (it: Item) =>
+  it.kind === 'divider' ? TAB_H + CARD_H : CARD_H
 
 function letterOf(title: string): string {
   const c = title
@@ -76,13 +89,12 @@ function letterOf(title: string): string {
   return c >= 'A' && c <= 'Z' ? c : '#'
 }
 
-/** Dividers (A–Z, plus # if needed; or, for search results, just the letters
- *  that have cards) and cards, with their rods' positions along the wheel's
- *  rim, and the length of one lap. */
-function layout(
-  recipes: Recipe[],
-  onlyUsedLetters = false,
-): { items: Item[]; lap: number } {
+/** Dividers (A–Z, plus # if needed) and cards, then the back of the box and
+ *  (for those who can write recipes) a blank card behind it — with their
+ *  rods' positions along the wheel's rim. Search results use the same box:
+ *  every letter's divider stays, so missing cards show as empty dividers (and
+ *  no matches at all, as a box of nothing but dividers). */
+function layout(recipes: Recipe[], withBlank: boolean): Item[] {
   const byLetter = new Map<string, Recipe[]>()
   for (const r of [...recipes].sort((a, b) => a.title.localeCompare(b.title))) {
     const l = letterOf(r.title)
@@ -91,7 +103,7 @@ function layout(
   const letters = [
     ...(byLetter.has('#') ? ['#'] : []),
     ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
-  ].filter((l) => !onlyUsedLetters || byLetter.has(l))
+  ]
 
   const items: Item[] = []
   let top = 0 // where each item's top edge would sit, laid out flat
@@ -105,19 +117,18 @@ function layout(
       top += STRIP
     }
   })
-  if (onlyUsedLetters) {
-    // The back of the box: a plain divider, so the last match always has
-    // something in front of it (as every card in the full box does).
-    items.push({
-      kind: 'divider',
-      key: 'div-end',
-      letter: '',
-      n: 0,
-      rod: top + TAB_H + CARD_H,
-    })
-    top += DIVIDER_STRIP
-  }
-  return { items, lap: top + LAP_GAP }
+  // The back of the box: a plain divider (no tab), so the last recipe has
+  // something in front of it, and the blank card isn't filed under Z.
+  items.push({
+    kind: 'divider',
+    key: 'div-end',
+    letter: '',
+    n: 0,
+    rod: top + TAB_H + CARD_H,
+  })
+  top += DIVIDER_STRIP
+  if (withBlank) items.push({ kind: 'blank', key: 'blank', rod: top + CARD_H })
+  return items
 }
 
 /** The wheel, fitted to the stage: radius, front line, and the arc on screen. */
@@ -131,7 +142,6 @@ interface Wheel {
   visible: number
   overTop: number
   underBottom: number
-  lap: number
 }
 
 /** Screen offset (from the front line) of a rod at angle `phi` on a wheel of
@@ -139,7 +149,7 @@ interface Wheel {
 const projected = (phi: number, R: number) =>
   (R * Math.sin(phi) * PERSPECTIVE) / (PERSPECTIVE + R * (1 - Math.cos(phi)))
 
-function fitWheel(stageH: number, lap: number): Wheel {
+function fitWheel(stageH: number): Wheel {
   // The top card's rod a little below the top edge (it's tipped far back),
   // the bottom cards' rods a little below the bottom edge. Perspective pulls
   // far-round cards toward the front line, so solve for the radius in
@@ -164,12 +174,52 @@ function fitWheel(stageH: number, lap: number): Wheel {
     visible,
     overTop,
     underBottom,
-    // A lap must be longer than what's on screen, or cards would show twice.
-    lap: Math.max(lap, visible + overTop + underBottom + STRIP),
   }
 }
 
-const mod = (a: number, n: number) => ((a % n) + n) % n
+const clamp = (v: number, lo: number, hi: number) =>
+  Math.min(hi, Math.max(lo, v))
+
+/** Where the drum stops. The first item's rim distance is `first - pos`,
+ *  for pos from 0 to `max`:
+ *  - A box long enough to turn runs from its first recipe brought well down
+ *    (into easy reading) to its last item brought well up. It opens at
+ *    `initial`: with its first item near the top — or, for search results,
+ *    its first match as near the front as the stops allow.
+ *  - A shorter one moves within its slack, between those same two limits,
+ *    and opens with its first recipe as near the front line (facing you) as
+ *    that allows.
+ *  Either way it can always give a little (springing back) past the ends. */
+function boundsOf(w: Wheel, items: Item[], faceFirst: boolean) {
+  if (items.length === 0) return { first: 0, max: 0, initial: 0 }
+  const rod0 = items[0].rod
+  const span = items[items.length - 1].rod - rod0
+  const rim = (phi: number) => (phi - PHI_TOP) * w.R
+  const home = rim(START_PHI) // the first item, as the box opens
+  const k = items.findIndex((it) => it.kind === 'card')
+  const lead = k >= 0 ? items[k].rod - rod0 : 0 // first item → first recipe
+  // The first item's rim distance (it grows down the screen) with the box
+  // turned all the way down (to the start) and all the way up (to the end).
+  const down = Math.max(home, rim(REACH_FIRST_CARD_PHI) - lead)
+  const up = rim(REACH_LAST_PHI) - span
+  // The first item's rim distance that puts the first recipe at the front.
+  const faceOn = k >= 0 ? w.toFront - lead : home
+  if (down >= up) {
+    // Search results open with the first match as near the front as the
+    // stops allow; the whole box opens with its first item near the top.
+    const opening = faceFirst ? clamp(faceOn, up, down) : home
+    return {
+      first: down,
+      max: down - up,
+      initial: clamp(down - opening, 0, down - up),
+    }
+  }
+  return {
+    first: up,
+    max: up - down,
+    initial: up - clamp(faceOn, down, up),
+  }
+}
 
 export default function RecipesPage() {
   const recipes = useStore((s) => s.recipes)
@@ -194,39 +244,36 @@ export default function RecipesPage() {
         : recipes,
     [recipes, q],
   )
-  const { items, lap: rawLap } = useMemo(
-    () => (matches.length ? layout(matches, !!q) : { items: [], lap: 0 }),
-    [matches, q],
+  // The rolodex layer covers the whole page, header included (so a card
+  // being taken out passes over the header rather than behind it); the wheel
+  // itself sits below the header, and no resting card ever reaches up into it.
+  const [pageH, setPageH] = useState(0)
+  const [headerH, setHeaderH] = useState(0)
+  const stageH = pageH - headerH || 600
+  const items = useMemo(
+    () => layout(matches, canEditRecipes),
+    [matches, canEditRecipes],
   )
   const scrollRef = useRef<HTMLDivElement>(null)
   const itemEls = useRef<(HTMLDivElement | null)[]>([])
   const lastPose = useRef<string[]>([])
   const lastZ = useRef<number[]>([])
   const shown = useRef<boolean[]>([])
-  // The rolodex layer covers the whole page, header included (so a card
-  // being taken out passes over the header rather than behind it); the wheel
-  // itself sits below the header, and no resting card ever reaches up into it.
-  const [pageH, setPageH] = useState(0)
-  const [headerH, setHeaderH] = useState(0)
   const headerRef = useRef<HTMLDivElement>(null)
-  const wheel = useMemo(
-    () => fitWheel(pageH - headerH || 600, rawLap),
-    [pageH, headerH, rawLap],
-  )
+  const wheel = useMemo(() => fitWheel(stageH), [stageH])
+  const bounds = useMemo(() => boundsOf(wheel, items, !!q), [wheel, items, q])
   const [open, setOpen] = useState<{
     index: number
     recipe: Recipe
     origin: CardOrigin
   } | null>(null)
 
-  /** Rim distance of item i below the top of the screen (negative = going
-   *  over the top), for the wheel's current rotation. */
+  /** Rim distance of item i below the top of the screen (negative = gone
+   *  over the top), for the drum at position `pos`. */
   const rimPos = useCallback(
-    (i: number, scrollTop: number) => {
-      const u = mod(items[i].rod - scrollTop, wheel.lap)
-      return u > wheel.lap - wheel.overTop ? u - wheel.lap : u
-    },
-    [items, wheel],
+    (i: number, pos: number) =>
+      items[i].rod - items[0].rod + bounds.first - pos,
+    [items, bounds],
   )
 
   // Per frame: place every card on the wheel. Transform/opacity-only writes,
@@ -235,21 +282,10 @@ export default function RecipesPage() {
   const lifted = useRef(-1) // the card being taken out / put back / held
   const paint = useCallback(() => {
     raf.current = 0
-    const scroller = scrollRef.current
-    if (!scroller || items.length === 0) return
-    const st = scroller.scrollTop
-    const n = items.length
-    // The top-most card on screen paints first; each one below in front.
-    let first = 0
-    let best = Infinity
-    for (let i = 0; i < n; i++) {
-      const v = rimPos(i, st)
-      if (v < best) {
-        best = v
-        first = i
-      }
-    }
-    for (let i = 0; i < n; i++) {
+    const drum = drumRef.current
+    if (!drum || items.length === 0) return
+    const st = drum.get()
+    for (let i = 0; i < items.length; i++) {
       const el = itemEls.current[i]
       if (!el || i === lifted.current) continue
       const v = rimPos(i, st)
@@ -274,7 +310,8 @@ export default function RecipesPage() {
             : 0.15 * Math.min(1, Math.max(0, (deg - 20) / 25))
         el.style.setProperty('--shade', shade.toFixed(3))
       }
-      const zi = mod(i - first, n) + 1
+      // Each item in front of the one before it.
+      const zi = i + 1
       if (lastZ.current[i] !== zi) {
         lastZ.current[i] = zi
         el.style.zIndex = String(zi)
@@ -282,50 +319,43 @@ export default function RecipesPage() {
     }
   }, [items, wheel, rimPos, headerH])
 
-  // Re-centre the scroll range when the wheel comes to rest far from the
-  // middle (invisible: the wheel repeats every lap).
-  const idle = useRef<ReturnType<typeof setTimeout>>()
   const busy = useRef(false)
-  const recentre = useCallback(() => {
-    const scroller = scrollRef.current
-    if (!scroller || busy.current) return
-    const mid = Math.floor(SPACER / 2 / wheel.lap) * wheel.lap
-    if (Math.abs(scroller.scrollTop - mid) < SPACER / 4) return
-    scroller.scrollTop = mid + mod(scroller.scrollTop - mid, wheel.lap)
-  }, [wheel])
 
-  const onScroll = useCallback(() => {
-    if (!raf.current) raf.current = requestAnimationFrame(paint)
-    clearTimeout(idle.current)
-    idle.current = setTimeout(recentre, 250)
-  }, [paint, recentre])
+  // The drum turns under our own iOS-style physics (no native scrolling): it
+  // tells us when it moves, and we paint.
+  const drumRef = useRef<DrumScroll | null>(null)
+  const paintRef = useRef(paint)
+  paintRef.current = paint
+  useLayoutEffect(() => {
+    const layer = scrollRef.current!
+    const drum = createDrumScroll(layer, {
+      onChange: () => paintRef.current(),
+      dimension: () => layer.clientHeight,
+    })
+    drumRef.current = drum
+    return () => {
+      drum.destroy()
+      drumRef.current = null
+    }
+  }, [])
+  useLayoutEffect(() => {
+    drumRef.current?.setMax(bounds.max)
+  }, [bounds])
 
-  // Start with A near the top (or, when searching, the first match's letter);
-  // track the stage size.
+  // Start at the start (A near the top; a short box with its first recipe
+  // facing you) — again for each search, and once the page is measured.
   const positionedFor = useRef<string | null>(null)
   useLayoutEffect(() => {
-    const scroller = scrollRef.current
-    if (!scroller) return
-    if (
-      positionedFor.current !== q &&
-      pageH > 0 &&
-      headerH > 0 &&
-      items.length > 0
-    ) {
-      positionedFor.current = q
-      const mid = Math.floor(SPACER / 2 / wheel.lap) * wheel.lap
-      const firstCard = items.findIndex((it) => it.kind === 'card')
-      scroller.scrollTop =
-        q && firstCard >= 0
-          ? // the first match at the front line, where you read cards
-            mid + items[firstCard].rod - wheel.toFront
-          : mid + items[0].rod - wheel.overTop * 0.15
+    const key = `${q}|${pageH > 0 && headerH > 0}`
+    if (positionedFor.current !== key) {
+      positionedFor.current = key
+      drumRef.current?.set(bounds.initial)
     }
     lastPose.current = []
     lastZ.current = []
     shown.current = []
     paint()
-  }, [paint, pageH, headerH, items, wheel, q])
+  }, [paint, q, pageH, headerH, bounds])
 
   useLayoutEffect(() => {
     const scroller = scrollRef.current
@@ -339,7 +369,6 @@ export default function RecipesPage() {
     return () => {
       ro.disconnect()
       cancelAnimationFrame(raf.current)
-      clearTimeout(idle.current)
     }
   }, [recipes.length === 0])
 
@@ -347,36 +376,25 @@ export default function RecipesPage() {
   const cardEl = (index: number) =>
     itemEls.current[index]?.firstElementChild as HTMLElement | undefined
 
-  /** Spin the wheel so item `index` comes to the front line. Returns how long
-   *  the spin takes and a promise for when it's done. */
-  const spinToFront = (index: number) => {
-    const scroller = scrollRef.current!
-    const from = scroller.scrollTop
-    let delta = rimPos(index, from) - wheel.toFront
-    delta = mod(delta + wheel.lap / 2, wheel.lap) - wheel.lap / 2
-    if (Math.abs(delta) < 0.5) return { ms: 0, done: Promise.resolve() }
-    const ms = Math.min(SPIN_MS, 120 + Math.abs(delta) * 0.4)
-    const done = new Promise<void>((resolve) => {
-      const t0 = performance.now()
-      const step = (now: number) => {
-        const p = Math.min(1, (now - t0) / ms)
-        scroller.scrollTop = from + delta * (1 - (1 - p) ** 3)
-        if (p < 1) requestAnimationFrame(step)
-        else {
-          paint()
-          resolve()
-        }
-      }
-      requestAnimationFrame(step)
-    })
-    return { ms, done }
+  /** Turn the drum so item `index` stands at the top (as the first item does
+   *  at the start), or as near as the ends allow. */
+  const turnTo = (index: number) => {
+    const drum = drumRef.current!
+    const top = (START_PHI - PHI_TOP) * wheel.R
+    const to = clamp(
+      items[index].rod - items[0].rod + bounds.first - top,
+      0,
+      bounds.max,
+    )
+    const ms = Math.min(SPIN_MS, 120 + Math.abs(to - drum.get()) * 0.4)
+    return drum.animateTo(to, ms)
   }
 
   /** Card `index` on the wheel right now: its pose, and its rod's place on
    *  screen (where it stands upright when taken out). */
   const wheelSpot = useCallback(
     (index: number) => {
-      const st = scrollRef.current!.scrollTop
+      const st = drumRef.current!.get()
       const phi = PHI_TOP + rimPos(index, st) / wheel.R
       const rodY = wheel.front + wheel.R * Math.sin(phi)
       const z = wheel.R * (Math.cos(phi) - 1)
@@ -401,8 +419,8 @@ export default function RecipesPage() {
       const { phi, rodY, z, rodOnScreen } = wheelSpot(index)
       const slotTop = wheelTop + rodOnScreen - off
       const height = cardEl(index)?.offsetHeight ?? CARD_H
-      const n = (index + 1) % items.length
-      const next = itemEls.current[n]
+      const n = index + 1
+      const next = n < items.length ? itemEls.current[n] : null
       const nextTop =
         next && shown.current[n] ? next.getBoundingClientRect().top : Infinity // nothing in front of it on screen
       const deg = phi / DEG
@@ -467,16 +485,20 @@ export default function RecipesPage() {
     busy.current = false
   }, [items])
 
-  // Tapping a letter tab spins that letter to the front.
+  // Tapping a letter tab turns the drum to that letter.
   const jumpTo = useCallback(
     async (index: number) => {
       if (busy.current) return
       busy.current = true
-      await spinToFront(index).done
+      await turnTo(index)
       busy.current = false
     },
-    [items, wheel],
+    [items, bounds],
   )
+
+  // A blank card: write a new recipe on it.
+  const navigate = useNavigate()
+  const onNew = useCallback(() => navigate('/recipes/new'), [navigate])
 
   const setItemEl = useCallback((i: number, el: HTMLDivElement | null) => {
     itemEls.current[i] = el
@@ -513,31 +535,25 @@ export default function RecipesPage() {
       ) : (
         <PageHeader
           title="Recipes"
+          // (New recipes start on the blank card at the back of the box.)
           action={
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setSearching(true)}
-                aria-label="Search recipes"
-                className="grid h-9 w-9 place-items-center rounded-full text-ink-soft active:bg-black/5"
+            <button
+              onClick={() => setSearching(true)}
+              aria-label="Search recipes"
+              className="grid h-9 w-9 place-items-center rounded-full text-ink-soft active:bg-black/5"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                className="h-[22px] w-[22px]"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
               >
-                <svg
-                  viewBox="0 0 24 24"
-                  className="h-[22px] w-[22px]"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                >
-                  <circle cx="11" cy="11" r="6.5" />
-                  <path d="m16 16 4.5 4.5" />
-                </svg>
-              </button>
-              {canEditRecipes && (
-                <Link to="/recipes/new" className="kraft-tag">
-                  Create
-                </Link>
-              )}
-            </div>
+                <circle cx="11" cy="11" r="6.5" />
+                <path d="m16 16 4.5 4.5" />
+              </svg>
+            </button>
           }
         />
       )}
@@ -546,69 +562,55 @@ export default function RecipesPage() {
 
   return (
     <div className="relative h-full">
-      {recipes.length === 0 ? (
-        <div style={{ paddingTop: headerH }}>
-          {header}
-          <EmptyState
-            title="No recipes yet"
-            hint={canEditRecipes ? 'Tap Create to add your first.' : undefined}
-          />
-        </div>
-      ) : (
-        <>
-          {/* The rolodex's backdrop, below the header. */}
-          <div
-            className="absolute inset-x-0 bottom-0 bg-[#dfe8e3]"
-            style={{
-              top: headerH,
-              boxShadow: 'inset 0 10px 14px -10px rgb(0 0 0 / 0.25)',
-            }}
-          />
-          {/* The rolodex layer: the whole page, header included, so a card
+      {/* An empty box is still a box: A–Z dividers and blank cards. */}
+      <>
+        {/* The rolodex's backdrop, below the header. */}
+        <div
+          className="absolute inset-x-0 bottom-0 bg-[#dfe8e3]"
+          style={{
+            top: headerH,
+            boxShadow: 'inset 0 10px 14px -10px rgb(0 0 0 / 0.25)',
+          }}
+        />
+        {/* The rolodex layer: the whole page, header included, so a card
               being taken out passes over the header rather than behind it.
-              It takes touches itself (iOS won't touch-scroll a container
-              with pointer-events: none); the header lives inside the stage,
-              beneath every card, so its buttons still work. */}
+              Touches go to the drum's own iOS-style physics (no native touch
+              scrolling); the wheel and trackpad scroll it natively, so they
+              rubber-band the way the Mac does. The header lives inside the
+              stage, beneath every card, so its buttons still work. */}
+        <div
+          ref={scrollRef}
+          className="scroll-y no-scrollbar absolute inset-0 z-[2] overflow-x-hidden"
+          style={{ touchAction: 'none' }}
+        >
+          {/* The wheel: pinned while the spacer below scrolls under it. */}
           <div
-            ref={scrollRef}
-            onScroll={onScroll}
-            className="scroll-y no-scrollbar absolute inset-0 z-[2] overflow-x-hidden"
+            className="sticky top-0 overflow-clip"
+            style={{
+              height: pageH,
+              perspective: `${PERSPECTIVE}px`,
+              perspectiveOrigin: `50% ${headerH + wheel.front}px`,
+            }}
           >
-            {/* The wheel: pinned while the spacer below scrolls under it. */}
-            <div
-              className="sticky top-0 overflow-clip"
-              style={{
-                height: pageH,
-                perspective: `${PERSPECTIVE}px`,
-                perspectiveOrigin: `50% ${headerH + wheel.front}px`,
-              }}
-            >
-              {header}
-              {items.length === 0 && (
-                <p
-                  className="paper-serif absolute inset-x-0 px-8 text-center italic text-ink-soft"
-                  style={{ top: headerH + 64 }}
-                >
-                  No recipes match “{query.trim()}”.
-                </p>
-              )}
-              {items.map((item, i) => (
-                <RolodexItem
-                  key={item.key}
-                  item={item}
-                  index={i}
-                  setEl={setItemEl}
-                  canEditPlan={canEditPlan}
-                  canEditRecipes={canEditRecipes}
-                  onOpen={openCard}
-                  onJump={jumpTo}
-                />
-              ))}
-            </div>
-            <div style={{ height: SPACER }} />
+            {header}
+            {items.map((item, i) => (
+              <RolodexItem
+                key={item.key}
+                item={item}
+                index={i}
+                setEl={setItemEl}
+                canEditPlan={canEditPlan}
+                canEditRecipes={canEditRecipes}
+                onOpen={openCard}
+                onJump={jumpTo}
+                onNew={onNew}
+              />
+            ))}
           </div>
-        </>
-      )}
+          {/* The drum's travel, from one stop to the other. */}
+          <div style={{ height: bounds.max }} />
+        </div>
+      </>
 
       {open && openItem?.kind === 'card' && (
         <CardDetail
@@ -634,6 +636,7 @@ const RolodexItem = memo(function RolodexItem({
   canEditRecipes,
   onOpen,
   onJump,
+  onNew,
 }: {
   item: Item
   index: number
@@ -642,6 +645,7 @@ const RolodexItem = memo(function RolodexItem({
   canEditRecipes: boolean
   onOpen: (i: number) => void
   onJump: (i: number) => void
+  onNew: () => void
 }) {
   const off = rodOffset(item)
   // Rides the wheel (transform set per frame), hinged at its rod. Trimmed to
@@ -690,6 +694,38 @@ const RolodexItem = memo(function RolodexItem({
             <span className="rolodex-dim" />
           </button>
         )}
+      </div>
+    )
+  }
+
+  if (item.kind === 'blank') {
+    // The blank index card at the back: ruled and framed, waiting for a
+    // recipe. (Only there for those who can write recipes.)
+    return (
+      <div {...common}>
+        <div
+          role="button"
+          tabIndex={0}
+          aria-label="Write a new recipe"
+          onClick={onNew}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              onNew()
+            }
+          }}
+          className="paper-card rolodex-card relative flex cursor-pointer flex-col"
+          style={{ height: CARD_H }}
+        >
+          <div className="paper-frame" />
+          <div className="px-5 pt-3.5">
+            <div className="paper-rule paper-serif pb-1.5 text-[19px] italic leading-[25px] text-ink-faint">
+              New recipe…
+            </div>
+          </div>
+          <div className="paper-lines mx-5 mb-2 flex-1" />
+          <span className="rolodex-dim" />
+        </div>
       </div>
     )
   }
