@@ -67,3 +67,73 @@ body {
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
 }
+
+/* ---- Recipe cards (Recipes v2 rolodex) ---------------------------------- */
+@layer components {
+  .paper-card {
+    background: #fcf9f1;
+    border: 1px solid #e4dac6;
+    border-radius: 14px;
+    color: #3a3428;
+    box-shadow:
+      0 1px 1px rgb(60 50 30 / 0.06),
+      0 6px 16px -8px rgb(60 50 30 / 0.3);
+  }
+  .paper-divider {
+    background: #e2cb8f;
+    border: 1px solid #c4a865;
+    color: #54431a;
+  }
+  /* Cards in the rolodex also cast a soft shadow up onto the card behind
+     them (a downward shadow would be hidden by the card in front). */
+  .rolodex-card {
+    box-shadow:
+      0 -1px 2px rgb(60 50 30 / 0.08),
+      0 -3px 8px -3px rgb(60 50 30 / 0.22),
+      0 6px 16px -8px rgb(60 50 30 / 0.3);
+  }
+  /* Darkening as a card tips back at the top; driven by --shade (0–1) set
+     on the card's wrapper, so a divider's tab and body shade together. */
+  .rolodex-dim {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: #000;
+    opacity: var(--shade, 0);
+    pointer-events: none;
+  }
+  /* Decorative double rule inset from the card edge. */
+  .paper-frame {
+    position: absolute;
+    inset: 5px;
+    border: 3px double #a9c9b9;
+    border-radius: 10px;
+    pointer-events: none;
+  }
+  /* The red rule under an index card's title. */
+  .paper-rule {
+    border-bottom: 1.5px solid #e9a99f;
+  }
+  /* Faint blue ruled lines; text set at 22px line-height sits on them. */
+  .paper-lines {
+    line-height: 22px;
+    background-image: repeating-linear-gradient(
+      to bottom,
+      transparent 0 21px,
+      #dce8f0 21px 22px
+    );
+    background-attachment: local;
+  }
+  /* A card's body scrolls without a scrollbar taking width, so lifting a
+     card never reflows its text. */
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .paper-serif {
+    font-family:
+      'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
+  }
+}
