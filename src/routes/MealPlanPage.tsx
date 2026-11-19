@@ -235,7 +235,6 @@ function MealPocket({
     // Let the whole card rise out of its slot (trimmed only below it, where
     // the cards in front and the pocket hide it anyway). Inline overrides of
     // the slot's class, cleared when it's back.
-    slot.style.overflow = 'visible'
     slot.style.clipPath = 'inset(-4000px -24px 0 -24px)'
     flushSync(() => setLift({ componentId: id, recipe, origin: originOf(id) }))
   }
@@ -247,7 +246,6 @@ function MealPocket({
     for (const el of [card, slot, card?.querySelector('.rolodex-dim')])
       el?.getAnimations().forEach((a) => a.cancel())
     if (slot) {
-      slot.style.overflow = ''
       slot.style.clipPath = ''
     }
     if (removing.current) {

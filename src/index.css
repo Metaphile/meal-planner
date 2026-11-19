@@ -176,10 +176,11 @@ body {
     opacity: 0.45;
   }
   /* A card's slot in a pocket: only its top peeks out (with room for its
-     shadow); the cards in front and the pocket's front hide the rest. */
+     shadow); the cards in front and the pocket's front hide the rest. (A
+     clip-path, not overflow-clip-margin, which Safari ignores — it would
+     trim the shadow square at the rounded corners.) */
   .pocket-slot {
-    overflow: clip;
-    overflow-clip-margin: 12px;
+    clip-path: inset(-12px -12px 0 -12px);
   }
   /* A card in a pocket fades back gently when its meal is (un)ticked. */
   .pocket-slot .rolodex-dim {

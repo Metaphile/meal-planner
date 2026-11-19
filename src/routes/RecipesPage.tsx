@@ -66,6 +66,13 @@ const START_PHI = -28 * DEG
 const REACH_FIRST_CARD_PHI = -12 * DEG
 const REACH_LAST_PHI = 16 * DEG
 
+/** A card on the wheel is trimmed at its rod (the rest is behind the cards
+ *  in front), with room above and to the sides for its shadow. (A clip-path,
+ *  not overflow-clip-margin, which Safari ignores — it would trim the shadow
+ *  square, leaving ghostly square corners.) Taken out, it's open upward. */
+const SLOT_CLIP = 'inset(-24px -24px 0 -24px)'
+const LIFT_CLIP = 'inset(-4000px -24px 0 -24px)'
+
 /** Divider tabs stagger across five positions. */
 const tabLeftFrac = (n: number) => ((n % 5) * 19 + 3) / 100
 
@@ -450,9 +457,8 @@ export default function RecipesPage() {
   // card, trimmed only below its rod (so as it slides up it comes out from
   // behind the cards in front, and nothing swings out below).
   const freeSlot = (wrap: HTMLDivElement) => {
-    wrap.style.height = 'auto'
-    wrap.style.overflow = 'visible'
-    wrap.style.clipPath = `inset(-4000px -24px calc(100% - ${CARD_H}px) -24px)`
+    wrap.style.clipPath = LIFT_CLIP
+    wrap.dataset.free = ''
   }
 
   /** Where the card in hand goes back to — or null if it has no place in
@@ -464,7 +470,7 @@ export default function RecipesPage() {
     const i = indexOf(key)
     const wrap = i >= 0 ? itemEls.current[i] : null
     if (!wrap) return null
-    if (wrap.style.overflow !== 'visible') {
+    if (wrap.dataset.free === undefined) {
       // Placed on the wheel once (it was skipped while in hand), then freed.
       lifted.current = null
       lastPose.current = []
@@ -514,9 +520,8 @@ export default function RecipesPage() {
     for (const el of [card, wrap, card?.querySelector('.rolodex-dim')])
       el?.getAnimations().forEach((a) => a.cancel())
     if (wrap) {
-      wrap.style.height = `${rodOffset(items[i])}px`
-      wrap.style.overflow = 'clip'
-      wrap.style.clipPath = ''
+      wrap.style.clipPath = SLOT_CLIP
+      delete wrap.dataset.free
     }
     lifted.current = null
     // Back on the wheel: place it afresh (it wasn't painted while out, and
@@ -738,8 +743,7 @@ const RolodexItem = memo(function RolodexItem({
       left: SIDE,
       right: SIDE,
       height: off,
-      overflow: 'clip' as const,
-      overflowClipMargin: '24px',
+      clipPath: SLOT_CLIP,
       transformOrigin: `50% ${off}px`,
       willChange: 'transform',
       visibility: 'hidden' as const, // until the first paint places it
