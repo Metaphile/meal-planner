@@ -142,7 +142,9 @@ export default function MealPlanPage() {
 
 /** How much of each card peeks out of a pocket: the title of a card with
  *  another in front of it, and the title and a line of the front card. */
-const TITLE_PEEK = 47
+// (Just the title: the card in front starts where the title's red rule
+// would, so the rule is hidden.)
+const TITLE_PEEK = 46
 const FRONT_PEEK = 78
 /** A card shown faded back in a meal that isn't counted (see --shade). */
 const EXCLUDED_SHADE = 0.14
