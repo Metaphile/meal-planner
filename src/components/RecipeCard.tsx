@@ -161,8 +161,9 @@ export interface CardOrigin {
   width: number
   /** Its natural height (as it is in the rolodex). */
   height: number
-  /** The rolodex layer's top edge (the top of the screen): a card rising
-   *  past it is clipped there, in the rolodex and in the foreground alike. */
+  /** The rolodex layer's top edge (the top of the page): a card rising past
+   *  it is clipped there — the foreground card's layer starts at the same
+   *  edge, so it's clipped identically. */
   viewTop: number
   /** Its pose on the wheel, and stood upright in place (wrapper transforms). */
   wheelPose: string
@@ -176,10 +177,6 @@ const STAND = 'cubic-bezier(0.4, 0, 0.2, 1)' // standing up off / back onto the 
 
 const pose = (dy: number) => `translate(0px, ${dy}px)`
 
-/** Clip only the top (the part above the rolodex's edge); leave room for the
- *  shadow everywhere else. Same shape always, so it interpolates. */
-const clipTop = (hidden: number) =>
-  `inset(${hidden > 0 ? hidden : -16}px -16px -24px -16px)`
 
 /**
  * The lifted card. One continuous motion takes the card from wherever it
@@ -256,9 +253,10 @@ export function CardDetail({
       fgFrames.push({
         offset,
         opacity: fg ? 1 : 0,
+        // Transform only (it runs on the compositor). The card is clipped by
+        // the edge of the layer it's in — never by an animated clip, which
+        // would run on the main thread and lag the motion.
         transform: pose(yf - base),
-        // Clipped where the rolodex is: the top of the screen.
-        clipPath: clipTop(o.viewTop - yf),
       })
       rdxFrames.push({
         offset,
@@ -343,7 +341,10 @@ export function CardDetail({
     anim.onfinish = () => {
       if (!closing.current) anim.cancel()
     }
-    return () => card.getAnimations().forEach((x) => x.cancel())
+    return () => {
+      for (const el of [card, shadeRef.current])
+        el?.getAnimations().forEach((x) => x.cancel())
+    }
   }, [])
 
   // Put back: fly from where it is now (after any scrolling or drag) back
@@ -495,17 +496,20 @@ export function CardDetail({
         className="absolute inset-0 bg-[rgb(20_24_22/0.55)]"
       />
       {/* The card scrolls, whole, on the shade; tapping the shade (anywhere
-          off the card) puts it back. */}
+          off the card) puts it back. This layer starts where the rolodex
+          layer does (the top of the page), so a card flying above it is
+          clipped at exactly the same edge in both. */}
       <div
         ref={scrollRef}
-        className="scroll-y no-scrollbar absolute inset-0"
+        className="scroll-y no-scrollbar absolute inset-x-0 bottom-0"
+        style={{ top: origin.viewTop }}
         onClick={(e) => {
           if (!cardRef.current?.contains(e.target as Node)) close()
         }}
       >
         <div
           style={{
-            paddingTop: 'calc(var(--safe-top) + 12vh)',
+            paddingTop: '12vh',
             paddingBottom: 'calc(var(--safe-bottom) + 32px)',
           }}
         >
