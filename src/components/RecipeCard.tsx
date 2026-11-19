@@ -12,7 +12,7 @@ import { createPortal, flushSync } from 'react-dom'
 import { Link } from 'react-router-dom'
 import { useStore } from '../store/store'
 import type { Ingredient, Recipe } from '../data/types'
-import { IngredientRowsEditor } from './IngredientRowsEditor'
+import { QuantityInput } from './IngredientRowsEditor'
 import { ConfirmDialog } from './ui'
 import { arcThrough, sampleTimes, type Arc } from '../lib/arc'
 
@@ -175,6 +175,105 @@ export function EditButton({ onEdit }: { onEdit: () => void }) {
   )
 }
 
+const blank = (i: Ingredient) =>
+  !i.name.trim() && i.quantity === undefined && !i.unit
+/** Always exactly one empty line at the end, to write the next one on. */
+const withSpareLine = (rows: Ingredient[]) => {
+  const out = [...rows]
+  while (
+    out.length > 1 &&
+    blank(out[out.length - 1]) &&
+    blank(out[out.length - 2])
+  )
+    out.pop()
+  if (!out.length || !blank(out[out.length - 1])) out.push({ name: '' })
+  return out
+}
+
+/**
+ * Ingredients written on the back of a card: a ruled table (name · qty ·
+ * unit) with no boxes, like the notes below it. The heading line doubles as
+ * the column heads. There's always an empty line at the end; writing on it
+ * starts another.
+ */
+function IngredientTable({
+  rows,
+  onChange,
+  headClass,
+}: {
+  rows: Ingredient[]
+  onChange: (rows: Ingredient[]) => void
+  headClass: string
+}) {
+  const set = (rs: Ingredient[]) => onChange(withSpareLine(rs))
+  const update = (i: number, patch: Partial<Ingredient>) =>
+    set(rows.map((r, idx) => (idx === i ? { ...r, ...patch } : r)))
+  const remove = (i: number) => set(rows.filter((_, idx) => idx !== i))
+  const cols = 'grid grid-cols-[minmax(0,1fr)_3.25rem_4.25rem_1.75rem]'
+  const cell =
+    'h-[30px] min-w-0 bg-transparent placeholder:italic placeholder:text-ink-faint focus:bg-kraft/15 focus:outline-none'
+  const rule = 'border-l border-line-blue'
+
+  return (
+    <div role="table" aria-label="Ingredients">
+      <div role="row" className={`${cols} items-end border-b border-line-blue`}>
+        <span role="columnheader" className={headClass}>
+          Ingredients
+        </span>
+        <span role="columnheader" className={`${headClass} pr-1 text-right`}>
+          Qty
+        </span>
+        <span role="columnheader" className={`${headClass} pl-1.5`}>
+          Unit
+        </span>
+        <span />
+      </div>
+      {rows.map((row, i) => {
+        const spare = i === rows.length - 1 && blank(row)
+        return (
+          <div
+            key={i}
+            role="row"
+            className={`${cols} items-center border-b border-line-blue`}
+          >
+            <input
+              value={row.name}
+              onChange={(e) => update(i, { name: e.target.value })}
+              placeholder={spare ? 'Add ingredient…' : 'Ingredient'}
+              aria-label="Ingredient name"
+              className={`${cell} pr-1`}
+            />
+            <QuantityInput
+              value={row.quantity}
+              onChange={(quantity) => update(i, { quantity })}
+              placeholder=""
+              className={`${cell} ${rule} pr-1 text-right`}
+            />
+            <input
+              value={row.unit ?? ''}
+              onChange={(e) => update(i, { unit: e.target.value || undefined })}
+              aria-label="Unit"
+              className={`${cell} ${rule} pl-1.5`}
+            />
+            {spare ? (
+              <span />
+            ) : (
+              <button
+                type="button"
+                onClick={() => remove(i)}
+                aria-label={`Remove ${row.name || 'ingredient'}`}
+                className="grid h-[30px] place-items-center text-sm text-ink-faint active:text-ink"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 /**
  * The back of a card: the recipe written out on paper fields to edit. Nothing
  * reaches the store until Save.
@@ -194,8 +293,8 @@ const RecipeCardBack = forwardRef<
   const upsertRecipe = useStore((s) => s.upsertRecipe)
   const deleteRecipe = useStore((s) => s.deleteRecipe)
   const [title, setTitle] = useState(recipe.title)
-  const [ingredients, setIngredients] = useState<Ingredient[]>(
-    recipe.ingredients.length ? recipe.ingredients : [{ name: '' }],
+  const [ingredients, setIngredients] = useState<Ingredient[]>(() =>
+    withSpareLine(recipe.ingredients),
   )
   const [notes, setNotes] = useState(recipe.notes ?? '')
   const [tagsText, setTagsText] = useState(recipe.tags.join(', '))
@@ -239,13 +338,11 @@ const RecipeCardBack = forwardRef<
           />
         </div>
         <div className="mx-5 mt-3.5 mb-4 flex flex-col gap-4">
-          <div>
-            <span className={label}>Ingredients</span>
-            <IngredientRowsEditor
-              rows={ingredients}
-              onChange={setIngredients}
-            />
-          </div>
+          <IngredientTable
+            rows={ingredients}
+            onChange={setIngredients}
+            headClass={label}
+          />
           <label className="block">
             <span className={label}>Notes</span>
             <textarea

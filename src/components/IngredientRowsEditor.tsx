@@ -20,12 +20,16 @@ function parseQty(text: string): number | undefined {
  * indices) are adopted, but not when they match the number the draft already
  * represents.
  */
-function QuantityInput({
+export function QuantityInput({
   value,
   onChange,
+  placeholder = 'Qty',
+  className = 'w-16 rounded-lg border border-border bg-surface px-2 py-2 text-center focus:border-kraft-edge focus:outline-none',
 }: {
   value: number | undefined
   onChange: (quantity: number | undefined) => void
+  placeholder?: string
+  className?: string
 }) {
   const [draft, setDraft] = useState(() => fmtQty(value))
   const [prevValue, setPrevValue] = useState(value)
@@ -42,9 +46,9 @@ function QuantityInput({
         onChange(parseQty(e.target.value))
       }}
       inputMode="decimal"
-      placeholder="Qty"
+      placeholder={placeholder}
       aria-label="Quantity"
-      className="w-16 rounded-lg border border-border bg-surface px-2 py-2 text-center focus:border-kraft-edge focus:outline-none"
+      className={className}
     />
   )
 }
@@ -87,9 +91,7 @@ export function IngredientRowsEditor({
           />
           <input
             value={row.unit ?? ''}
-            onChange={(e) =>
-              update(i, { unit: e.target.value || undefined })
-            }
+            onChange={(e) => update(i, { unit: e.target.value || undefined })}
             placeholder="Unit"
             aria-label="Unit"
             className="w-20 rounded-lg border border-border bg-surface px-2 py-2 focus:border-kraft-edge focus:outline-none"
