@@ -760,13 +760,17 @@ const RolodexItem = memo(function RolodexItem({
   // margin so its shadow still shows.
   const common = {
     ref: (el: HTMLDivElement | null) => setEl(index, el),
-    className: 'pointer-events-auto absolute top-0',
+    // Not selectable, no long-press callout: they're handled, not read —
+    // take one out to read (and select) it. (On the items, not the whole
+    // layer: an unselectable ancestor can break the search field on iOS.)
+    className: 'pointer-events-auto absolute top-0 select-none',
     style: {
       left: SIDE,
       right: SIDE,
       height: off,
       clipPath: SLOT_CLIP,
       transformOrigin: `50% ${off}px`,
+      WebkitTouchCallout: 'none' as const,
       willChange: 'transform',
       visibility: 'hidden' as const, // until the first paint places it
     },

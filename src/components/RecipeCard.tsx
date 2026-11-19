@@ -1034,6 +1034,9 @@ export function CardDetail({
         if (dy > 0 && dy >= Math.abs(dx) && atTop()) {
           d.decided = true
           d.active = true
+          // Pulling it away isn't selecting its text.
+          window.getSelection()?.removeAllRanges()
+          card.style.userSelect = 'none'
           card.getAnimations().forEach((a) => a.finish())
         } else if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
           d.decided = true
@@ -1056,6 +1059,7 @@ export function CardDetail({
     const end = () => {
       if (!d.active) return
       d.active = false
+      card.style.userSelect = ''
       // Far enough, or a real downward flick (not just a twitch).
       if (d.dy > 110 || (d.v > 0.5 && d.dy > 40)) {
         closeRef.current(d.dy)
@@ -1167,7 +1171,6 @@ export function CardDetail({
                   )
                 }
                 aria-hidden={facing === 'back' || undefined}
-                className="select-none"
                 style={{
                   backfaceVisibility: 'hidden',
                   ...(facing === 'front' ? {} : OFF_LAYOUT),
