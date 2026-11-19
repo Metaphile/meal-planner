@@ -211,7 +211,8 @@ function IngredientTable({
   const remove = (i: number) => set(rows.filter((_, idx) => idx !== i))
   const cols = 'grid grid-cols-[minmax(0,1fr)_3.25rem_4.25rem_1.75rem]'
   const cell =
-    'h-[30px] min-w-0 bg-transparent placeholder:italic placeholder:text-ink-faint focus:bg-kraft/15 focus:outline-none'
+    // 21px + the row's 1px rule = the card's 22px ruled lines.
+    'h-[21px] min-w-0 bg-transparent leading-[21px] placeholder:italic placeholder:text-ink-faint focus:bg-kraft/15 focus:outline-none'
   const rule = 'border-l border-line-blue'
 
   return (
@@ -262,7 +263,7 @@ function IngredientTable({
                 type="button"
                 onClick={() => remove(i)}
                 aria-label={`Remove ${row.name || 'ingredient'}`}
-                className="grid h-[30px] place-items-center text-sm text-ink-faint active:text-ink"
+                className="grid h-[21px] place-items-center text-sm leading-none text-ink-faint active:text-ink"
               >
                 ✕
               </button>
@@ -359,7 +360,7 @@ const RecipeCardBack = forwardRef<
               value={tagsText}
               onChange={(e) => setTagsText(e.target.value)}
               placeholder="dinner, kid-friendly"
-              className="w-full rounded-lg border border-border bg-surface px-3 py-2 placeholder:text-ink-faint focus:border-kraft-edge focus:outline-none"
+              className="block h-[22px] w-full border-b border-line-blue bg-transparent leading-[21px] placeholder:italic placeholder:text-ink-faint focus:bg-kraft/15 focus:outline-none"
             />
           </label>
         </div>
