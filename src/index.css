@@ -13,6 +13,22 @@
   --color-text: #102a23; /* near-black green for primary text */
   --color-muted: #5c7d71; /* muted green-gray */
   --color-danger: #dc2626;
+
+  /* The recipe box: paper, ink and kraft (Recipes v2, Meals). */
+  --color-backdrop: #dfe8e3; /* the counter everything sits on */
+  --color-paper: #fcf9f1;
+  --color-paper-edge: #e4dac6;
+  --color-ink: #3a3428;
+  --color-ink-soft: #7a705e;
+  --color-ink-faint: #a89e8a;
+  --color-kraft: #e2cb8f;
+  --color-kraft-edge: #c4a865;
+  --color-kraft-ink: #54431a;
+  --color-rule-red: #e9a99f;
+  --color-line-blue: #dce8f0;
+  --color-frame: #a9c9b9;
+  --color-scrap: #fffbe8;
+  --color-scrap-edge: #eadfb4;
 }
 
 /* ---- Base ---------------------------------------------------------------- */
@@ -68,24 +84,24 @@ body {
   overscroll-behavior: contain;
 }
 
-/* ---- Recipe cards (Recipes v2 rolodex) ---------------------------------- */
+/* ---- The recipe box: paper pieces (Recipes v2, Meals) -------------------- */
 @layer components {
   .paper-card {
-    background: #fcf9f1;
-    border: 1px solid #e4dac6;
+    background: var(--color-paper);
+    border: 1px solid var(--color-paper-edge);
     border-radius: 14px;
-    color: #3a3428;
+    color: var(--color-ink);
     box-shadow:
       0 1px 1px rgb(60 50 30 / 0.06),
       0 6px 16px -8px rgb(60 50 30 / 0.3);
   }
   .paper-divider {
-    background: #e2cb8f;
-    border: 1px solid #c4a865;
-    color: #54431a;
+    background: var(--color-kraft);
+    border: 1px solid var(--color-kraft-edge);
+    color: var(--color-kraft-ink);
   }
-  /* Cards in the rolodex also cast a soft shadow up onto the card behind
-     them (a downward shadow would be hidden by the card in front). */
+  /* Cards in the rolodex (or a pocket) also cast a soft shadow up onto the
+     card behind them (a downward shadow would be hidden by the card in front). */
   .rolodex-card {
     box-shadow:
       0 -1px 2px rgb(60 50 30 / 0.08),
@@ -106,13 +122,13 @@ body {
   .paper-frame {
     position: absolute;
     inset: 5px;
-    border: 3px double #a9c9b9;
+    border: 3px double var(--color-frame);
     border-radius: 10px;
     pointer-events: none;
   }
   /* The red rule under an index card's title. */
   .paper-rule {
-    border-bottom: 1.5px solid #e9a99f;
+    border-bottom: 1.5px solid var(--color-rule-red);
   }
   /* Faint blue ruled lines; text set at 22px line-height sits on them. */
   .paper-lines {
@@ -120,7 +136,7 @@ body {
     background-image: repeating-linear-gradient(
       to bottom,
       transparent 0 21px,
-      #dce8f0 21px 22px
+      var(--color-line-blue) 21px 22px
     );
     background-attachment: local;
   }
@@ -135,5 +151,74 @@ body {
   .paper-serif {
     font-family:
       'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
+  }
+  /* A kraft tab used as a button (header actions, Done). */
+  .kraft-tag {
+    font-family:
+      'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 20px;
+    padding: 6px 12px;
+    border-radius: 8px 8px 3px 3px;
+    background: var(--color-kraft);
+    border: 1px solid var(--color-kraft-edge);
+    color: var(--color-kraft-ink);
+    box-shadow: 0 2px 4px -2px rgb(60 50 30 / 0.4);
+  }
+  .kraft-tag:active {
+    transform: translateY(1px);
+  }
+  .kraft-tag:disabled {
+    opacity: 0.45;
+  }
+  /* A card's slot in a pocket: only its top peeks out (with room for its
+     shadow); the cards in front and the pocket's front hide the rest. */
+  .pocket-slot {
+    overflow: clip;
+    overflow-clip-margin: 12px;
+  }
+  /* A card in a pocket fades back gently when its meal is (un)ticked. */
+  .pocket-slot .rolodex-dim {
+    transition: opacity 200ms;
+  }
+  /* A meal: a kraft pocket holding recipe cards. */
+  .kraft-pocket {
+    background: var(--color-kraft);
+    border: 1px solid var(--color-kraft-edge);
+    border-radius: 12px;
+    box-shadow: 0 6px 16px -8px rgb(60 50 30 / 0.4);
+  }
+  /* The pocket's front, curving over the bottom of the cards. */
+  .pocket-lip {
+    background: var(--color-kraft);
+    border-top: 1px solid var(--color-kraft-edge);
+    box-shadow: 0 -4px 8px -4px rgb(60 50 30 / 0.35);
+    border-radius: 50% 50% 0 0 / 12px 12px 0 0;
+  }
+  /* A slip of scrap paper (a meal's misc items). */
+  .scrap-slip {
+    background: var(--color-scrap);
+    border: 1px solid var(--color-scrap-edge);
+    border-radius: 3px;
+    box-shadow: 0 2px 4px -2px rgb(60 50 30 / 0.3);
+  }
+  /* Notepad sheet: perforations along its top edge, where it tore off. */
+  .notepad {
+    position: relative;
+  }
+  .notepad::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 6px;
+    background: radial-gradient(
+        circle at 6px 0,
+        var(--color-kraft) 2.5px,
+        transparent 3px
+      )
+      0 0 / 12px 6px repeat-x;
   }
 }

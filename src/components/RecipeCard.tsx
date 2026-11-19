@@ -5,6 +5,7 @@ import {
   useRef,
   useState,
   type HTMLAttributes,
+  type ReactNode,
   type Ref,
 } from 'react'
 import { createPortal } from 'react-dom'
@@ -78,6 +79,8 @@ type CardProps = {
   canEditRecipes: boolean
   /** Lets the body scroll (when the card is capped to the screen). */
   scrollable?: boolean
+  /** Replaces the usual actions (Add to Meal · Edit) below the border. */
+  actions?: ReactNode
   bodyRef?: Ref<HTMLDivElement>
 } & HTMLAttributes<HTMLDivElement>
 
@@ -94,6 +97,7 @@ export const RecipeCard = forwardRef<HTMLDivElement, CardProps>(
       canEditPlan,
       canEditRecipes,
       scrollable = false,
+      actions,
       bodyRef,
       className = '',
       style,
@@ -101,7 +105,7 @@ export const RecipeCard = forwardRef<HTMLDivElement, CardProps>(
     },
     ref,
   ) {
-    const hasActions = canEditPlan || canEditRecipes
+    const hasActions = actions !== undefined || canEditPlan || canEditRecipes
     return (
       <div
         ref={ref}
@@ -132,14 +136,11 @@ export const RecipeCard = forwardRef<HTMLDivElement, CardProps>(
             className="flex shrink-0 gap-2 px-4 pb-3 pt-1.5"
             onClick={(e) => e.stopPropagation()}
           >
-            {canEditPlan && <AddToMealButton recipeId={recipe.id} />}
-            {canEditRecipes && (
-              <Link
-                to={`/recipes/${recipe.id}`}
-                className="rounded-full border border-[#d8cdb6] px-4 py-1.5 text-sm font-medium leading-5 active:scale-95"
-              >
-                Edit
-              </Link>
+            {actions ?? (
+              <>
+                {canEditPlan && <AddToMealButton recipeId={recipe.id} />}
+                {canEditRecipes && <EditRecipeLink recipeId={recipe.id} />}
+              </>
             )}
           </div>
         )}
@@ -150,6 +151,17 @@ export const RecipeCard = forwardRef<HTMLDivElement, CardProps>(
     )
   },
 )
+
+export function EditRecipeLink({ recipeId }: { recipeId: string }) {
+  return (
+    <Link
+      to={`/recipes/${recipeId}`}
+      className="rounded-full border border-[#d8cdb6] px-4 py-1.5 text-sm font-medium leading-5 active:scale-95"
+    >
+      Edit
+    </Link>
+  )
+}
 
 /** Where the card sits in the rolodex (screen space). */
 export interface CardOrigin {
@@ -196,6 +208,7 @@ export function CardDetail({
   getRolodexCard,
   canEditRecipes,
   canEditPlan,
+  renderActions,
   onClosed,
 }: {
   recipe: Recipe
@@ -207,6 +220,10 @@ export function CardDetail({
   getRolodexCard: () => HTMLElement | undefined
   canEditRecipes: boolean
   canEditPlan: boolean
+  /** Replaces the card's usual actions. `dismiss` fades the card away instead
+   *  of putting it back (for when it's leaving, e.g. removed from a meal);
+   *  onClosed follows either way. */
+  renderActions?: (dismiss: () => void) => ReactNode
   onClosed: () => void
 }) {
   const cardRef = useRef<HTMLDivElement>(null)
@@ -368,6 +385,30 @@ export function CardDetail({
   const closeRef = useRef(close)
   closeRef.current = close
 
+  // Fade away where it is (it's not going back into its slot).
+  const dismiss = () => {
+    if (closing.current) return
+    closing.current = true
+    const card = cardRef.current!
+    const shade = shadeRef.current!
+    card.getAnimations().forEach((a) => a.cancel())
+    const from = card.style.transform || pose(0)
+    card.style.transform = ''
+    const timing = { duration: 220, easing: EASE_OUT, fill: 'forwards' as const }
+    const anim = card.animate(
+      [
+        { opacity: 1, transform: from },
+        { opacity: 0, transform: `${from} translateY(28px) scale(0.97)` },
+      ],
+      timing,
+    )
+    shade.animate(
+      [{ opacity: Number(getComputedStyle(shade).opacity) }, { opacity: 0 }],
+      timing,
+    )
+    anim.onfinish = () => onClosedRef.current()
+  }
+
   // Escape puts the card back.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && closeRef.current()
@@ -518,6 +559,7 @@ export function CardDetail({
             recipe={recipe}
             canEditPlan={canEditPlan}
             canEditRecipes={canEditRecipes}
+            actions={renderActions?.(dismiss)}
             role="dialog"
             aria-modal="true"
             aria-label={recipe.title}

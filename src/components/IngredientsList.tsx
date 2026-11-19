@@ -1,5 +1,4 @@
 import { useAggregatedIngredients } from '../store/selectors'
-import { Tag } from './ui'
 
 /**
  * Read-only aggregated ingredients, with each line tagged by its sources —
@@ -9,37 +8,36 @@ import { Tag } from './ui'
 export function IngredientsList() {
   const ingredients = useAggregatedIngredients()
 
-  if (ingredients.length === 0) {
-    return (
-      <p className="text-sm text-muted">
-        Toggle a meal above to see what you’ll need.
-      </p>
-    )
-  }
-
   return (
-    <ul className="overflow-hidden rounded-xl border border-border">
-      {ingredients.map((ing) => (
-        <li
-          key={`${ing.name}|${ing.unit ?? ''}`}
-          className="flex items-start justify-between gap-3 border-b border-border bg-surface px-4 py-3 last:border-b-0"
-        >
-          <div className="min-w-0">
-            <div className="text-text">{ing.name}</div>
-            {ing.sources.length > 0 && (
-              <div className="mt-1.5 flex flex-wrap gap-1">
-                {ing.sources.map((source) => (
-                  <Tag key={source}>{source}</Tag>
-                ))}
+    // A notepad sheet: each ingredient on a ruled line, where it's from below.
+    <div className="paper-card notepad rounded-t-md px-4 pt-2.5 pb-3">
+      {ingredients.length === 0 ? (
+        <p className="paper-serif py-3 text-center italic text-ink-faint">
+          Tick Include on a meal to see what it needs.
+        </p>
+      ) : (
+        <ul>
+          {ingredients.map((ing) => (
+            <li
+              key={`${ing.name}|${ing.unit ?? ''}`}
+              className="paper-serif border-b border-line-blue pt-1.5 pb-1 last:border-b-0"
+            >
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="text-[17px]">{ing.name}</span>
+                <span className="shrink-0 text-base text-ink-soft">
+                  {formatAmount(ing.quantity, ing.unit)}
+                </span>
               </div>
-            )}
-          </div>
-          <span className="shrink-0 text-sm text-muted">
-            {formatAmount(ing.quantity, ing.unit)}
-          </span>
-        </li>
-      ))}
-    </ul>
+              {ing.sources.length > 0 && (
+                <div className="text-xs italic leading-[18px] text-ink-faint">
+                  {ing.sources.join(', ')}
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   )
 }
 

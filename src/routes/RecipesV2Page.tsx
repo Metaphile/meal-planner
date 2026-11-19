@@ -439,13 +439,11 @@ export default function RecipesV2Page() {
   const header = (
     <div ref={headerRef} className="absolute inset-x-0 top-0 z-0">
       <PageHeader
+        paper
         title="Recipes"
         action={
           canEditRecipes ? (
-            <Link
-              to="/recipes/new"
-              className="rounded-full bg-brand px-3 py-1.5 text-sm font-semibold text-on-brand active:scale-95"
-            >
+            <Link to="/recipes/new" className="kraft-tag">
               Create
             </Link>
           ) : undefined

@@ -48,7 +48,7 @@ const tabs: { to: string; label: string; icon: ReactNode }[] = [
 export function TabBar() {
   return (
     <nav
-      className="flex shrink-0 border-t border-border bg-surface"
+      className="flex shrink-0 border-t border-paper-edge bg-paper"
       style={{ paddingBottom: 'var(--safe-bottom)' }}
     >
       {tabs.map((tab) => (
@@ -57,7 +57,7 @@ export function TabBar() {
           to={tab.to}
           className={({ isActive }) =>
             `flex flex-1 flex-col items-center gap-1 py-2 text-[11px] transition-colors ${
-              isActive ? 'font-semibold text-brand' : 'font-normal text-muted'
+              isActive ? 'text-ink' : 'text-ink-faint'
             }`
           }
         >
@@ -67,14 +67,19 @@ export function TabBar() {
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
-                strokeWidth={isActive ? 2.4 : 2}
-                className={`h-6 w-6 transition-transform duration-200 ease-out ${
-                  isActive ? 'scale-110' : 'scale-100'
-                }`}
+                strokeWidth={isActive ? 2 : 1.7}
+                className="h-6 w-6"
               >
                 {tab.icon}
               </svg>
-              {tab.label}
+              {/* The active tab is underlined with the cards' red rule. */}
+              <span
+                className={`border-b-[1.5px] ${
+                  isActive ? 'border-rule-red' : 'border-transparent'
+                }`}
+              >
+                {tab.label}
+              </span>
             </>
           )}
         </NavLink>

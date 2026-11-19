@@ -3,10 +3,23 @@ import { useEffect, type ReactNode } from 'react'
 export function PageHeader({
   title,
   action,
+  paper = false,
 }: {
   title: string
   action?: ReactNode
+  /** The recipe-box look: a serif title on the counter, not a white bar. */
+  paper?: boolean
 }) {
+  if (paper) {
+    return (
+      <header className="flex items-center justify-between gap-3 bg-backdrop px-4 pt-2.5 pb-2 text-ink">
+        <h1 className="paper-serif text-[27px] font-semibold leading-9 tracking-[0.2px]">
+          {title}
+        </h1>
+        {action}
+      </header>
+    )
+  }
   return (
     <header className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-border bg-bg/90 px-4 py-3 backdrop-blur">
       <h1 className="text-lg font-semibold">{title}</h1>
