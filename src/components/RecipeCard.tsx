@@ -147,7 +147,7 @@ export const RecipeCard = forwardRef<HTMLDivElement, CardProps>(
           </div>
         )}
 
-        {/* Shading as the card tips back in the rolodex (--shade on its wrapper). */}
+        {/* Shading as the card tips back in the rolodex (its opacity is set per frame; in a pocket, from --shade). */}
         <span className="rolodex-dim" />
       </div>
     )

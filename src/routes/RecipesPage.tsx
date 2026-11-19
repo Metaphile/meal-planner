@@ -265,6 +265,11 @@ export default function RecipesPage() {
   const itemEls = useRef<(HTMLDivElement | null)[]>([])
   const lastPose = useRef<string[]>([])
   const lastZ = useRef<number[]>([])
+  // Each item's shade as last written (to its .rolodex-dim elements' opacity
+  // directly: a CSS variable on the wrapper would restyle the whole card
+  // every frame), and those elements.
+  const lastShade = useRef<number[]>([])
+  const dims = useRef(new WeakMap<HTMLElement, HTMLElement[]>())
   const shown = useRef<boolean[]>([])
   const headerRef = useRef<HTMLDivElement>(null)
   const wheel = useMemo(() => fitWheel(stageH), [stageH])
@@ -315,12 +320,23 @@ export default function RecipesPage() {
         lastPose.current[i] = pose
         el.style.transform = pose
         // Shade as it tips back toward the top; a touch as it leans in below.
+        // (Only when it visibly changes — most cards' shade doesn't.)
         const deg = phi / DEG
         const shade =
-          deg < 0
-            ? 0.5 * Math.min(1, Math.max(0, (-deg - 20) / 55))
-            : 0.15 * Math.min(1, Math.max(0, (deg - 20) / 25))
-        el.style.setProperty('--shade', shade.toFixed(3))
+          Math.round(
+            (deg < 0
+              ? 0.5 * Math.min(1, Math.max(0, (-deg - 20) / 55))
+              : 0.15 * Math.min(1, Math.max(0, (deg - 20) / 25))) * 100,
+          ) / 100
+        if (lastShade.current[i] !== shade) {
+          lastShade.current[i] = shade
+          let ds = dims.current.get(el)
+          if (!ds) {
+            ds = [...el.querySelectorAll<HTMLElement>('.rolodex-dim')]
+            dims.current.set(el, ds)
+          }
+          for (const d of ds) d.style.opacity = String(shade)
+        }
       }
       // Each item in front of the one before it.
       const zi = i + 1
@@ -341,7 +357,12 @@ export default function RecipesPage() {
   useLayoutEffect(() => {
     const layer = scrollRef.current!
     const drum = createDrumScroll(layer, {
-      onChange: () => paintRef.current(),
+      // In an animation frame: paint now. From touch input: once per frame.
+      onChange: (now) => {
+        if (now) paintRef.current()
+        else if (!raf.current)
+          raf.current = requestAnimationFrame(() => paintRef.current())
+      },
       dimension: () => layer.clientHeight,
     })
     drumRef.current = drum
@@ -365,6 +386,7 @@ export default function RecipesPage() {
     }
     lastPose.current = []
     lastZ.current = []
+    lastShade.current = []
     shown.current = []
     paint()
   }, [paint, q, pageH, headerH, bounds])
@@ -445,9 +467,7 @@ export default function RecipesPage() {
         viewTop,
         wheelPose: `translate3d(0px, ${(headerH + rodY - off).toFixed(1)}px, ${z.toFixed(1)}px) rotateX(${(-deg).toFixed(2)}deg)`,
         flatPose: `translate3d(0px, ${(headerH + rodOnScreen - off).toFixed(1)}px, 0px) rotateX(0deg)`,
-        shade: Number(
-          itemEls.current[index]?.style.getPropertyValue('--shade') || 0,
-        ),
+        shade: lastShade.current[index] ?? 0,
       }
     },
     [items, wheelSpot, headerH],
@@ -474,6 +494,7 @@ export default function RecipesPage() {
       // Placed on the wheel once (it was skipped while in hand), then freed.
       lifted.current = null
       lastPose.current = []
+      lastShade.current = []
       shown.current = []
       paint()
       lifted.current = key
@@ -528,6 +549,7 @@ export default function RecipesPage() {
     // editing may have moved it to another letter).
     lastPose.current = []
     lastZ.current = []
+    lastShade.current = []
     shown.current = []
     paint()
     flushSync(() => setOpen(null))

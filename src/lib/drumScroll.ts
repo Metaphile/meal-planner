@@ -55,7 +55,10 @@ export function createDrumScroll(
     onChange,
     dimension,
   }: {
-    onChange: () => void
+    /** The position changed. `now`: paint in this frame (we're in an
+     *  animation frame already); otherwise schedule it (input events can
+     *  come faster than frames). */
+    onChange: (now: boolean) => void
     /** The view's size (scales the rubber band). */
     dimension: () => number
   },
@@ -77,31 +80,41 @@ export function createDrumScroll(
   let springEnd = 0 // the end a spring is pulling toward
   let written = -1 // the scroll offset we last set ourselves
 
-  const emit = (p: number) => {
+  const emit = (p: number, now = true) => {
     pos = p
-    // Keep the native scroll offset in step (within the ends; a stretch past
-    // them is ours alone).
-    const st = Math.min(max, Math.max(0, p))
-    if (Math.abs(el.scrollTop - st) >= 0.5) {
-      el.scrollTop = st
-      written = el.scrollTop
-    }
-    onChange()
+    onChange(now)
+  }
+
+  // Bring the native scroll offset into step (within the ends; a stretch
+  // past them is ours alone) — only once the drum is at rest: writing it
+  // every frame (and reading it back) forced a layout per frame on iPhone.
+  const syncNative = () => {
+    const st = Math.min(max, Math.max(0, pos))
+    if (Math.abs(st - written) < 0.5) return
+    written = st
+    el.scrollTop = st
+  }
+  const rest = () => {
+    mode = 'idle'
+    syncNative()
   }
 
   // The wheel or trackpad scrolled it (not us): that's the position now.
   const onScroll = () => {
     const st = el.scrollTop
-    if (
-      Math.abs(st - written) < 0.5 &&
-      Math.abs(st - Math.min(max, Math.max(0, pos))) < 1
-    )
-      return // our own write echoing back
+    if (Math.abs(st - written) < 1) return // our own write echoing back
     written = -1
     if (mode === 'drag') return
     if (mode !== 'idle') stop()
     pos = st
-    onChange()
+    onChange(false)
+  }
+  // The wheel taking over from touch motion: put the native offset where the
+  // drum is first, so the wheel carries on from there.
+  const onWheel = () => {
+    if (mode === 'drag') return
+    if (mode !== 'idle') stop()
+    syncNative()
   }
 
   // Position <-> "raw" finger travel (identical inside the ends; stretched
@@ -151,8 +164,8 @@ export function createDrumScroll(
       if (k >= 1) {
         const done = tween.done
         tween = null
-        mode = 'idle'
         emit(p)
+        rest()
         done()
         return
       }
@@ -187,6 +200,7 @@ export function createDrumScroll(
     }
     emit(p)
     if (mode !== 'idle') raf = requestAnimationFrame(tick)
+    else syncNative() // come to rest
   }
 
   // ---- Touch / pen / mouse drag -------------------------------------------
@@ -230,7 +244,7 @@ export function createDrumScroll(
     e.preventDefault() // no text selection while dragging with a mouse
     samples.push([e.timeStamp, e.clientY])
     if (samples.length > 8) samples.shift()
-    emit(fromRaw(raw0 - dy))
+    emit(fromRaw(raw0 - dy), false)
   }
 
   const onPointerUp = (e: PointerEvent) => {
@@ -256,7 +270,7 @@ export function createDrumScroll(
     v = Math.max(-8, Math.min(8, vel))
     if (outside()) run('spring')
     else if (Math.abs(v) > 0.05) run('momentum')
-    else mode = 'idle'
+    else rest()
   }
 
   const onPointerCancel = (e: PointerEvent) => {
@@ -264,7 +278,7 @@ export function createDrumScroll(
     pointerId = -1
     dragging = false
     if (outside()) run('spring')
-    else mode = 'idle'
+    else rest()
   }
 
   // A tap that ended a drag, or stopped the drum, isn't a click on a card.
@@ -282,12 +296,14 @@ export function createDrumScroll(
   el.addEventListener('pointercancel', onPointerCancel)
   el.addEventListener('click', onClickCapture, true)
   el.addEventListener('scroll', onScroll, { passive: true })
+  el.addEventListener('wheel', onWheel, { passive: true })
 
   return {
     get: () => pos,
     set(p) {
       stop()
       emit(p)
+      syncNative()
     },
     animateTo(to, ms) {
       stop()
@@ -315,6 +331,7 @@ export function createDrumScroll(
       el.removeEventListener('pointercancel', onPointerCancel)
       el.removeEventListener('click', onClickCapture, true)
       el.removeEventListener('scroll', onScroll)
+      el.removeEventListener('wheel', onWheel)
     },
   }
 }
