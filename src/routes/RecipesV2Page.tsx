@@ -436,28 +436,29 @@ export default function RecipesV2Page() {
 
   const openItem = open ? items[open.index] : undefined
 
+  const header = (
+    <div ref={headerRef} className="absolute inset-x-0 top-0 z-0">
+      <PageHeader
+        title="Recipes"
+        action={
+          canEditRecipes ? (
+            <Link
+              to="/recipes/new"
+              className="rounded-full bg-brand px-3 py-1.5 text-sm font-semibold text-on-brand active:scale-95"
+            >
+              Create
+            </Link>
+          ) : undefined
+        }
+      />
+    </div>
+  )
+
   return (
     <div className="relative h-full">
-      {/* Beneath the rolodex layer; no resting card reaches up into it, so
-          only a card being taken out ever passes over it. */}
-      <div ref={headerRef} className="absolute inset-x-0 top-0 z-[1]">
-        <PageHeader
-          title="Recipes"
-          action={
-            canEditRecipes ? (
-              <Link
-                to="/recipes/new"
-                className="rounded-full bg-brand px-3 py-1.5 text-sm font-semibold text-on-brand active:scale-95"
-              >
-                Create
-              </Link>
-            ) : undefined
-          }
-        />
-      </div>
-
       {recipes.length === 0 ? (
         <div style={{ paddingTop: headerH }}>
+          {header}
           <EmptyState
             title="No recipes yet"
             hint={canEditRecipes ? 'Tap Create to add your first.' : undefined}
@@ -473,13 +474,15 @@ export default function RecipesV2Page() {
               boxShadow: 'inset 0 10px 14px -10px rgb(0 0 0 / 0.25)',
             }}
           />
-          {/* The rolodex layer: the whole page, transparent, over the header.
-              Only the cards and the wheel's area below the header take
-              touches, so the header's buttons still work. */}
+          {/* The rolodex layer: the whole page, header included, so a card
+              being taken out passes over the header rather than behind it.
+              It takes touches itself (iOS won't touch-scroll a container
+              with pointer-events: none); the header lives inside the stage,
+              beneath every card, so its buttons still work. */}
           <div
             ref={scrollRef}
             onScroll={onScroll}
-            className="scroll-y no-scrollbar pointer-events-none absolute inset-0 z-[2] overflow-x-hidden"
+            className="scroll-y no-scrollbar absolute inset-0 z-[2] overflow-x-hidden"
           >
             {/* The wheel: pinned while the spacer below scrolls under it. */}
             <div
@@ -490,10 +493,7 @@ export default function RecipesV2Page() {
                 perspectiveOrigin: `50% ${headerH + wheel.front}px`,
               }}
             >
-              <div
-                className="pointer-events-auto absolute inset-x-0 bottom-0"
-                style={{ top: headerH }}
-              />
+              {header}
               {items.map((item, i) => (
                 <RolodexItem
                   key={item.key}
