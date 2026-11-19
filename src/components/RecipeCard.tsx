@@ -425,6 +425,8 @@ function IngredientTable({
   )
 }
 
+const NOTES_MIN_LINES = 6
+
 /**
  * The back of a card: the recipe written out on paper fields to edit. Nothing
  * reaches the store until Save.
@@ -433,12 +435,23 @@ const RecipeCardBack = forwardRef<
   HTMLDivElement,
   {
     recipe: Recipe
+    /** Not saved yet (nothing to delete). */
+    isNew?: boolean
     onCancel: () => void
     onSaved: () => void
     onDeleted: () => void
   } & HTMLAttributes<HTMLDivElement>
 >(function RecipeCardBack(
-  { recipe, onCancel, onSaved, onDeleted, className = '', style, ...rest },
+  {
+    recipe,
+    isNew = false,
+    onCancel,
+    onSaved,
+    onDeleted,
+    className = '',
+    style,
+    ...rest
+  },
   ref,
 ) {
   const upsertRecipe = useStore((s) => s.upsertRecipe)
@@ -450,6 +463,16 @@ const RecipeCardBack = forwardRef<
   const [notes, setNotes] = useState(recipe.notes ?? '')
   const [tagsText, setTagsText] = useState(recipe.tags.join(', '))
   const [confirmingDelete, setConfirmingDelete] = useState(false)
+
+  // Notes grow a ruled line at a time as you write, so they never scroll.
+  const notesRef = useRef<HTMLTextAreaElement>(null)
+  useLayoutEffect(() => {
+    const el = notesRef.current
+    if (!el) return
+    el.style.height = '0px'
+    const lines = Math.max(NOTES_MIN_LINES, Math.ceil(el.scrollHeight / 22))
+    el.style.height = `${lines * 22}px`
+  }, [notes])
 
   const save = () => {
     upsertRecipe({
@@ -500,12 +523,13 @@ const RecipeCardBack = forwardRef<
           <label className="block">
             <span className={label}>Notes</span>
             <textarea
+              ref={notesRef}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              rows={6}
+              rows={NOTES_MIN_LINES}
               placeholder="Prep tips, substitutions…"
               autoComplete="off"
-              className="paper-lines block w-full resize-none bg-transparent leading-[22px] placeholder:italic placeholder:text-ink-faint focus:outline-none"
+              className="paper-lines block w-full resize-none overflow-hidden bg-transparent leading-[22px] placeholder:italic placeholder:text-ink-faint focus:outline-none"
             />
           </label>
           <label className="block">
@@ -522,13 +546,15 @@ const RecipeCardBack = forwardRef<
       </div>
 
       <div className="flex shrink-0 items-center gap-2 px-4 pb-3 pt-1.5">
-        <button
-          type="button"
-          onClick={() => setConfirmingDelete(true)}
-          className="px-1 py-1.5 text-sm font-medium leading-5 text-danger active:opacity-60"
-        >
-          Delete
-        </button>
+        {!isNew && (
+          <button
+            type="button"
+            onClick={() => setConfirmingDelete(true)}
+            className="px-1 py-1.5 text-sm font-medium leading-5 text-danger active:opacity-60"
+          >
+            Delete
+          </button>
+        )}
         <span className="flex-1" />
         <button type="button" onClick={onCancel} className={EDIT_CLASS}>
           Cancel
@@ -627,13 +653,14 @@ export function CardDetail({
   canEditRecipes,
   canEditPlan,
   renderActions,
+  isNew = false,
   onClosed,
 }: {
   recipe: Recipe
   /** The card's slot at the moment it was tapped (fixes the card's width). */
   origin: CardOrigin
   /** Its slot now (for putting it back). */
-  getOrigin: () => CardOrigin
+  getOrigin: () => CardOrigin | null
   /** The card element in the rolodex (its parent rides the wheel). */
   getRolodexCard: () => HTMLElement | undefined
   canEditRecipes: boolean
@@ -642,6 +669,10 @@ export function CardDetail({
    *  the card away instead of putting it back (for when it's leaving, e.g.
    *  removed from a meal; onClosed follows either way); `edit` turns it over. */
   renderActions?: (api: { dismiss: () => void; edit: () => void }) => ReactNode
+  /** A new recipe: the card rises into view from below already turned over
+   *  to its (empty) back. Cancel lets it fall away; Save turns it to its
+   *  front, a recipe like any other. */
+  isNew?: boolean
   onClosed: () => void
 }) {
   // Show the recipe as it is now (it may be edited while in hand).
@@ -651,9 +682,12 @@ export function CardDetail({
   const flipRef = useRef<HTMLDivElement>(null) // turns over
   const frontRef = useRef<HTMLDivElement>(null)
   const backRef = useRef<HTMLDivElement>(null)
-  const [editing, setEditing] = useState(false) // the back is there
-  const [facing, setFacing] = useState<'front' | 'back'>('front')
-  const editingRef = useRef(false)
+  const [editing, setEditing] = useState(isNew) // the back is there
+  const [facing, setFacing] = useState<'front' | 'back'>(
+    isNew ? 'back' : 'front',
+  )
+  const editingRef = useRef(isNew)
+  const unsaved = useRef(isNew) // a new card not yet saved
   const flipping = useRef(false)
   const shadeRef = useRef<HTMLDivElement>(null) // the shadow over the rolodex
   const scrollRef = useRef<HTMLDivElement>(null) // the card scrolls in this
@@ -679,11 +713,17 @@ export function CardDetail({
     // Swap when the card is clear of the cards in front — and not before it
     // has had time to stand up (a card with nothing in front clears at once).
     const minStand = Math.min(0.35 * T, 160)
-    const tSwap = arc.apex
-      ? arc.tHand
-      : opening
-        ? Math.max(arc.tHand, minStand)
-        : Math.min(arc.tHand, T - minStand)
+    // (No card in the rolodex — e.g. a new one rising from below: this card
+    // flies the whole way.)
+    const tSwap = !rdxCard
+      ? opening
+        ? 0
+        : T
+      : arc.apex
+        ? arc.tHand
+        : opening
+          ? Math.max(arc.tHand, minStand)
+          : Math.min(arc.tHand, T - minStand)
     const ySwap = arc.y(tSwap)
     const inFg = (t: number) => (opening ? t >= tSwap : t < tSwap)
     const times = [...new Set([...sampleTimes(arc), tSwap])].sort(
@@ -772,6 +812,8 @@ export function CardDetail({
   // Fly out of the rolodex into place.
   useLayoutEffect(() => {
     const card = cardRef.current!
+    // A new card arrives turned over, drawn flat (its front hidden).
+    if (isNew && frontRef.current) frontRef.current.style.visibility = 'hidden'
     // Measure the resting card with no animation applied (StrictMode re-runs
     // this effect in dev while the first one is already in flight).
     card.getAnimations().forEach((x) => x.cancel())
@@ -802,6 +844,13 @@ export function CardDetail({
     scrollRef.current!.style.overflow = 'hidden' // hold still while it flies
     const base = card.getBoundingClientRect().top
     const o = getOrigin()
+    if (!o) {
+      // Nowhere in view to go back to (e.g. it doesn't match the search):
+      // let it fade away instead.
+      closing.current = false
+      dismiss()
+      return
+    }
     const anim = fly(
       arcThrough(base + fromY, o.clearTop, o.slotTop),
       o,
@@ -812,6 +861,7 @@ export function CardDetail({
   }
   const closeRef = useRef(close)
   closeRef.current = close
+  const dismissRef = useRef<() => void>(() => {})
 
   // Fade away where it is (it's not going back into its slot).
   const dismiss = () => {
@@ -840,6 +890,7 @@ export function CardDetail({
     )
     anim.onfinish = () => onClosedRef.current()
   }
+  dismissRef.current = dismiss
 
   /**
    * Turn the card over (to its back, to edit) or back. It turns about its
@@ -913,12 +964,21 @@ export function CardDetail({
   flipRefFn.current = flip
   const edit = () => flipRefFn.current(true)
   const unedit = () => flipRefFn.current(false)
+  // Cancel: turn back over — or, for a new card never saved, let it go.
+  const cancel = () => {
+    if (unsaved.current) {
+      editingRef.current = false
+      dismissRef.current()
+    } else unedit()
+  }
+  const cancelRef = useRef(cancel)
+  cancelRef.current = cancel
 
   // Escape puts the card back (or, turned over, cancels the edit).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return
-      if (editingRef.current) flipRefFn.current(false)
+      if (editingRef.current) cancelRef.current()
       else closeRef.current()
     }
     window.addEventListener('keydown', onKey)
@@ -1114,8 +1174,12 @@ export function CardDetail({
                 <RecipeCardBack
                   ref={backRef}
                   recipe={shown}
-                  onCancel={unedit}
-                  onSaved={unedit}
+                  isNew={isNew && unsaved.current}
+                  onCancel={cancel}
+                  onSaved={() => {
+                    unsaved.current = false
+                    unedit()
+                  }}
                   onDeleted={() => {
                     editingRef.current = false
                     dismiss()

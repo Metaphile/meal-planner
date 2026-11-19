@@ -8,8 +8,8 @@ import {
   useState,
 } from 'react'
 import { flushSync } from 'react-dom'
-import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store/store'
+import { newId } from '../lib/id'
 import { createDrumScroll, type DrumScroll } from '../lib/drumScroll'
 import { useAuth } from '../auth/AuthProvider'
 import { PageHeader } from '../components/ui'
@@ -267,6 +267,8 @@ export default function RecipesPage() {
   const [open, setOpen] = useState<{
     key: string
     recipe: Recipe
+    /** A new recipe, not yet in the box (it may never be). */
+    isNew?: boolean
     origin: CardOrigin
   } | null>(null)
   const indexOf = (key: string) => items.findIndex((it) => it.key === key)
@@ -444,6 +446,46 @@ export default function RecipesPage() {
     [items, wheelSpot, headerH],
   )
 
+  // Ready a card's slot for it to slide out of (or back into): the whole
+  // card, trimmed only below its rod (so as it slides up it comes out from
+  // behind the cards in front, and nothing swings out below).
+  const freeSlot = (wrap: HTMLDivElement) => {
+    wrap.style.height = 'auto'
+    wrap.style.overflow = 'visible'
+    wrap.style.clipPath = `inset(-4000px -24px calc(100% - ${CARD_H}px) -24px)`
+  }
+
+  /** Where the card in hand goes back to — or null if it has no place in
+   *  the box (a new card saved while searching for something else). A card
+   *  that was never in the box (a new one, just saved) gets its slot
+   *  readied first. If its slot isn't on screen (e.g. it was renamed to
+   *  another letter), it flies off the screen toward it, by itself. */
+  const homeOf = (key: string): CardOrigin | null => {
+    const i = indexOf(key)
+    const wrap = i >= 0 ? itemEls.current[i] : null
+    if (!wrap) return null
+    if (wrap.style.overflow !== 'visible') {
+      // Placed on the wheel once (it was skipped while in hand), then freed.
+      lifted.current = null
+      lastPose.current = []
+      shown.current = []
+      paint()
+      lifted.current = key
+      freeSlot(wrap)
+    }
+    const o = originOf(i)
+    if (shown.current[i]) return o
+    const above = rimPos(i, drumRef.current?.get() ?? 0) < 0
+    const out = above ? o.viewTop - o.height - 24 : window.innerHeight + 24
+    return {
+      ...o,
+      slotTop: out,
+      clearTop: out,
+      wheelPose: 'none',
+      flatPose: 'none',
+    }
+  }
+
   // Take the card out from wherever it hangs (the wheel doesn't move): it
   // stands up in place and slides out of its slot, then flies into view —
   // one continuous path. The foreground card mounts now and drives it all.
@@ -454,11 +496,7 @@ export default function RecipesPage() {
       if (it.kind !== 'card' || !wrap || busy.current) return
       busy.current = true
       lifted.current = it.key
-      // Whole card, trimmed only below its rod (so as it slides up it comes
-      // out from behind the cards in front, and nothing swings out below).
-      wrap.style.height = 'auto'
-      wrap.style.overflow = 'visible'
-      wrap.style.clipPath = `inset(-4000px -24px calc(100% - ${CARD_H}px) -24px)`
+      freeSlot(wrap)
       flushSync(() =>
         setOpen({ key: it.key, recipe: it.recipe, origin: originOf(index) }),
       )
@@ -508,8 +546,35 @@ export default function RecipesPage() {
   )
 
   // A blank card: write a new recipe on it.
-  const navigate = useNavigate()
-  const onNew = useCallback(() => navigate('/recipes/new'), [navigate])
+  // The blank card: a new card rises into view already turned over, to be
+  // written on. (Saved, it's a recipe like any other, and goes into the box.)
+  const onNew = useCallback(() => {
+    const layer = scrollRef.current
+    if (!layer || busy.current) return
+    busy.current = true
+    const r = layer.getBoundingClientRect()
+    const draft: Recipe = { id: newId(), title: '', tags: [], ingredients: [] }
+    lifted.current = draft.id
+    const below = window.innerHeight + 24
+    flushSync(() =>
+      setOpen({
+        key: draft.id,
+        recipe: draft,
+        isNew: true,
+        origin: {
+          slotTop: below,
+          clearTop: below,
+          left: r.left + layer.clientLeft + SIDE,
+          width: layer.clientWidth - SIDE * 2,
+          height: CARD_H,
+          viewTop: r.top + layer.clientTop,
+          wheelPose: 'none',
+          flatPose: 'none',
+          shade: 0,
+        },
+      }),
+    )
+  }, [])
 
   const setItemEl = useCallback((i: number, el: HTMLDivElement | null) => {
     itemEls.current[i] = el
@@ -627,13 +692,15 @@ export default function RecipesPage() {
           key={open.recipe.id}
           recipe={open.recipe}
           origin={open.origin}
-          getOrigin={() => originOf(indexOf(open.key))}
+          getOrigin={() => homeOf(open.key)}
           getRolodexCard={() => {
+            // (None to hand over to if its slot is off screen.)
             const i = indexOf(open.key)
-            return i >= 0 ? cardEl(i) : undefined
+            return i >= 0 && shown.current[i] ? cardEl(i) : undefined
           }}
           canEditRecipes={canEditRecipes}
           canEditPlan={canEditPlan}
+          isNew={open.isNew}
           onClosed={onClosed}
         />
       )}
