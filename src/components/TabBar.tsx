@@ -12,17 +12,6 @@ const tabs: { to: string; label: string; icon: ReactNode }[] = [
   {
     to: '/recipes',
     label: 'Recipes',
-    icon: (
-      <path
-        d="M6 4h9a3 3 0 0 1 3 3v13H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Zm3 5h6M9 13h6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    ),
-  },
-  {
-    to: '/recipes-v2',
-    label: 'Recipes v2',
     // A stack of index cards.
     icon: (
       <path

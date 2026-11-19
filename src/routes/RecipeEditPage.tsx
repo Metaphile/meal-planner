@@ -92,7 +92,7 @@ export default function RecipeEditPage() {
             onChange={(e) => setNotes(e.target.value)}
             rows={8}
             placeholder="Prep tips, substitutions…"
-            className="w-full rounded-lg border border-border bg-surface px-3 py-2 focus:border-brand focus:outline-none"
+            className="w-full rounded-lg border border-border bg-surface px-3 py-2 focus:border-kraft-edge focus:outline-none"
           />
         </Field>
 
@@ -168,7 +168,9 @@ function RecipeView({
           </div>
         )}
         <div>
-          <div className="mb-1.5 text-sm font-medium">Ingredients</div>
+          <div className="paper-serif mb-1.5 text-[13px] font-semibold uppercase tracking-wider text-muted">
+            Ingredients
+          </div>
           <ul className="overflow-hidden rounded-xl border border-border">
             {recipe.ingredients.map((ing, i) => (
               <li
@@ -187,7 +189,9 @@ function RecipeView({
         </div>
         {recipe.notes && (
           <div>
-            <div className="mb-1.5 text-sm font-medium">Notes</div>
+            <div className="paper-serif mb-1.5 text-[13px] font-semibold uppercase tracking-wider text-muted">
+              Notes
+            </div>
             <p className="whitespace-pre-wrap text-sm text-muted">
               {recipe.notes}
             </p>
@@ -210,7 +214,9 @@ function Field({
   return (
     <label className="block">
       <div className="mb-1.5 flex items-baseline justify-between">
-        <span className="text-sm font-medium text-text">{label}</span>
+        <span className="paper-serif text-[13px] font-semibold uppercase tracking-wider text-muted">
+          {label}
+        </span>
         {hint && <span className="text-xs text-muted">{hint}</span>}
       </div>
       {children}

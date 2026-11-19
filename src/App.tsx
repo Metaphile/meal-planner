@@ -7,7 +7,6 @@ import { useAuth } from './auth/AuthProvider'
 // Route-level code splitting keeps the initial bundle (and time-to-interactive)
 // small — each tab's code loads on demand.
 const RecipesPage = lazy(() => import('./routes/RecipesPage'))
-const RecipesV2Page = lazy(() => import('./routes/RecipesV2Page'))
 const RecipeEditPage = lazy(() => import('./routes/RecipeEditPage'))
 const MealPlanPage = lazy(() => import('./routes/MealPlanPage'))
 const AccountPage = lazy(() => import('./routes/AccountPage'))
@@ -44,7 +43,6 @@ export default function App() {
                 <>
                   <Route path="/" element={<Navigate to="/plan" replace />} />
                   <Route path="/recipes" element={<RecipesPage />} />
-                  <Route path="/recipes-v2" element={<RecipesV2Page />} />
                   <Route path="/recipes/new" element={<RecipeEditPage />} />
                   <Route path="/recipes/:id" element={<RecipeEditPage />} />
                   <Route path="/plan" element={<MealPlanPage />} />
@@ -55,7 +53,11 @@ export default function App() {
                       isAdmin ? <AdminPage /> : <Navigate to="/account" replace />
                     }
                   />
-                  {/* Old paths → plan. */}
+                  {/* Old paths. */}
+                  <Route
+                    path="/recipes-v2"
+                    element={<Navigate to="/recipes" replace />}
+                  />
                   <Route
                     path="/ingredients"
                     element={<Navigate to="/plan" replace />}
@@ -81,7 +83,7 @@ export default function App() {
 function SignedOut() {
   return (
     <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
-      <h1 className="text-xl font-semibold">Meal Planner</h1>
+      <h1 className="paper-serif text-2xl font-semibold">Meal Planner</h1>
       <p className="max-w-xs text-sm text-muted">
         This is a private family app. Open the invite link a family admin shared
         with you to sign in on this device.

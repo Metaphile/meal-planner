@@ -73,7 +73,6 @@ export default function MealPlanPage() {
       className="scroll-y h-full overflow-x-hidden bg-backdrop text-ink"
     >
       <PageHeader
-        paper
         title="Meals"
         action={
           canEdit ? (
@@ -93,7 +92,7 @@ export default function MealPlanPage() {
               : 'No meals are planned yet.'
           }
           action={
-            <Link to="/recipes-v2" className="kraft-tag">
+            <Link to="/recipes" className="kraft-tag">
               Browse recipes
             </Link>
           }

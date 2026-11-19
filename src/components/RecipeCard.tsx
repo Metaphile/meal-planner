@@ -15,7 +15,7 @@ import type { Ingredient, Recipe } from '../data/types'
 import { arcThrough, sampleTimes, type Arc } from '../lib/arc'
 
 /**
- * Paper recipe cards for the Recipes v2 rolodex.
+ * Paper recipe cards for the Recipes rolodex.
  *
  * There is one card, `RecipeCard`, used both in the rolodex and lifted out —
  * the whole card (every ingredient, notes, and the actions below the border)
@@ -593,7 +593,9 @@ function AddToMealButton({ recipeId }: { recipeId: string }) {
         timer.current = setTimeout(() => setAdded(false), 1400)
       }}
       className={`rounded-full px-4 py-1.5 text-sm font-semibold leading-5 transition active:scale-95 ${
-        added ? 'bg-surface-2 text-brand' : 'bg-brand text-on-brand'
+        added
+          ? 'border border-kraft-edge bg-surface-2 text-brand-ink'
+          : 'border border-kraft-edge bg-brand text-on-brand'
       }`}
     >
       {added ? 'Added ✓' : 'Add to Meal'}

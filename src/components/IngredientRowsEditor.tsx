@@ -44,7 +44,7 @@ function QuantityInput({
       inputMode="decimal"
       placeholder="Qty"
       aria-label="Quantity"
-      className="w-16 rounded-lg border border-border bg-surface px-2 py-2 text-center focus:border-brand focus:outline-none"
+      className="w-16 rounded-lg border border-border bg-surface px-2 py-2 text-center focus:border-kraft-edge focus:outline-none"
     />
   )
 }
@@ -79,7 +79,7 @@ export function IngredientRowsEditor({
             onChange={(e) => update(i, { name: e.target.value })}
             placeholder="Ingredient"
             aria-label="Ingredient name"
-            className="min-w-0 flex-1 rounded-lg border border-border bg-surface px-3 py-2 focus:border-brand focus:outline-none"
+            className="min-w-0 flex-1 rounded-lg border border-border bg-surface px-3 py-2 focus:border-kraft-edge focus:outline-none"
           />
           <QuantityInput
             value={row.quantity}
@@ -92,7 +92,7 @@ export function IngredientRowsEditor({
             }
             placeholder="Unit"
             aria-label="Unit"
-            className="w-20 rounded-lg border border-border bg-surface px-2 py-2 focus:border-brand focus:outline-none"
+            className="w-20 rounded-lg border border-border bg-surface px-2 py-2 focus:border-kraft-edge focus:outline-none"
           />
           <button
             type="button"
@@ -107,7 +107,7 @@ export function IngredientRowsEditor({
       <button
         type="button"
         onClick={add}
-        className="self-start rounded-full border border-border px-3 py-1.5 text-sm text-brand active:scale-95"
+        className="self-start rounded-full border border-border px-3 py-1.5 text-sm text-brand-ink active:scale-95"
       >
         {addLabel}
       </button>

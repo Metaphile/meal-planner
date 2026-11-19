@@ -85,7 +85,7 @@ function CapabilityChecklist({
             type="checkbox"
             checked={value.includes(c.key)}
             onChange={() => toggle(c.key)}
-            className="h-4 w-4 accent-brand"
+            className="h-4 w-4 accent-brand-ink"
           />
           {c.label}
         </label>
@@ -130,7 +130,7 @@ function InviteLinkBox({ link }: { link: string }) {
     }
   }
   return (
-    <div className="rounded-lg border border-brand bg-surface-2 p-2">
+    <div className="rounded-lg border border-kraft-edge bg-surface-2 p-2">
       <div className="mb-1 text-xs text-muted">
         Share this one-time link (valid 7 days):
       </div>
@@ -297,7 +297,7 @@ function UserRow({
             <button
               onClick={newInvite}
               disabled={busy}
-              className="text-sm font-medium text-brand active:scale-95"
+              className="text-sm font-medium text-brand-ink active:scale-95"
             >
               New invite link
             </button>

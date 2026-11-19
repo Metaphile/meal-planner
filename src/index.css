@@ -1,20 +1,23 @@
 @import 'tailwindcss';
 
 /* ---- Theme tokens -------------------------------------------------------- */
-/* Light theme: white background, mint-green accents. */
+/* The whole app is a recipe box on a kitchen counter: paper cards in ink on
+   a sage counter, with kraft for tabs, pockets and primary actions. The
+   general-purpose names (bg, surface, brand…) map onto that palette. */
 @theme {
-  --color-bg: #ffffff;
-  --color-surface: #f4faf8; /* cards / inputs */
-  --color-surface-2: #e6f5ef; /* chips / toggle-off track */
-  --color-border: #d3ebe2;
-  --color-brand: #10b981; /* mint-green accent (fills, tracks, active) */
-  --color-brand-strong: #c7f0e0; /* light mint highlight (selected rows) */
-  --color-on-brand: #06281f; /* readable text/icons on mint fills */
-  --color-text: #102a23; /* near-black green for primary text */
-  --color-muted: #5c7d71; /* muted green-gray */
-  --color-danger: #dc2626;
+  --color-bg: #dfe8e3; /* the counter (= backdrop) */
+  --color-surface: #fcf9f1; /* paper: cards, rows, inputs */
+  --color-surface-2: #f1e8d2; /* a deeper paper: chips, selected rows */
+  --color-border: #e4dac6; /* paper's edge */
+  --color-brand: #e2cb8f; /* kraft: primary actions, focus */
+  --color-brand-strong: #efe0b6; /* light kraft highlight */
+  --color-on-brand: #54431a; /* kraft ink, on kraft fills */
+  --color-brand-ink: #8a6420; /* kraft-coloured text that reads on paper */
+  --color-text: #3a3428; /* ink */
+  --color-muted: #7a705e; /* soft ink */
+  --color-danger: #b8402f; /* a warm, inky red */
 
-  /* The recipe box: paper, ink and kraft (Recipes v2, Meals). */
+  /* The recipe box: paper, ink and kraft. */
   --color-backdrop: #dfe8e3; /* the counter everything sits on */
   --color-paper: #fcf9f1;
   --color-paper-edge: #e4dac6;
@@ -84,7 +87,7 @@ body {
   overscroll-behavior: contain;
 }
 
-/* ---- The recipe box: paper pieces (Recipes v2, Meals) -------------------- */
+/* ---- The recipe box: paper pieces ------------------------------------ */
 @layer components {
   .paper-card {
     background: var(--color-paper);
