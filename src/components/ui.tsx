@@ -93,14 +93,6 @@ export function TextInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
   )
 }
 
-export function Tag({ children }: { children: ReactNode }) {
-  return (
-    <span className="rounded-full bg-surface-2 px-2 py-0.5 text-[11px] text-muted">
-      {children}
-    </span>
-  )
-}
-
 /**
  * Centered confirmation modal. Backdrop tap or Escape cancels.
  */

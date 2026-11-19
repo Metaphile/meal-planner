@@ -10,10 +10,9 @@ import {
   type Ref,
 } from 'react'
 import { createPortal, flushSync } from 'react-dom'
-import { Link } from 'react-router-dom'
 import { useStore } from '../store/store'
 import type { Ingredient, Recipe } from '../data/types'
-import { QuantityInput } from './IngredientRowsEditor'
+import { QuantityInput } from './QuantityInput'
 import { ConfirmDialog } from './ui'
 import { arcThrough, sampleTimes, type Arc } from '../lib/arc'
 
@@ -142,7 +141,7 @@ export const RecipeCard = forwardRef<HTMLDivElement, CardProps>(
             {actions ?? (
               <>
                 {canEditPlan && <AddToMealButton recipeId={recipe.id} />}
-                {canEditRecipes && <EditRecipeLink recipeId={recipe.id} />}
+                {canEditRecipes && <EditLabel />}
               </>
             )}
           </div>
@@ -158,16 +157,20 @@ export const RecipeCard = forwardRef<HTMLDivElement, CardProps>(
 const EDIT_CLASS =
   'rounded-full border border-[#d8cdb6] px-4 py-1.5 text-sm font-medium leading-5 active:scale-95'
 
-export function EditRecipeLink({ recipeId }: { recipeId: string }) {
+/** Edit, on a card that isn't in hand (in the rolodex or a pocket): just
+ *  the look of the Edit button the same card shows once it's taken out (so
+ *  the two match exactly as one hands over to the other). Not a control:
+ *  take the card out to edit it. */
+export function EditLabel() {
   return (
-    <Link to={`/recipes/${recipeId}`} className={EDIT_CLASS}>
+    <span aria-hidden className={`${EDIT_CLASS} inline-block`}>
       Edit
-    </Link>
+    </span>
   )
 }
 
 /** Edit, on a card in hand: turns the card over to its back. (Looks exactly
- *  like EditRecipeLink, which the same card shows in the rolodex.) */
+ *  like EditLabel, which the same card shows in the rolodex.) */
 export function EditButton({ onEdit }: { onEdit: () => void }) {
   return (
     <button type="button" onClick={onEdit} className={EDIT_CLASS}>

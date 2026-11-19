@@ -7,7 +7,6 @@ import { useAuth } from './auth/AuthProvider'
 // Route-level code splitting keeps the initial bundle (and time-to-interactive)
 // small — each tab's code loads on demand.
 const RecipesPage = lazy(() => import('./routes/RecipesPage'))
-const RecipeEditPage = lazy(() => import('./routes/RecipeEditPage'))
 const MealPlanPage = lazy(() => import('./routes/MealPlanPage'))
 const AccountPage = lazy(() => import('./routes/AccountPage'))
 const AdminPage = lazy(() => import('./routes/AdminPage'))
@@ -43,14 +42,21 @@ export default function App() {
                 <>
                   <Route path="/" element={<Navigate to="/plan" replace />} />
                   <Route path="/recipes" element={<RecipesPage />} />
-                  <Route path="/recipes/new" element={<RecipeEditPage />} />
-                  <Route path="/recipes/:id" element={<RecipeEditPage />} />
+                  {/* (Recipes are written and edited on their cards now.) */}
+                  <Route
+                    path="/recipes/*"
+                    element={<Navigate to="/recipes" replace />}
+                  />
                   <Route path="/plan" element={<MealPlanPage />} />
                   <Route path="/account" element={<AccountPage />} />
                   <Route
                     path="/admin"
                     element={
-                      isAdmin ? <AdminPage /> : <Navigate to="/account" replace />
+                      isAdmin ? (
+                        <AdminPage />
+                      ) : (
+                        <Navigate to="/account" replace />
+                      )
                     }
                   />
                   {/* Old paths. */}

@@ -26,7 +26,7 @@ import { IngredientsList } from '../components/IngredientsList'
 import {
   CardDetail,
   EditButton,
-  EditRecipeLink,
+  EditLabel,
   RecipeCard,
   type CardOrigin,
 } from '../components/RecipeCard'
@@ -350,7 +350,6 @@ function MealPocket({
                     canEditRecipes={canEditRecipes}
                     actions={
                       <PocketCardActions
-                        recipeId={recipe.id}
                         canEdit={canEdit}
                         canEditRecipes={canEditRecipes}
                       />
@@ -423,7 +422,6 @@ function MealPocket({
           canEditRecipes={canEditRecipes}
           renderActions={({ dismiss, edit }) => (
             <PocketCardActions
-              recipeId={lift.recipe.id}
               canEdit={canEdit}
               canEditRecipes={canEditRecipes}
               onRemove={() => {
@@ -445,15 +443,13 @@ function MealPocket({
 }
 
 /** A card taken out of a meal: take it out of the meal, or edit it (in hand,
- *  Edit turns the card over; in the pocket it's the same-looking link). */
+ *  Edit turns the card over; in the pocket it's the same-looking label). */
 function PocketCardActions({
-  recipeId,
   canEdit,
   canEditRecipes,
   onRemove,
   onEdit,
 }: {
-  recipeId: string
   canEdit: boolean
   canEditRecipes: boolean
   onRemove?: () => void
@@ -470,11 +466,7 @@ function PocketCardActions({
         </button>
       )}
       {canEditRecipes &&
-        (onEdit ? (
-          <EditButton onEdit={onEdit} />
-        ) : (
-          <EditRecipeLink recipeId={recipeId} />
-        ))}
+        (onEdit ? <EditButton onEdit={onEdit} /> : <EditLabel />)}
     </>
   )
 }
