@@ -21,7 +21,12 @@ import {
   StarIcon,
   type CardOrigin,
 } from '../components/RecipeCard'
-import { favoriteKey, isWanted, type Recipe } from '../data/types'
+import {
+  allIngredients,
+  favoriteKey,
+  isWanted,
+  type Recipe,
+} from '../data/types'
 
 /*
  * Recipes — a rolodex of paper cards on a wheel.
@@ -321,7 +326,7 @@ export default function RecipesPage() {
         (!q ||
           r.title.toLowerCase().includes(q) ||
           r.tags.some((t) => t.toLowerCase().includes(q)) ||
-          r.ingredients.some((i) => i.name.toLowerCase().includes(q))),
+          allIngredients(r).some((i) => i.name.toLowerCase().includes(q))),
     )
   }, [
     recipes,

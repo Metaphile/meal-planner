@@ -2,6 +2,8 @@ import { useMemo, useRef, useState, type ReactNode } from 'react'
 import type { AggregatedIngredient } from '../data/aggregate'
 import { haveKey, type Have } from '../data/types'
 import { useStore } from '../store/store'
+import { Amount, Unit } from './Unit'
+import { Ticker } from './Ticker'
 
 /**
  * Read-only aggregated ingredients, with each line tagged by its sources —
@@ -120,9 +122,12 @@ function IngredientLine({
             counted ? '-my-0.5 items-center' : 'items-baseline'
           }`}
         >
-          {/* (Short of what's needed: the name in red too.) */}
-          <span className={`text-[17px] ${short ? 'text-danger' : ''}`}>
-            {ing.name}
+          {/* (Short of what's needed: the name in red too. Too long to fit
+              beside its amount: it runs past, like a card's title.) */}
+          <span
+            className={`min-w-0 flex-1 text-[17px] ${short ? 'text-danger' : ''}`}
+          >
+            <Ticker text={ing.name} centred={false} />
           </span>
           {counted && !canEdit ? (
             // (A reader: how much there is, written — no counter to use.)
@@ -131,7 +136,8 @@ function IngredientLine({
             >
               <span className="font-semibold">{round(have.amount ?? 0)}</span>
               {needed && need !== undefined ? ` of ${need}` : ''}
-              {ing.unit ? ` ${ing.unit}` : ''}
+              {ing.unit && ' '}
+              <Unit>{ing.unit}</Unit>
             </span>
           ) : counted ? (
             <HaveCounter
@@ -142,8 +148,17 @@ function IngredientLine({
               canEdit={canEdit}
             />
           ) : (
-            <span className="shrink-0 text-base text-ink-soft">
-              {needed ? formatAmount(ing.quantity, ing.unit) : (ing.unit ?? '')}
+            <span className="shrink-0 whitespace-nowrap text-base text-ink-soft">
+              {needed ? (
+                <Amount
+                  quantity={
+                    ing.quantity === undefined ? undefined : round(ing.quantity)
+                  }
+                  unit={ing.unit}
+                />
+              ) : (
+                <Unit>{ing.unit}</Unit>
+              )}
             </span>
           )}
         </div>
@@ -300,7 +315,8 @@ function HaveCounter({
       />
       <span className="pr-0.5 pl-1.5 whitespace-nowrap">
         {need !== undefined ? `of ${round(need)}` : ''}
-        {unit ? `${need !== undefined ? ' ' : ''}${unit}` : ''}
+        {unit && need !== undefined && ' '}
+        <Unit>{unit}</Unit>
       </span>
       <button
         type="button"
@@ -350,9 +366,3 @@ export function parseAmount(text: string): number | undefined {
   return Number(t)
 }
 
-function formatAmount(quantity?: number, unit?: string): string {
-  if (quantity === undefined) return unit ?? ''
-  // Trim float noise (e.g. 0.1+0.2) without forcing decimals on whole numbers.
-  const rounded = round(quantity)
-  return unit ? `${rounded} ${unit}` : String(rounded)
-}

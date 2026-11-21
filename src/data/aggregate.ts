@@ -1,5 +1,5 @@
 import type { Ingredient, PlanMeal, Recipe, Want } from './types'
-import { isWanted } from './types'
+import { allIngredients, isWanted } from './types'
 
 /** A line in the aggregated ingredients view. */
 export interface AggregatedIngredient {
@@ -56,7 +56,7 @@ export function aggregateIngredients(
         if (component.kind === 'recipe') {
           const recipe = recipeById.get(component.recipeId)
           if (!recipe) continue
-          for (const ing of recipe.ingredients) add(ing, recipe.title, 1)
+          for (const ing of allIngredients(recipe)) add(ing, recipe.title, 1)
         } else {
           // Simple item: tag it with its own name.
           add(component, component.name, 1)
@@ -83,7 +83,7 @@ export function aggregateWanted(
       if (!recipe) continue
       const times = Math.max(1, want.count)
       const source = times > 1 ? `${recipe.title} ×${times}` : recipe.title
-      for (const ing of recipe.ingredients) add(ing, source, times)
+      for (const ing of allIngredients(recipe)) add(ing, source, times)
     }
   })
 }

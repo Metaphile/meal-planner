@@ -12,9 +12,35 @@ export interface Recipe {
   id: string
   title: string
   tags: string[]
+  /** The first section's lines (every recipe has it). */
   ingredients: Ingredient[]
+  /** The first section's title, if not STARTER_TITLE. */
+  ingredientsTitle?: string
+  /** Sections after the first, in order. */
+  sections?: IngredientSection[]
   notes?: string
 }
+
+/** A titled group of a recipe's ingredient lines ("Sauce", "Topping"). */
+export interface IngredientSection {
+  title: string
+  ingredients: Ingredient[]
+}
+
+/** The first section's title, unless it's given another. */
+export const STARTER_TITLE = 'Ingredients'
+
+/** A recipe's sections, the first included (titled as it shows). */
+export const sectionsOf = (r: Recipe): IngredientSection[] => [
+  { title: r.ingredientsTitle || STARTER_TITLE, ingredients: r.ingredients },
+  ...(r.sections ?? []),
+]
+
+/** Every ingredient line of a recipe, all sections, in order. */
+export const allIngredients = (r: Recipe): Ingredient[] =>
+  r.sections?.length
+    ? [...r.ingredients, ...r.sections.flatMap((s) => s.ingredients)]
+    : r.ingredients
 
 /**
  * A meal is composed of recipe references AND/OR simple items.

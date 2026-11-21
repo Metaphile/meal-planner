@@ -178,4 +178,31 @@ describe('aggregateWanted', () => {
       aggregateWanted([{ id: 'gone', recipeId: 'gone', count: 3 }], recipes),
     ).toEqual([])
   })
+
+  it('counts every section of a recipe, not just the first', () => {
+    const crumble: Recipe = {
+      id: 'r-crumble',
+      title: 'Crumble',
+      tags: [],
+      ingredients: [{ name: 'Apples', quantity: 4 }],
+      sections: [
+        {
+          title: 'Topping',
+          ingredients: [
+            { name: 'Flour', quantity: 1, unit: 'cup' },
+            { name: 'Brown sugar', quantity: 2, unit: 'heaping tbsp' },
+          ],
+        },
+      ],
+    }
+    const out = aggregateWanted(
+      [{ id: 'r-crumble', recipeId: 'r-crumble', count: 2 }],
+      [crumble],
+    )
+    expect(out.map((l) => [l.name, l.quantity, l.unit])).toEqual([
+      ['Apples', 8, undefined],
+      ['Brown sugar', 4, 'heaping tbsp'],
+      ['Flour', 2, 'cup'],
+    ])
+  })
 })

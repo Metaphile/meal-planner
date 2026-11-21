@@ -18,8 +18,16 @@ import {
   useWantCount,
 } from '../store/selectors'
 import { useAuth } from '../auth/AuthProvider'
-import type { Ingredient, Recipe } from '../data/types'
+import {
+  STARTER_TITLE,
+  allIngredients,
+  sectionsOf,
+  type Ingredient,
+  type Recipe,
+} from '../data/types'
 import { QuantityInput } from './QuantityInput'
+import { Amount } from './Unit'
+import { Ticker } from './Ticker'
 import { ConfirmDialog } from './ui'
 import { arcThrough, sampleTimes, type Arc } from '../lib/arc'
 
@@ -38,16 +46,14 @@ export const CARD_H = 216
 /** Perspective used for the rolodex tilt. */
 export const PERSPECTIVE = 900
 
-function formatAmount(ing: Ingredient): string {
-  if (ing.quantity === undefined) return ing.unit ?? ''
-  return ing.unit ? `${ing.quantity} ${ing.unit}` : String(ing.quantity)
-}
 
 function IngredientLine({ ing }: { ing: Ingredient }) {
   return (
     <li className="flex justify-between gap-3">
       <span className="truncate">{ing.name}</span>
-      <span className="shrink-0 text-[#8a8170]">{formatAmount(ing)}</span>
+      <span className="shrink-0 whitespace-nowrap text-[#8a8170]">
+        <Amount quantity={ing.quantity} unit={ing.unit} />
+      </span>
     </li>
   )
 }
@@ -56,18 +62,42 @@ function IngredientLine({ ing }: { ing: Ingredient }) {
 const PEEK_LINES = 16
 
 function CardBody({ recipe, peek }: { recipe: Recipe; peek: boolean }) {
-  const ingredients = peek
-    ? recipe.ingredients.slice(0, PEEK_LINES)
-    : recipe.ingredients
+  // Its sections (the first, and any others with lines). Headed only when
+  // there's more than one, or the first is called something else — else
+  // it's just the lines, as a card always was.
+  const sections = sectionsOf(recipe).filter(
+    (s, i) => i === 0 || s.ingredients.length > 0,
+  )
+  const headed = sections.length > 1 || !!recipe.ingredientsTitle
+  // (Peeking: only as many lines as can show, headings included.)
+  let room = peek ? PEEK_LINES : Infinity
   return (
     <>
-      <ul>
-        {recipe.ingredients.length === 0 ? (
+      {allIngredients(recipe).length === 0 ? (
+        <ul>
           <li className="text-[#8a8170]">No ingredients yet</li>
-        ) : (
-          ingredients.map((ing, i) => <IngredientLine key={i} ing={ing} />)
-        )}
-      </ul>
+        </ul>
+      ) : (
+        sections.map((s, si) => {
+          if (room <= 0) return null
+          const gap = si > 0 ? 1 : 0 // (a line left blank before it)
+          const head = headed ? 1 : 0
+          const lines = s.ingredients.slice(0, Math.max(0, room - gap - head))
+          room -= gap + head + lines.length
+          return (
+            <section key={si} className={gap ? 'mt-[22px]' : ''}>
+              {headed && (
+                <div className="font-semibold text-[#8a8170]">{s.title}</div>
+              )}
+              <ul>
+                {lines.map((ing, i) => (
+                  <IngredientLine key={i} ing={ing} />
+                ))}
+              </ul>
+            </section>
+          )
+        })
+      )}
       {/* (Peeking, below what can show: not drawn.) */}
       {!peek && recipe.tags.length > 0 && (
         <p className="mt-[22px] text-[#8a8170]">
@@ -162,7 +192,7 @@ export const RecipeCard = forwardRef<HTMLDivElement, CardProps>(
                   large ? 'text-[29px] leading-[26px]' : 'text-[28px] leading-[25px]'
                 }`}
               >
-                <TickerTitle text={recipe.title} />
+                <Ticker text={recipe.title} />
               </div>
               <WantBox recipeId={recipe.id} canEditPlan={canEditPlan} />
             </div>
@@ -231,160 +261,6 @@ export function EditButton({ onEdit }: { onEdit: () => void }) {
   )
 }
 
-/**
- * A title on one line: as it is if it fits; if not, it runs past like a
- * ticker, round and round (two copies, each followed by a dot that marks
- * where the title ends and starts again, sliding by half their length).
- * Whether it fits is measured when it's laid out (and resized), never per
- * frame; the moving text is a layer of its own, so it slides without
- * re-drawing the card. Running, its ends are feathered: it fades out over
- * FEATHER px at either end of a box that reaches OUTSET px out into the
- * space either side of it. (Reduced motion: an ellipsis.)
- */
-function TickerTitle({ text }: { text: string }) {
-  const boxRef = useRef<HTMLSpanElement>(null)
-  const textRef = useRef<HTMLSpanElement>(null)
-  const trackRef = useRef<HTMLSpanElement>(null)
-  const [runs, setRuns] = useState(false)
-  const [loop, setLoop] = useState(0) // px: one title, its dot, and gaps
-  // Where a still title last sat (px, from its row's left: see xOf), so a
-  // title that starts running — its column narrowed — runs on from there,
-  // rather than jumping to where a running title starts. And how far that
-  // is from the start (px; + to the right of it).
-  const stillAt = useRef<number | null>(null)
-  const [lead, setLead] = useState(0)
-  // A still title is centred on its row, not its column: the column can be
-  // off-centre (a Want count beside the box narrows it on the right), so a
-  // still title is moved by `shift` px. It must fit centred so; a running
-  // title has the whole column.
-  const [shift, setShift] = useState(0)
-  const runsRef = useRef(runs)
-  const shiftRef = useRef(shift)
-  const measure = () => {
-    const column = boxRef.current!.parentElement!
-    const row = column.parentElement!
-    const off =
-      column.offsetLeft +
-      column.offsetWidth / 2 -
-      (row.offsetLeft + row.offsetWidth / 2)
-    const fits =
-      textRef.current!.offsetWidth <= column.clientWidth - 2 * Math.abs(off) + 1
-    return { runs: !fits, shift: fits ? -off : 0 }
-  }
-  useLayoutEffect(() => {
-    const m = measure()
-    setRuns(m.runs)
-    setShift(m.shift)
-    // (Resized: settled at once, before it's drawn — else a frame is drawn
-    // of the title overflowing, still.)
-    const ro = new ResizeObserver(() => {
-      const m = measure()
-      if (m.runs !== runsRef.current || m.shift !== shiftRef.current)
-        flushSync(() => {
-          setRuns(m.runs)
-          setShift(m.shift)
-        })
-    })
-    ro.observe(boxRef.current!.parentElement!)
-    return () => ro.disconnect()
-  }, [text])
-  // Still, where it's drawn. (Unless it's about to run: on its first
-  // measure, a title too long is never drawn still.)
-  useLayoutEffect(() => {
-    runsRef.current = runs
-    shiftRef.current = shift
-    if (!runs && !measure().runs) stillAt.current = xOf(textRef.current!)
-  })
-  useLayoutEffect(() => {
-    const t = textRef.current!
-    if (!runs) {
-      setLead(0)
-      return
-    }
-    const track = trackRef.current!
-    setLoop(track.offsetWidth / 2)
-    const from = stillAt.current
-    stillAt.current = null
-    if (from === null) return
-    const d = from - xOf(t)
-    setLead(d)
-    // To the right of the start: it slides in to the start, at the ticker's
-    // speed, and the ticker waits for it (see animationDelay). To the left:
-    // the ticker starts that far along instead.
-    if (d > 0)
-      track.animate(
-        [{ transform: `translateX(${d}px)` }, { transform: 'translateX(0)' }],
-        { duration: (d / TICKER_SPEED) * 1000, easing: 'linear' },
-      )
-  }, [runs, text])
-  return (
-    <span
-      ref={boxRef}
-      // (Running, it starts at the left; else it's centred like any title.)
-      className={`ticker-box block ${runs ? 'ticker-runs text-left' : ''}`}
-      style={
-        { '--outset': `${OUTSET}px`, '--feather': `${FEATHER}px` } as React.CSSProperties
-      }
-    >
-      <span
-        ref={trackRef}
-        className={runs ? 'ticker' : 'relative whitespace-nowrap'}
-        style={
-          !runs
-            ? { left: shift }
-            : loop
-            ? {
-                animationDuration: `${loop / TICKER_SPEED}s`,
-                animationDelay: `${lead / TICKER_SPEED}s`,
-              }
-            : undefined
-        }
-      >
-        <span ref={textRef} className="whitespace-nowrap">
-          {text}
-        </span>
-        {runs && (
-          <>
-            <TickerDot />
-            <span aria-hidden className="whitespace-nowrap">
-              {text}
-            </span>
-            <TickerDot />
-          </>
-        )}
-      </span>
-    </span>
-  )
-}
-
-/** px a second. */
-const TICKER_SPEED = 36
-
-/** Where a title's text sits, px from the left of its row (the title's
- *  row, which stays put as its column narrows): in the card's own px,
- *  however the card is drawn (tilted in the box, scaled). (Not offsetLeft:
- *  a running title's track becomes the offset parent.) */
-function xOf(text: HTMLElement) {
-  const row = text.closest('.paper-rule') as HTMLElement
-  const r = row.getBoundingClientRect()
-  return (
-    ((text.getBoundingClientRect().left - r.left) * row.offsetWidth) / r.width
-  )
-}
-/** px: how far the title's box reaches out either side of its column (into
- *  the space between it and the star, and the box). */
-const OUTSET = 8
-/** px: how far a running title's ends fade, from the box's edges in. (It
- *  starts, at rest, just past the fade.) */
-const FEATHER = 20
-
-function TickerDot() {
-  return (
-    <span aria-hidden className="ticker-dot">
-      •
-    </span>
-  )
-}
 
 /**
  * A favorite: a star before the title, everyone's own (readers too). Like
@@ -604,6 +480,7 @@ function WantCount({
 export const COMMON_UNITS = [
   'tsp',
   'tbsp',
+  'heaping tbsp',
   'cup',
   'oz',
   'lb',
@@ -827,13 +704,28 @@ export function RowMark({ kind }: { kind: 'cross' | 'restore' }) {
  * starts another. × crosses a line out (↺ brings it back); it's only gone
  * once the card is saved.
  */
+/** A section as it's written on the back of a card: its title, its lines
+ *  (one spare, empty, at the end to write the next on). */
+type Group = { title: string; rows: Row[] }
+
+/** The groups as they should stand after a change: each with its spare line;
+ *  and a section after the first that's been emptied — no title, nothing
+ *  written in it — gone (back to "Add section…", which is where it came
+ *  from). */
+const tidyGroups = (gs: Group[]) => {
+  const out = gs.map((g) => ({ ...g, rows: withSpareLine(g.rows) }))
+  const last = out[out.length - 1]
+  if (out.length > 1 && last.title === '' && last.rows.every(blank)) out.pop()
+  return out
+}
+
 function IngredientTable({
-  rows,
+  groups,
   onChange,
   headClass,
 }: {
-  rows: Row[]
-  onChange: (rows: Row[]) => void
+  groups: Group[]
+  onChange: (groups: Group[]) => void
   headClass: string
 }) {
   // The common units, then any others your recipes use.
@@ -841,101 +733,162 @@ function IngredientTable({
   const units = useMemo(() => {
     const extra = new Set<string>()
     for (const r of recipes)
-      for (const ing of r.ingredients)
+      for (const ing of allIngredients(r))
         if (ing.unit && !COMMON_UNITS.includes(ing.unit)) extra.add(ing.unit)
-    for (const row of rows)
-      if (row.unit && !COMMON_UNITS.includes(row.unit)) extra.add(row.unit)
+    for (const g of groups)
+      for (const row of g.rows)
+        if (row.unit && !COMMON_UNITS.includes(row.unit)) extra.add(row.unit)
     return [...COMMON_UNITS, ...[...extra].sort()]
-  }, [recipes, rows])
-  const set = (rs: Row[]) => onChange(withSpareLine(rs))
-  const update = (i: number, patch: Partial<Row>) =>
-    set(rows.map((r, idx) => (idx === i ? { ...r, ...patch } : r)))
+  }, [recipes, groups])
+  const set = (gs: Group[]) => onChange(tidyGroups(gs))
+  const setTitle = (g: number, title: string) =>
+    set(groups.map((x, i) => (i === g ? { ...x, title } : x)))
+  const update = (g: number, r: number, patch: Partial<Row>) =>
+    set(
+      groups.map((x, i) =>
+        i === g
+          ? {
+              ...x,
+              rows: x.rows.map((row, j) => (j === r ? { ...row, ...patch } : row)),
+            }
+          : x,
+      ),
+    )
   const cols = 'grid grid-cols-[minmax(0,1fr)_3.25rem_4.25rem_1.75rem]'
   const cell =
     // Taller than the card's 22px ruled lines, so each line (and its ✕) is
     // easy to hit with a finger. The writing sits low, on its line.
     'h-[30px] min-w-0 bg-transparent pt-[6px] leading-[24px] focus:bg-kraft/15 focus:outline-none'
   const rule = 'border-l border-line-blue'
+  // A section's title, written in (a heading, across the whole line). Its
+  // key is its place among the sections — and "Add section…" takes the next
+  // place's, so typing there becomes the new section's title without losing
+  // the caret.
+  const titleField = (
+    value: string,
+    onTitle: (t: string) => void,
+    placeholder: string,
+  ) => (
+    <input
+      value={value}
+      onChange={(e) => onTitle(e.target.value)}
+      placeholder={placeholder}
+      aria-label="Section"
+      autoComplete="off"
+      autoCapitalize="words"
+      className={`${headClass} h-[34px] min-w-0 bg-transparent pt-[8px] placeholder:font-normal placeholder:text-pencil focus:bg-kraft/15 focus:outline-none`}
+    />
+  )
 
   return (
     <div role="table" aria-label="Ingredients">
-      <div role="row" className={`${cols} items-end border-b border-line-blue`}>
-        <span role="columnheader" className={headClass}>
-          Ingredient
-        </span>
-        <span role="columnheader" className={`${headClass} pr-1 text-right`}>
-          Qty
-        </span>
-        <span role="columnheader" className={`${headClass} pl-1.5`}>
-          Unit
-        </span>
-        <span />
-      </div>
-      {rows.map((row, i) => {
-        const spare = i === rows.length - 1 && blank(row)
-        return (
+      {[...groups, null].map((group, g) =>
+        group === null ? (
+          // "Add section…": a title written here starts a new section (with
+          // a line to write its first ingredient on). (Built like a
+          // section's title row, in the next section's place: see
+          // titleField.)
+          <div key={`t${g}`} role="rowgroup" className="mt-3">
+            <div role="row" className="grid items-end border-b border-line-blue">
+              {titleField(
+                '',
+                (t) => set([...groups, { title: t, rows: [] }]),
+                'Add section…',
+              )}
+            </div>
+          </div>
+        ) : (
+        <div key={`t${g}`} role="rowgroup" className={g > 0 ? 'mt-3' : ''}>
+          {/* The section's title: the first's beside the column headings. */}
           <div
-            key={i}
             role="row"
-            className={`${cols} relative items-center border-b border-line-blue`}
+            className={`${g === 0 ? cols : 'grid'} items-end border-b border-line-blue`}
           >
-            <input
-              value={row.name}
-              onChange={(e) => update(i, { name: e.target.value })}
-              readOnly={row.struck}
-              placeholder={spare ? 'Add ingredient…' : 'Ingredient'}
-              // (No "name" in the label: Safari would offer to AutoFill a
-              // contact.)
-              aria-label="Ingredient"
-              autoComplete="off"
-              className={`${cell} pr-1`}
-            />
-            <QuantityInput
-              value={row.quantity}
-              onChange={(quantity) => update(i, { quantity })}
-              placeholder=""
-              readOnly={row.struck}
-              className={`${cell} ${rule} pr-1 text-right`}
-            />
-            <UnitCell
-              value={row.unit}
-              onChange={(unit) => update(i, { unit })}
-              units={units}
-              disabled={row.struck}
-              className={`${cell} ${rule} pl-1.5`}
-            />
-            {spare ? (
-              <span />
-            ) : row.struck ? (
-              <button
-                type="button"
-                onClick={() => update(i, { struck: false })}
-                aria-label={`Bring back ${row.name || 'ingredient'}`}
-                className={MARK_BUTTON}
-              >
-                <RowMark kind="restore" />
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => update(i, { struck: true })}
-                aria-label={`Cross out ${row.name || 'ingredient'}`}
-                className={MARK_BUTTON}
-              >
-                <RowMark kind="cross" />
-              </button>
+            {titleField(
+              group.title,
+              (t) => setTitle(g, t),
+              g === 0 ? STARTER_TITLE : 'Section',
             )}
-            {row.struck && (
-              // A pen stroke through the line.
-              <span
-                aria-hidden
-                className="pointer-events-none absolute -left-0.5 right-8 top-[62%] h-[1.5px] rounded-full bg-pen"
-                style={{ transform: 'rotate(-0.5deg)' }}
-              />
+            {g === 0 && (
+              <>
+                <span role="columnheader" className={`${headClass} pr-1 text-right`}>
+                  Qty
+                </span>
+                <span role="columnheader" className={`${headClass} pl-1.5`}>
+                  Unit
+                </span>
+                <span />
+              </>
             )}
           </div>
-        )
-      })}
+          {group.rows.map((row, i) => {
+            const spare = i === group.rows.length - 1 && blank(row)
+            return (
+              <div
+                key={i}
+                role="row"
+                className={`${cols} relative items-center border-b border-line-blue`}
+              >
+                <input
+                  value={row.name}
+                  onChange={(e) => update(g, i, { name: e.target.value })}
+                  readOnly={row.struck}
+                  placeholder={spare ? 'Add ingredient…' : 'Ingredient'}
+                  // (No "name" in the label: Safari would offer to AutoFill a
+                  // contact.)
+                  aria-label="Ingredient"
+                  autoComplete="off"
+                  className={`${cell} pr-1`}
+                />
+                <QuantityInput
+                  value={row.quantity}
+                  onChange={(quantity) => update(g, i, { quantity })}
+                  placeholder=""
+                  readOnly={row.struck}
+                  className={`${cell} ${rule} pr-1 text-right`}
+                />
+                <UnitCell
+                  value={row.unit}
+                  onChange={(unit) => update(g, i, { unit })}
+                  units={units}
+                  disabled={row.struck}
+                  className={`${cell} ${rule} pl-1.5`}
+                />
+                {spare ? (
+                  <span />
+                ) : row.struck ? (
+                  <button
+                    type="button"
+                    onClick={() => update(g, i, { struck: false })}
+                    aria-label={`Bring back ${row.name || 'ingredient'}`}
+                    className={MARK_BUTTON}
+                  >
+                    <RowMark kind="restore" />
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => update(g, i, { struck: true })}
+                    aria-label={`Cross out ${row.name || 'ingredient'}`}
+                    className={MARK_BUTTON}
+                  >
+                    <RowMark kind="cross" />
+                  </button>
+                )}
+                {row.struck && (
+                  // A pen stroke through the line.
+                  <span
+                    aria-hidden
+                    className="pointer-events-none absolute -left-0.5 right-8 top-[62%] h-[1.5px] rounded-full bg-pen"
+                    style={{ transform: 'rotate(-0.5deg)' }}
+                  />
+                )}
+              </div>
+            )
+          })}
+        </div>
+        ),
+      )}
     </div>
   )
 }
@@ -947,16 +900,25 @@ if (typeof document !== 'undefined') void document.fonts?.load('22px Caveat')
 const NOTES_MIN_LINES = 6
 const NOTES_DROP = 3
 
-type RecipeText = Pick<Recipe, 'title' | 'ingredients' | 'notes' | 'tags'>
+type RecipeText = Pick<
+  Recipe,
+  'title' | 'ingredients' | 'ingredientsTitle' | 'sections' | 'notes' | 'tags'
+>
 /** What a recipe says, ignoring blank lines and stray spaces (to tell
  *  whether a draft says anything different). */
 const sameText = (a: RecipeText, b: RecipeText) => {
   const key = (r: RecipeText) =>
     JSON.stringify([
       r.title.trim(),
-      r.ingredients
-        .filter((i) => i.name.trim())
-        .map((i) => [i.name.trim(), i.quantity ?? null, i.unit || null]),
+      [
+        { title: r.ingredientsTitle || STARTER_TITLE, ingredients: r.ingredients },
+        ...(r.sections ?? []),
+      ].map((s) => [
+        s.title.trim(),
+        s.ingredients
+          .filter((i) => i.name.trim())
+          .map((i) => [i.name.trim(), i.quantity ?? null, i.unit || null]),
+      ]),
       (r.notes ?? '').trim(),
       r.tags.map((t) => t.trim()).filter(Boolean),
     ])
@@ -997,8 +959,10 @@ const RecipeCardBack = forwardRef<
   const deleteRecipe = useStore((s) => s.deleteRecipe)
   const [title, setTitle] = useState(recipe.title)
   const titleTapIn = useRef(false)
-  const [ingredients, setIngredients] = useState<Row[]>(() =>
-    withSpareLine(recipe.ingredients),
+  const [groups, setGroups] = useState<Group[]>(() =>
+    tidyGroups(
+      sectionsOf(recipe).map((s) => ({ title: s.title, rows: s.ingredients })),
+    ),
   )
   const [notes, setNotes] = useState(recipe.notes ?? '')
   const [tagsText, setTagsText] = useState(recipe.tags.join(', '))
@@ -1018,14 +982,25 @@ const RecipeCardBack = forwardRef<
     el.style.height = `${lines * 22 + NOTES_DROP}px`
   }, [notes])
 
-  // The recipe as drafted (crossed-out and empty lines left off).
+  // The recipe as drafted (crossed-out and empty lines left off; and
+  // sections after the first left with no lines).
+  const lines = (rows: Row[]) =>
+    rows
+      .filter((i) => !i.struck)
+      .map(({ struck: _, ...i }) => ({ ...i, name: i.name.trim() }))
+      .filter((i) => i.name.length > 0)
+  const starterTitle = groups[0].title.trim()
+  const sections = groups
+    .slice(1)
+    .map((g) => ({ title: g.title.trim(), ingredients: lines(g.rows) }))
+    .filter((s) => s.ingredients.length > 0)
   const draft = (): Recipe => ({
     ...recipe,
     title: title.trim(),
-    ingredients: ingredients
-      .filter((i) => !i.struck)
-      .map(({ struck: _, ...i }) => ({ ...i, name: i.name.trim() }))
-      .filter((i) => i.name.length > 0),
+    ingredients: lines(groups[0].rows),
+    ingredientsTitle:
+      starterTitle && starterTitle !== STARTER_TITLE ? starterTitle : undefined,
+    sections: sections.length ? sections : undefined,
     notes: notes.trim() || undefined,
     tags: tagsText
       .split(',')
@@ -1090,8 +1065,8 @@ const RecipeCardBack = forwardRef<
         </div>
         <div className="mx-5 mt-3.5 mb-4 flex flex-col gap-4">
           <IngredientTable
-            rows={ingredients}
-            onChange={setIngredients}
+            groups={groups}
+            onChange={setGroups}
             headClass={label}
           />
           <label className="block">
