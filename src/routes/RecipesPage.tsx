@@ -337,7 +337,7 @@ export default function RecipesPage() {
         const shade =
           Math.round(
             (deg < 0
-              ? 0.5 * Math.min(1, Math.max(0, (-deg - 20) / 55))
+              ? 0.7 * Math.min(1, Math.max(0, (-deg - 12) / 55))
               : 0.15 * Math.min(1, Math.max(0, (deg - 20) / 25))) * 100,
           ) / 100
         if (lastShade.current[i] !== shade) {
