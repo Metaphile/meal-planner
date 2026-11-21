@@ -243,16 +243,18 @@ body {
   }
   /* A one-line title too long for its card runs past like a ticker (see
      TickerTitle). Two copies, each with its dot, sliding by half: a seamless
-     loop. The box reaches out past the title's column, by --feather either
-     side (where a running title fades) and by --slack above and below (room
-     for descenders, which the clip would otherwise cut). */
+     loop. The box reaches out past the title's column, by --outset either
+     side and by --slack above and below (room for descenders, which the clip
+     would otherwise cut). A running title fades over --feather at either
+     end, and rests (where it starts) just past the fade. */
   .ticker-box {
     --slack: 0.3em;
     overflow: hidden;
-    padding: var(--slack) var(--feather);
-    margin: calc(-1 * var(--slack)) calc(-1 * var(--feather));
+    padding: var(--slack) var(--outset);
+    margin: calc(-1 * var(--slack)) calc(-1 * var(--outset));
   }
   .ticker-runs {
+    padding-left: var(--feather);
     -webkit-mask-image: linear-gradient(
       to right,
       transparent,
@@ -283,6 +285,7 @@ body {
   }
   @media (prefers-reduced-motion: reduce) {
     .ticker-runs {
+      padding-left: var(--outset);
       -webkit-mask-image: none;
       mask-image: none;
     }

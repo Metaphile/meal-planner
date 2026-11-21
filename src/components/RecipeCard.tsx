@@ -213,9 +213,9 @@ export function EditButton({ onEdit }: { onEdit: () => void }) {
  * where the title ends and starts again, sliding by half their length).
  * Whether it fits is measured when it's laid out (and resized), never per
  * frame; the moving text is a layer of its own, so it slides without
- * re-drawing the card. Running, its ends are feathered: the box reaches
- * FEATHER px out into the space either side of it, fading there. (Reduced
- * motion: an ellipsis.)
+ * re-drawing the card. Running, its ends are feathered: it fades out over
+ * FEATHER px at either end of a box that reaches OUTSET px out into the
+ * space either side of it. (Reduced motion: an ellipsis.)
  */
 function TickerTitle({ text }: { text: string }) {
   const boxRef = useRef<HTMLSpanElement>(null)
@@ -224,12 +224,13 @@ function TickerTitle({ text }: { text: string }) {
   const [runs, setRuns] = useState(false)
   const [loop, setLoop] = useState(0) // px: one title, its dot, and gaps
   useLayoutEffect(() => {
-    const box = boxRef.current!
+    // (Against the title's own column: the box reaches out past it.)
+    const column = boxRef.current!.parentElement!
     const measure = () =>
-      setRuns(textRef.current!.offsetWidth > box.clientWidth - 2 * FEATHER + 1)
+      setRuns(textRef.current!.offsetWidth > column.clientWidth + 1)
     measure()
     const ro = new ResizeObserver(measure)
-    ro.observe(box)
+    ro.observe(column)
     return () => ro.disconnect()
   }, [text])
   useLayoutEffect(() => {
@@ -240,7 +241,9 @@ function TickerTitle({ text }: { text: string }) {
       ref={boxRef}
       // (Running, it starts at the left; else it's centred like any title.)
       className={`ticker-box block ${runs ? 'ticker-runs text-left' : ''}`}
-      style={{ '--feather': `${FEATHER}px` } as React.CSSProperties}
+      style={
+        { '--outset': `${OUTSET}px`, '--feather': `${FEATHER}px` } as React.CSSProperties
+      }
     >
       <span
         ref={trackRef}
@@ -270,8 +273,12 @@ function TickerTitle({ text }: { text: string }) {
 
 /** px a second. */
 const TICKER_SPEED = 36
-/** px: how far a running title's ends fade. */
-const FEATHER = 10
+/** px: how far the title's box reaches out either side of its column (into
+ *  the space between it and the star, and the box). */
+const OUTSET = 8
+/** px: how far a running title's ends fade, from the box's edges in. (It
+ *  starts, at rest, just past the fade.) */
+const FEATHER = 20
 
 function TickerDot() {
   return (
@@ -297,6 +304,7 @@ function FavoriteStar({
   const { user } = useAuth()
   const on = useIsFavorite(user?.id, recipeId)
   const setFavorite = useStore((s) => s.setFavorite)
+  const starRef = useRef<HTMLSpanElement>(null)
   return (
     <button
       type="button"
@@ -305,13 +313,41 @@ function FavoriteStar({
       disabled={!user}
       onClick={(e) => {
         e.stopPropagation() // (not taking the card out)
-        if (user) setFavorite(user.id, recipeId, !on)
+        if (!user) return
+        setFavorite(user.id, recipeId, !on)
+        twinkle(starRef.current, !on)
       }}
       // A generous target around the small star.
       className={`-my-2 -ml-2 flex shrink-0 items-start p-2 pr-0 ${className}`}
     >
-      <StarIcon on={on} size={24} />
+      <span ref={starRef} className="block">
+        <StarIcon on={on} size={24} />
+      </span>
     </button>
+  )
+}
+
+/**
+ * A star toggled by a tap: on, it pops — swelling with a little turn, and
+ * springing back; off, it gives a small shrug. (Only when tapped: not when a
+ * favorite arrives from another device. Not with reduced motion.)
+ */
+function twinkle(el: HTMLElement | null, on: boolean) {
+  if (!el || matchMedia('(prefers-reduced-motion: reduce)').matches) return
+  el.animate(
+    on
+      ? [
+          { transform: 'scale(1) rotate(0deg)' },
+          { transform: 'scale(1.4) rotate(-18deg)', offset: 0.35 },
+          { transform: 'scale(0.92) rotate(4deg)', offset: 0.7 },
+          { transform: 'scale(1) rotate(0deg)' },
+        ]
+      : [
+          { transform: 'scale(1)' },
+          { transform: 'scale(0.78)', offset: 0.4 },
+          { transform: 'scale(1)' },
+        ],
+    { duration: on ? 450 : 260, easing: 'ease-out' },
   )
 }
 
@@ -855,6 +891,7 @@ const RecipeCardBack = forwardRef<
   const upsertRecipe = useStore((s) => s.upsertRecipe)
   const deleteRecipe = useStore((s) => s.deleteRecipe)
   const [title, setTitle] = useState(recipe.title)
+  const titleTapIn = useRef(false)
   const [ingredients, setIngredients] = useState<Row[]>(() =>
     withSpareLine(recipe.ingredients),
   )
@@ -918,6 +955,19 @@ const RecipeCardBack = forwardRef<
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
+            // Tapped into, the caret goes to the end of the title (not where
+            // the tap fell). Only on the tap that brings it in: once it's
+            // being written in, a tap places the caret as usual.
+            onPointerDown={(e) => {
+              titleTapIn.current = document.activeElement !== e.currentTarget
+            }}
+            onClick={(e) => {
+              if (!titleTapIn.current) return
+              titleTapIn.current = false
+              const end = e.currentTarget.value.length
+              e.currentTarget.setSelectionRange(end, end)
+              e.currentTarget.scrollLeft = e.currentTarget.scrollWidth
+            }}
             // (No "name" or "title" here: Safari would offer to AutoFill a
             // contact.)
             placeholder="Recipe"
