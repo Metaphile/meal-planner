@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
   type HTMLAttributes,
+  type KeyboardEvent as ReactKeyboardEvent,
   type MutableRefObject,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
@@ -1138,6 +1139,15 @@ function IngredientTable({
   // what a new one, dragged into being at the end, would be.)
   const labels = sectionLabels(groups.map((x) => x.title))
   const newLabel = sectionLabels([...groups.map((x) => x.title), ''])[groups.length]
+  // Return on a line with something on it: on to the next line (the one
+  // below in its section — at the end, its "Add ingredient…"), to write it.
+  const toNextLine = (e: ReactKeyboardEvent<HTMLInputElement>, row: Row) => {
+    if (e.key !== 'Enter' || blank(row)) return
+    e.preventDefault()
+    let next = e.currentTarget.closest('[role=row]')?.nextElementSibling
+    while (next && !(next as HTMLElement).dataset.g) next = next.nextElementSibling
+    next?.querySelector('input')?.focus()
+  }
   const setStruck = (g: number, struck: boolean) =>
     set(groups.map((x, i) => (i === g ? { ...x, struck } : x)))
   // (A whole section moved: to just before the section at `to`, or last.)
@@ -1302,6 +1312,8 @@ function IngredientTable({
                 <input
                   value={row.name}
                   onChange={(e) => update(g, i, { name: e.target.value })}
+                  onKeyDown={(e) => toNextLine(e, row)}
+                  enterKeyHint="next"
                   readOnly={struck}
                   placeholder={spare ? 'Add ingredient…' : 'Ingredient'}
                   // (No "name" in the label: Safari would offer to AutoFill a
@@ -1313,6 +1325,8 @@ function IngredientTable({
                 <QuantityInput
                   value={row.quantity}
                   onChange={(quantity) => update(g, i, { quantity })}
+                  onKeyDown={(e) => toNextLine(e, row)}
+                  enterKeyHint="next"
                   placeholder=""
                   readOnly={struck}
                   className={`${cell} ${rule} pr-1 text-right`}

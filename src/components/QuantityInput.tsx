@@ -25,12 +25,16 @@ export function QuantityInput({
   placeholder = 'Qty',
   readOnly,
   className = '',
+  onKeyDown,
+  enterKeyHint,
 }: {
   value: number | undefined
   onChange: (quantity: number | undefined) => void
   placeholder?: string
   readOnly?: boolean
   className?: string
+  onKeyDown?: React.KeyboardEventHandler<HTMLInputElement>
+  enterKeyHint?: React.InputHTMLAttributes<HTMLInputElement>['enterKeyHint']
 }) {
   const [draft, setDraft] = useState(() => fmtQty(value))
   const [prevValue, setPrevValue] = useState(value)
@@ -49,6 +53,8 @@ export function QuantityInput({
       inputMode="decimal"
       placeholder={placeholder}
       readOnly={readOnly}
+      onKeyDown={onKeyDown}
+      enterKeyHint={enterKeyHint}
       aria-label="Quantity"
       autoComplete="off"
       className={className}
