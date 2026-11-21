@@ -80,9 +80,9 @@ export function OneLine({
   const moveTo = (x: number) => {
     const b = boxRef.current
     const t = trackRef.current
-    if (!b || !t) return 0
+    if (!b || !t || !textRef.current) return 0
     // (All the way along, its last letter ends where its column does.)
-    const max = Math.max(0, t.offsetWidth + 2 * OUTSET - b.clientWidth)
+    const max = Math.max(0, textRef.current.offsetWidth + 2 * OUTSET - b.clientWidth)
     at.current = Math.min(max, Math.max(0, x))
     t.style.transform = `translateX(${-at.current}px)`
     b.style.setProperty('--fade-l', `${Math.min(at.current, FEATHER)}px`)
@@ -112,8 +112,14 @@ export function OneLine({
       }
     >
       {cut ? (
-        // (Slid along by a transform: its own layer, nothing re-laid out.)
-        <span ref={trackRef} className="inline-block will-change-transform">
+        // (Slid along by a transform: its own layer, nothing re-laid out.
+        // The layer's a little wider than the writing, either side —
+        // handwriting reaches past its letters' widths, and a layer is cut
+        // at its edges — without moving it.)
+        <span
+          ref={trackRef}
+          className="-mx-[0.25em] inline-block px-[0.25em] will-change-transform"
+        >
           <span ref={textRef} className="whitespace-nowrap">
             {text}
           </span>
