@@ -48,6 +48,11 @@ const DIVIDER_STRIP = TAB_H + 12 // tab + a sliver of the divider's edge
 // they still don't collide — you just see a staircase of tabs.
 const EMPTY_DIVIDER_STRIP = 13
 const SIDE = 16 // horizontal inset
+/** The whole rolodex is drawn at this scale (so the card in hand, at full
+ *  width, is larger than the cards in the box). Its geometry is worked out
+ *  in its own unscaled units; the scroll position is in screen pixels, and
+ *  converted, so a drag still moves the cards exactly with the finger. */
+const SCALE = 0.9
 const TAB_W = 44 // divider tab width
 
 // The visible part of the wheel, as angles from the front line (where a card
@@ -256,7 +261,9 @@ export default function RecipesPage() {
   // itself sits below the header, and no resting card ever reaches up into it.
   const [pageH, setPageH] = useState(0)
   const [headerH, setHeaderH] = useState(0)
-  const stageH = pageH - headerH || 600
+  // The wheel's own units (the stage is drawn at SCALE).
+  const headerU = headerH / SCALE
+  const stageH = (pageH - headerH) / SCALE || 600
   const items = useMemo(
     () => layout(matches, canEditRecipes),
     [matches, canEditRecipes],
@@ -289,7 +296,7 @@ export default function RecipesPage() {
    *  over the top), for the drum at position `pos`. */
   const rimPos = useCallback(
     (i: number, pos: number) =>
-      items[i].rod - items[0].rod + bounds.first - pos,
+      items[i].rod - items[0].rod + bounds.first - pos / SCALE,
     [items, bounds],
   )
 
@@ -315,7 +322,7 @@ export default function RecipesPage() {
       const phi = PHI_TOP + v / wheel.R
       const rodY = wheel.front + wheel.R * Math.sin(phi)
       const z = wheel.R * (Math.cos(phi) - 1)
-      const pose = `translate3d(0px, ${(headerH + rodY - rodOffset(items[i])).toFixed(1)}px, ${z.toFixed(1)}px) rotateX(${(-phi / DEG).toFixed(2)}deg)`
+      const pose = `translate3d(0px, ${(headerU + rodY - rodOffset(items[i])).toFixed(1)}px, ${z.toFixed(1)}px) rotateX(${(-phi / DEG).toFixed(2)}deg)`
       if (lastPose.current[i] !== pose) {
         lastPose.current[i] = pose
         el.style.transform = pose
@@ -345,7 +352,7 @@ export default function RecipesPage() {
         el.style.zIndex = String(zi)
       }
     }
-  }, [items, wheel, rimPos, headerH])
+  }, [items, wheel, rimPos, headerU])
 
   const busy = useRef(false)
 
@@ -372,7 +379,7 @@ export default function RecipesPage() {
     }
   }, [])
   useLayoutEffect(() => {
-    drumRef.current?.setMax(bounds.max)
+    drumRef.current?.setMax(bounds.max * SCALE)
   }, [bounds])
 
   // Start at the start (A near the top; a short box with its first recipe
@@ -382,7 +389,7 @@ export default function RecipesPage() {
     const key = `${q}|${pageH > 0 && headerH > 0}`
     if (positionedFor.current !== key) {
       positionedFor.current = key
-      drumRef.current?.set(bounds.initial)
+      drumRef.current?.set(bounds.initial * SCALE)
     }
     lastPose.current = []
     lastZ.current = []
@@ -415,11 +422,12 @@ export default function RecipesPage() {
   const turnTo = (index: number) => {
     const drum = drumRef.current!
     const top = (START_PHI - PHI_TOP) * wheel.R
-    const to = clamp(
-      items[index].rod - items[0].rod + bounds.first - top,
-      0,
-      bounds.max,
-    )
+    const to =
+      clamp(
+        items[index].rod - items[0].rod + bounds.first - top,
+        0,
+        bounds.max,
+      ) * SCALE
     const ms = Math.min(SPIN_MS, 120 + Math.abs(to - drum.get()) * 0.4)
     return drum.animateTo(to, ms)
   }
@@ -451,8 +459,9 @@ export default function RecipesPage() {
       const wheelTop = viewTop + headerH
       const off = CARD_H
       const { phi, rodY, z, rodOnScreen } = wheelSpot(index)
-      const slotTop = wheelTop + rodOnScreen - off
-      const height = cardEl(index)?.offsetHeight ?? CARD_H
+      // (On screen, the stage is drawn at SCALE; its poses are its own.)
+      const slotTop = wheelTop + (rodOnScreen - off) * SCALE
+      const height = (cardEl(index)?.offsetHeight ?? CARD_H) * SCALE
       const n = index + 1
       const next = n < items.length ? itemEls.current[n] : null
       const nextTop =
@@ -466,12 +475,12 @@ export default function RecipesPage() {
         height,
         viewTop,
         hiddenAbove: wheelTop, // (behind the header)
-        wheelPose: `translate3d(0px, ${(headerH + rodY - off).toFixed(1)}px, ${z.toFixed(1)}px) rotateX(${(-deg).toFixed(2)}deg)`,
-        flatPose: `translate3d(0px, ${(headerH + rodOnScreen - off).toFixed(1)}px, 0px) rotateX(0deg)`,
+        wheelPose: `translate3d(0px, ${(headerU + rodY - off).toFixed(1)}px, ${z.toFixed(1)}px) rotateX(${(-deg).toFixed(2)}deg)`,
+        flatPose: `translate3d(0px, ${(headerU + rodOnScreen - off).toFixed(1)}px, 0px) rotateX(0deg)`,
         shade: lastShade.current[index] ?? 0,
       }
     },
-    [items, wheelSpot, headerH],
+    [items, wheelSpot, headerH, headerU],
   )
 
   // Ready a card's slot for it to slide out of (or back into): the whole
@@ -719,9 +728,14 @@ export default function RecipesPage() {
           <div
             className="sticky top-0 overflow-clip"
             style={{
-              height: pageH,
+              // Drawn at SCALE from the top centre, filling the page's
+              // height; its layout takes up just the page's height.
+              height: pageH / SCALE,
+              marginBottom: pageH - pageH / SCALE,
+              transform: `scale(${SCALE})`,
+              transformOrigin: '50% 0',
               perspective: `${PERSPECTIVE}px`,
-              perspectiveOrigin: `50% ${headerH + wheel.front}px`,
+              perspectiveOrigin: `50% ${headerU + wheel.front}px`,
             }}
           >
             {items.map((item, i) => (
@@ -739,7 +753,7 @@ export default function RecipesPage() {
             ))}
           </div>
           {/* The drum's travel, from one stop to the other. */}
-          <div style={{ height: bounds.max }} />
+          <div style={{ height: bounds.max * SCALE }} />
         </div>
         {header}
       </>

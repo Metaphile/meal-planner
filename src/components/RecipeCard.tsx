@@ -758,6 +758,8 @@ const pose = (dy: number) => `translate(0px, ${dy}px)`
  *  - 'lift': it lifts straight up out of its slot and off the screen, and
  *    after a pause the card in hand fades in where it rests (putting it back, the
  *    card in hand fades out as the other drops back into its slot). */
+// ('arc' predates the Recipes rolodex being drawn scaled down: its flight
+// would need converting to the stage's units before being used there again.)
 const TAKE_OUT: 'arc' | 'lift' = 'lift'
 const LIFT_MS = 348 // the card lifting out of the box
 const DROP_MS = 300 // …and dropping back in
