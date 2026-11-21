@@ -63,12 +63,13 @@ export function useIsFavorite(userId: string | undefined, recipeId: string) {
   )
 }
 
-/** Who's favorited a recipe: their names, in order, joined by commas ("" if
- *  nobody). (One string, so it re-renders only when the names change.) */
-export function useFavoritedBy(recipeId: string): string {
+/** Who else has favorited a recipe (not `me`: your own is the star on the
+ *  card): their names, in order, joined by commas ("" if nobody). (One
+ *  string, so it re-renders only when the names change.) */
+export function useFavoritedBy(recipeId: string, me?: string): string {
   return useStore((s) =>
     s.favorites
-      .filter((f) => f.recipeId === recipeId)
+      .filter((f) => f.recipeId === recipeId && favoriteUser(f) !== me)
       .map((f) => s.people.find((p) => p.id === favoriteUser(f))?.name)
       .filter((n): n is string => !!n)
       .sort((a, b) => a.localeCompare(b))

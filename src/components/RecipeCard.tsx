@@ -116,10 +116,12 @@ function CardBody({ recipe, peek }: { recipe: Recipe; peek: boolean }) {
   )
 }
 
-/** At the foot of a card: who's favorited it (a star, and their names). A
- *  line left blank above it — after the notes, they leave one. */
+/** At the foot of a card: who else has favorited it (a star, and their
+ *  names — not yours: that's the star at the top). A line left blank above
+ *  it — after the notes, they leave one. */
 function FavoritedBy({ recipeId, gap }: { recipeId: string; gap: boolean }) {
-  const names = useFavoritedBy(recipeId)
+  const { user } = useAuth()
+  const names = useFavoritedBy(recipeId, user?.id)
   if (!names) return null
   return (
     <p

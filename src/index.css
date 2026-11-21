@@ -256,7 +256,8 @@ body {
   /* A title (or name) on one line (see OneLine). Its box reaches out past
      its column, by --outset either side, and by --slack above and below
      (room for descenders, which the clip would otherwise cut). Cut off, it
-     scrolls sideways, its hidden ends feathered (--fade-l, --fade-r). */
+     slides sideways (see OneLine), its hidden ends feathered (--fade-l,
+     --fade-r). */
   .one-line {
     --slack: 0.3em;
     overflow: hidden;
@@ -265,9 +266,6 @@ body {
     margin: calc(-1 * var(--slack)) calc(-1 * var(--outset));
   }
   .one-line-cut {
-    overflow-x: auto;
-    overflow-y: hidden;
-    overscroll-behavior-x: contain;
     -webkit-mask-image: linear-gradient(
       to right,
       transparent,

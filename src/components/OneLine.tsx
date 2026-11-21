@@ -72,32 +72,35 @@ export function OneLine({
     return () => ro.disconnect()
   }, [text])
 
-  // Which ends fade, and how much: as much as is hidden there, up to
-  // FEATHER (so a fade comes and goes smoothly as it's swiped).
-  const edges = () => {
+  // How far it's been moved along (px, 0 to `max`), and the moving part.
+  const trackRef = useRef<HTMLSpanElement>(null)
+  const at = useRef(0)
+  /** Moved to `x` (kept within its ends): the text slid along, and its
+   *  ends faded as much as is hidden there, up to FEATHER. */
+  const moveTo = (x: number) => {
     const b = boxRef.current
-    if (!b) return
-    const hidden = b.scrollWidth - b.clientWidth
-    b.style.setProperty('--fade-l', `${Math.min(b.scrollLeft, FEATHER)}px`)
-    b.style.setProperty(
-      '--fade-r',
-      `${Math.min(Math.max(0, hidden - b.scrollLeft), FEATHER)}px`,
-    )
+    const t = trackRef.current
+    if (!b || !t) return 0
+    // (All the way along, its last letter ends where its column does.)
+    const max = Math.max(0, t.offsetWidth + 2 * OUTSET - b.clientWidth)
+    at.current = Math.min(max, Math.max(0, x))
+    t.style.transform = `translateX(${-at.current}px)`
+    b.style.setProperty('--fade-l', `${Math.min(at.current, FEATHER)}px`)
+    b.style.setProperty('--fade-r', `${Math.min(max - at.current, FEATHER)}px`)
+    return at.current
   }
   useLayoutEffect(() => {
-    if (!cut) return
-    boxRef.current!.scrollLeft = 0
-    edges()
+    if (cut) moveTo(0)
   }, [cut, text])
   useEffect(() => {
-    if (cut) return dragSideways(boxRef.current!)
+    if (cut)
+      return dragSideways(boxRef.current!, () => at.current, moveTo)
   }, [cut])
 
   return (
     <span
       ref={boxRef}
-      onScroll={cut ? edges : undefined}
-      className={`one-line block ${cut ? 'one-line-cut no-scrollbar' : ''} ${
+      className={`one-line block ${cut ? 'one-line-cut' : ''} ${
         cut || !centred ? 'text-left' : ''
       }`}
       style={
@@ -108,87 +111,91 @@ export function OneLine({
         } as React.CSSProperties
       }
     >
-      <span
-        ref={textRef}
-        className="relative whitespace-nowrap"
-        style={cut ? undefined : { left: shift }}
-      >
-        {text}
-      </span>
-      {/* (Room at the end, as at the start: scrolled all the way, the last
-          letter rests clear of the edge.) */}
-      {cut && <span aria-hidden className="inline-block" style={{ width: OUTSET }} />}
+      {cut ? (
+        // (Slid along by a transform: its own layer, nothing re-laid out.)
+        <span ref={trackRef} className="inline-block will-change-transform">
+          <span ref={textRef} className="whitespace-nowrap">
+            {text}
+          </span>
+        </span>
+      ) : (
+        <span
+          ref={textRef}
+          className="relative whitespace-nowrap"
+          style={{ left: shift }}
+        >
+          {text}
+        </span>
+      )}
     </span>
   )
 }
 
 /**
- * A finger's sideways drag on a cut-off line scrolls it, following the
- * finger, and carries on a little when let go (slowing to a stop). A drag
- * that starts out more up-and-down than sideways is left alone. A sideways
- * one isn't anyone else's: the drum doesn't see it, and it isn't a tap (no
- * taking the card out). Returns the cleanup.
+ * A finger's sideways drag on a cut-off line slides it along, following the
+ * finger, and it carries on a little when let go (slowing to a stop); a
+ * trackpad's sideways swipe slides it too. A drag that starts out more
+ * up-and-down than sideways is left alone. A sideways one is no one else's:
+ * not the drum's, not the card's, and not a tap (no taking the card out).
+ *
+ * (Touches are followed by both their touch and their pointer events —
+ * whichever comes first — and a sideways one is kept from everything else
+ * by both.) Returns the cleanup.
  */
-function dragSideways(box: HTMLElement): () => void {
-  let id = -1
+function dragSideways(
+  box: HTMLElement,
+  where: () => number,
+  moveTo: (x: number) => number,
+): () => void {
+  let active = false
   let x0 = 0
   let y0 = 0
-  let left0 = 0
+  let from = 0
   let mode: 'undecided' | 'sideways' | 'not' = 'not'
   let k = 1 // element px per screen px (the card may be drawn scaled)
   let lastX = 0
   let lastT = 0
   let v = 0 // element px per ms
   let raf = 0
-  const stop = () => {
+  const stopGlide = () => {
     cancelAnimationFrame(raf)
     raf = 0
   }
-  const down = (e: PointerEvent) => {
-    if (e.pointerType === 'mouse') return // (a mouse has the wheel)
-    stop()
-    id = e.pointerId
-    x0 = lastX = e.clientX
-    y0 = e.clientY
-    lastT = e.timeStamp
-    left0 = box.scrollLeft
+  const begin = (x: number, y: number, t: number) => {
+    if (active) return
+    stopGlide()
+    active = true
+    x0 = lastX = x
+    y0 = y
+    lastT = t
+    from = where()
     v = 0
     k = box.offsetWidth / (box.getBoundingClientRect().width || 1)
     mode = 'undecided'
   }
-  const move = (e: PointerEvent) => {
-    if (e.pointerId !== id || mode === 'not') return
-    const dx = e.clientX - x0
-    const dy = e.clientY - y0
+  /** Follows the finger; whether it's a sideways drag (ours). */
+  const track = (x: number, y: number, t: number) => {
+    if (!active || mode === 'not') return false
+    const dx = x - x0
     if (mode === 'undecided') {
-      if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return
-      if (Math.abs(dx) <= Math.abs(dy)) {
-        mode = 'not'
-        return
-      }
-      mode = 'sideways'
-      try {
-        box.setPointerCapture(e.pointerId)
-      } catch {
-        /* (gone) */
-      }
+      const dy = y - y0
+      if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return false
+      mode = Math.abs(dx) > Math.abs(dy) ? 'sideways' : 'not'
+      if (mode === 'not') return false
     }
-    e.stopPropagation() // (not the drum's)
-    box.scrollLeft = left0 - dx * k
-    const dt = e.timeStamp - lastT
-    if (dt > 0) v = 0.6 * ((-(e.clientX - lastX) * k) / dt) + 0.4 * v
-    lastX = e.clientX
-    lastT = e.timeStamp
+    moveTo(from - dx * k)
+    const dt = t - lastT
+    if (dt > 0) v = 0.6 * ((-(x - lastX) * k) / dt) + 0.4 * v
+    lastX = x
+    lastT = t
+    return true
   }
-  const up = (e: PointerEvent) => {
-    if (e.pointerId !== id) return
-    id = -1
-    if (mode !== 'sideways') {
-      mode = 'not'
-      return
-    }
+  const end = (t: number) => {
+    if (!active) return false
+    active = false
+    const ours = mode === 'sideways'
     mode = 'not'
-    e.stopPropagation()
+    if (!ours) return false
     // Not a tap: the click this release makes is swallowed.
     const swallow = (c: MouseEvent) => {
       c.preventDefault()
@@ -197,34 +204,76 @@ function dragSideways(box: HTMLElement): () => void {
     window.addEventListener('click', swallow, { capture: true, once: true })
     setTimeout(() => window.removeEventListener('click', swallow, true), 400)
     // Carries on, slowing (unless held still before letting go).
-    if (e.timeStamp - lastT > 60) v = 0
-    let t = performance.now()
+    if (t - lastT > 60) v = 0
+    let prev = performance.now()
     const glide = (now: number) => {
-      const dt = Math.min(32, now - t)
-      t = now
+      const dt = Math.min(32, now - prev)
+      prev = now
       v *= Math.pow(0.995, dt)
-      const before = box.scrollLeft
-      box.scrollLeft = before + v * dt
-      if (Math.abs(v) < 0.02 || box.scrollLeft === before) return stop()
+      const before = where()
+      if (Math.abs(v) < 0.02 || moveTo(before + v * dt) === before)
+        return stopGlide()
       raf = requestAnimationFrame(glide)
     }
     if (Math.abs(v) > 0.05) raf = requestAnimationFrame(glide)
+    return true
   }
-  const cancel = (e: PointerEvent) => {
-    if (e.pointerId === id) {
-      id = -1
-      mode = 'not'
+
+  const onTouchStart = (e: TouchEvent) => {
+    if (e.touches.length === 1)
+      begin(e.touches[0].clientX, e.touches[0].clientY, e.timeStamp)
+  }
+  const onTouchMove = (e: TouchEvent) => {
+    const t = e.touches[0]
+    if (t && track(t.clientX, t.clientY, e.timeStamp)) {
+      if (e.cancelable) e.preventDefault()
+      e.stopPropagation() // (not the card's to pull)
     }
   }
-  box.addEventListener('pointerdown', down)
-  box.addEventListener('pointermove', move)
-  box.addEventListener('pointerup', up)
-  box.addEventListener('pointercancel', cancel)
+  const onTouchEnd = (e: TouchEvent) => {
+    if (end(e.timeStamp)) {
+      if (e.cancelable) e.preventDefault() // (no click from it)
+      e.stopPropagation()
+    }
+  }
+  const onPointerDown = (e: PointerEvent) => {
+    if (e.pointerType !== 'mouse') begin(e.clientX, e.clientY, e.timeStamp)
+  }
+  const onPointerMove = (e: PointerEvent) => {
+    if (e.pointerType === 'mouse') return
+    if (track(e.clientX, e.clientY, e.timeStamp) || mode === 'sideways')
+      e.stopPropagation() // (not the drum's)
+  }
+  const onPointerUp = (e: PointerEvent) => {
+    if (e.pointerType === 'mouse') return
+    if (mode === 'sideways') e.stopPropagation()
+    end(e.timeStamp)
+  }
+  const onCancel = () => {
+    active = false
+    mode = 'not'
+  }
+  // A trackpad's sideways swipe (or a mouse's sideways wheel).
+  const onWheel = (e: WheelEvent) => {
+    if (Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return
+    e.preventDefault()
+    stopGlide()
+    moveTo(where() + e.deltaX)
+  }
+  const listen: [string, EventListener, AddEventListenerOptions][] = [
+    ['touchstart', onTouchStart as EventListener, { passive: true }],
+    ['touchmove', onTouchMove as EventListener, { passive: false }],
+    ['touchend', onTouchEnd as EventListener, { passive: false }],
+    ['touchcancel', onCancel, {}],
+    ['pointerdown', onPointerDown as EventListener, {}],
+    ['pointermove', onPointerMove as EventListener, {}],
+    ['pointerup', onPointerUp as EventListener, {}],
+    ['pointercancel', onCancel, {}],
+    ['wheel', onWheel as EventListener, { passive: false }],
+  ]
+  for (const [type, f, o] of listen) box.addEventListener(type, f, o)
   return () => {
-    stop()
-    box.removeEventListener('pointerdown', down)
-    box.removeEventListener('pointermove', move)
-    box.removeEventListener('pointerup', up)
-    box.removeEventListener('pointercancel', cancel)
+    stopGlide()
+    for (const [type, f, o] of listen) box.removeEventListener(type, f, o)
   }
 }
