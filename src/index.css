@@ -97,6 +97,30 @@ body {
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
+/* The installed app (from the Home Screen). It's drawn from the very top,
+   behind the status bar — but iOS still makes the window shorter by the
+   status bar's height, which left a strip below the tab bar: so the app is
+   sized to the whole screen (100lvh, which iOS reports right), fixed in
+   place so the page itself never scrolls. And iOS 26 blurs a band just
+   below the status bar, whatever's there: the page starts a little further
+   down (by 24px more, wherever there's a status bar to clear), so only the
+   plain counter is under it. */
+@media (display-mode: standalone) {
+  :root {
+    --safe-top: calc(
+      env(safe-area-inset-top, 0px) + min(env(safe-area-inset-top, 0px), 24px)
+    );
+  }
+  #root {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 100vh;
+    height: 100lvh;
+  }
+}
+
 /* Inputs inherit our font and avoid the iOS zoom-on-focus (needs >=16px).
    In the base layer so Tailwind utilities (text-*, font-*) still win —
    unlayered, these would override every utility on buttons. */
