@@ -764,7 +764,7 @@ const TAKE_OUT: 'arc' | 'lift' = 'lift'
 const LIFT_MS = 409 // the card lifting out of the box
 const DROP_MS = 300 // …and dropping back in
 const FADE_IN_DELAY_MS = 350 // the card in hand (and the shade) start fading in…
-const FADE_IN_MS = 507 // …over this
+const FADE_IN_MS = 596 // …over this
 const FADE_IN_EASE = 'cubic-bezier(0.33, 1, 0.68, 1)' // quick to appear, then easing
 const FADE_MS = 225 // …and fading out
 /** Let go of while moving, a card coasts on, slowing as it goes. */
@@ -787,7 +787,7 @@ function fadingAway(fromY: number, v: number, opacity: number): Keyframe[] {
   return frames
 }
 
-const LIFT_FADE_MS = 696 // …fading out as it goes (still fading once out of sight)
+const LIFT_FADE_MS = 605 // …fading out as it goes (still fading once out of sight)
 const LIFT_FADE = 'cubic-bezier(0.11, 0, 0.5, 0)' // ease-in (quad): fading gently at first
 const LIFT_UP = 'cubic-bezier(0.32, 0, 0.67, 0)' // slow to start, gathering speed
 const DROP_IN = 'cubic-bezier(0.33, 1, 0.68, 1)' // the take-out's curve, reversed: fast, then settling
