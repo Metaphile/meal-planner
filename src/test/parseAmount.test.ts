@@ -10,12 +10,13 @@ describe('parseAmount', () => {
     expect(parseAmount(' 2 ')).toBe(2)
   })
 
-  it('takes an empty field as 0', () => {
+  it('takes an empty field, or a lone point, as 0', () => {
     expect(parseAmount('')).toBe(0)
+    expect(parseAmount('.')).toBe(0)
   })
 
   it("doesn't take anything else", () => {
-    for (const t of ['-1', '1/2', '1 1/2', '½', '1.2.3', '.', 'abc', '1e3'])
+    for (const t of ['-1', '1/2', '1 1/2', '½', '1.2.3', '..', 'abc', '1e3'])
       expect(parseAmount(t)).toBeUndefined()
   })
 })

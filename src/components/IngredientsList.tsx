@@ -268,13 +268,15 @@ const round = (n: number) => Math.round(n * 100) / 100
 
 /**
  * What's typed in the have field, as an amount: a plain decimal, not
- * negative ("2", "1.5", ".25", "3."). Empty is 0 (everything deleted).
- * Anything else isn't an amount (undefined), and isn't taken.
+ * negative ("2", "1.5", ".25", "3."). Empty is 0 (everything deleted), and
+ * so is a lone "." (on the way to ".5"); leaving the field writes the
+ * amount out in full ("0.5"). Anything else isn't an amount (undefined),
+ * and isn't taken.
  */
 export function parseAmount(text: string): number | undefined {
   const t = text.trim()
-  if (t === '') return 0
-  if (!/^\d*\.?\d*$/.test(t) || t === '.') return undefined
+  if (t === '' || t === '.') return 0
+  if (!/^\d*\.?\d*$/.test(t)) return undefined
   return Number(t)
 }
 
