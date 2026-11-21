@@ -711,8 +711,15 @@ export default function RecipesPage() {
       role="checkbox"
       aria-checked={wantedOnly}
       aria-label="Only wanted recipes"
-      onPointerDown={(e) => e.preventDefault()} // (keeps the keyboard up)
-      onClick={toggleWantedOnly}
+      // (Searching, it leaves the search field focused, keyboard up: no
+      // focus taken on pressing — iOS takes it on mousedown — and the
+      // field focused again after.)
+      onPointerDown={(e) => e.preventDefault()}
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={() => {
+        toggleWantedOnly()
+        if (searching) searchRef.current?.focus()
+      }}
       className="-mx-1 grid h-9 w-9 shrink-0 place-items-center"
     >
       <span
@@ -772,6 +779,7 @@ export default function RecipesPage() {
                 aria-label="Clear search"
                 // (Keeps the keyboard up: the field doesn't lose focus.)
                 onPointerDown={(e) => e.preventDefault()}
+                onMouseDown={(e) => e.preventDefault()}
                 onClick={() => {
                   setQuery('')
                   searchRef.current?.focus()

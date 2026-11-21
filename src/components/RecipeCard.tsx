@@ -152,9 +152,10 @@ export const RecipeCard = forwardRef<HTMLDivElement, CardProps>(
         </div>
 
         {hasActions && (
-          // Taps here act on the buttons, not the card.
+          // Taps here act on the buttons, not the card. (Controls, not
+          // text: nothing in this row is selectable.)
           <div
-            className="flex shrink-0 gap-2 px-4 pb-3 pt-1.5"
+            className="flex shrink-0 select-none gap-2 px-4 pb-3 pt-1.5"
             onClick={(e) => e.stopPropagation()}
           >
             {actions ?? (

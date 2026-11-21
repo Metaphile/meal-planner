@@ -131,6 +131,17 @@ body {
     user-select: text;
     -webkit-touch-callout: default;
   }
+  /* Controls are never text, even on a card in hand (whose words can be
+     selected): quick taps on − and + stay taps — not a selected "−", nor a
+     double-tap zoom. */
+  button,
+  [role='button'],
+  [role='checkbox'] {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+    touch-action: manipulation;
+  }
 }
 
 /* Utility: momentum scrolling containers used by lists. */
