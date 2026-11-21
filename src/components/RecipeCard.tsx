@@ -757,7 +757,8 @@ const pose = (dy: number) => `translate(0px, ${dy}px)`
  *    to put it back). */
 const TAKE_OUT: 'arc' | 'lift' = 'lift'
 const LIFT_MS = 300 // the card lifting out of the box (or dropping back)
-const FADE_MS = 450 // the card in hand fading in (or out)
+const FADE_IN_MS = 650 // the card in hand fading in
+const FADE_MS = 450 // …and fading out
 /** Let go of while moving, a card coasts on, slowing as it goes. */
 const COAST_TAU = 500 // ms; the same slowing as scrolling (0.998 per ms)
 
@@ -997,7 +998,10 @@ export function CardDetail({
     for (const el of [card, rdxCard, rdxWrap, rdxDim])
       el?.getAnimations().forEach((a) => a.cancel())
     const lift = { duration: LIFT_MS, fill: 'both' as const }
-    const fade = { duration: FADE_MS, fill: 'both' as const }
+    const fade = {
+      duration: opening ? FADE_IN_MS : FADE_MS,
+      fill: 'both' as const,
+    }
     const anims = opening
       ? [
           rdxCard.animate(
