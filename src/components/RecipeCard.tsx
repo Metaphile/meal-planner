@@ -773,6 +773,10 @@ const tidyGroups = (gs: Group[]) => {
   return out
 }
 
+/** What a section made by dragging a line onto "Add section…" is called,
+ *  until it's renamed. */
+const NEW_SECTION = 'New Section'
+
 /** Six dots: a line's handle, to drag it up or down by. */
 function GripIcon() {
   return (
@@ -788,8 +792,10 @@ function GripIcon() {
  * Dragging an ingredient line by its grip: up or down only, into any
  * section. It lifts and follows the finger; the lines it passes slide aside,
  * opening a gap where it would land (anywhere a line is, or before a
- * section's "Add ingredient…"). Let go, it settles into the gap and the move
- * is made (`onDrop`: to just before the line at `to`). Near the top or
+ * section's "Add ingredient…" — or under "Add section…", which then reads
+ * as the new section it'll make). Let go, it settles into the gap and the
+ * move is made (`onDrop`: to just before the line at `to`; a section past
+ * the last is a new one). Near the top or
  * bottom of what scrolls, it scrolls. All by transforms on the lines, laid
  * out once at the start: no re-rendering mid-drag.
  */
@@ -814,12 +820,22 @@ function dragRow(
   const h = origin.offsetHeight
   const top0 = table.getBoundingClientRect().top
   const rel = els.map((el) => el.getBoundingClientRect().top - top0)
-  // Where it could go: before any other ingredient line (spare ones too).
+  // Where it could go: before any other ingredient line (spare ones too);
+  // or, as the first line of a new section, under "Add section…" (the last
+  // row: `add`).
+  const add = els.findIndex((el) => el.dataset.newSection !== undefined)
   const spots = els
     .map((_, k) => k)
-    .filter((k) => k !== o && els[k].dataset.g !== undefined)
+    .filter(
+      (k) => k !== o && (els[k].dataset.g !== undefined || k === add),
+    )
   // Its top, put there (the lines below where it was having closed up).
-  const slot = (k: number) => rel[k] - (k > o ? h : 0)
+  const slot = (k: number) =>
+    k === add
+      ? rel[k] - h + els[k].offsetHeight // (under it)
+      : rel[k] - (k > o ? h : 0)
+  const addField = add >= 0 ? els[add].querySelector('input') : null
+  const addHint = addField?.placeholder ?? ''
   const minTop = Math.min(...spots.map(slot))
   const maxTop = Math.max(...spots.map(slot))
   const y0 = e.clientY - top0
@@ -851,10 +867,13 @@ function dragRow(
       }
     }
     target = best
+    // (Headed for a new section: "Add section…" reads as it'll be named.)
+    if (addField) addField.placeholder = target === add ? NEW_SECTION : addHint
     els.forEach((el, k) => {
       if (k === o) return
       const shift =
-        target > o && k > o && k < target
+        // (Under "Add section…": it too closes up.)
+        target > o && k > o && (k < target || (target === add && k === add))
           ? -h
           : target < o && k >= target && k < o
             ? h
@@ -897,9 +916,12 @@ function dragRow(
     handle.removeEventListener('pointerup', onUp)
     handle.removeEventListener('pointercancel', onCancel)
     const moved = drop && target !== o + 1
-    const to = moved
-      ? { g: Number(els[target].dataset.g), i: Number(els[target].dataset.i) }
-      : null
+    const to = !moved
+      ? null
+      : target === add
+        ? { g: Number(els[add].dataset.newSection), i: 0 }
+        : { g: Number(els[target].dataset.g), i: Number(els[target].dataset.i) }
+    if (addField) addField.placeholder = addHint
     // It settles into its place (or back where it was), then the move is
     // made and everything stands where it now is, in the same frame.
     origin.style.transition = 'transform 120ms ease-out'
@@ -973,6 +995,8 @@ function IngredientTable({
   ) => {
     const gs = groups.map((x) => ({ ...x, rows: [...x.rows] }))
     const [row] = gs[from.g].rows.splice(from.i, 1)
+    // (Onto "Add section…": a new section, named for now.)
+    if (to.g >= gs.length) gs.push({ title: NEW_SECTION, rows: [] })
     const at = to.g === from.g && to.i > from.i ? to.i - 1 : to.i
     gs[to.g].rows.splice(at, 0, row)
     set(gs)
@@ -1014,7 +1038,11 @@ function IngredientTable({
           // section's title row, in the next section's place: see
           // titleField.)
           <div key={`t${g}`} role="rowgroup" className="mt-3">
-            <div role="row" className="grid items-end border-b border-line-blue">
+            <div
+              role="row"
+              data-new-section={g}
+              className="grid items-end border-b border-line-blue"
+            >
               {titleField(
                 '',
                 (t) => set([...groups, { title: t, rows: [] }]),
