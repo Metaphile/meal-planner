@@ -128,7 +128,7 @@ export function ConfirmDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 grid place-items-center bg-black/50 px-6"
+      className="fixed inset-0 z-50 grid place-items-center bg-black/50 px-4"
       onClick={onCancel}
     >
       <div
@@ -142,20 +142,36 @@ export function ConfirmDialog({
           {title}
         </h2>
         <div className="mt-2 text-sm text-muted">{message}</div>
+        {/* (With a Save: Discard on the far side from it.) */}
         <div className="mt-5 flex justify-end gap-2">
-          <GhostButton onClick={onCancel}>{cancelLabel}</GhostButton>
-          <button
-            type="button"
-            onClick={onConfirm}
-            autoFocus={!onSave}
-            className="rounded-full bg-danger px-4 py-2 text-sm font-semibold text-white transition active:scale-95"
-          >
-            {confirmLabel}
-          </button>
           {onSave && (
-            <PrimaryButton onClick={onSave} autoFocus>
+            <>
+              <button
+                type="button"
+                onClick={onConfirm}
+                className="whitespace-nowrap rounded-full bg-danger px-4 py-2 text-sm font-semibold text-white transition active:scale-95"
+              >
+                {confirmLabel}
+              </button>
+              <span className="flex-1" />
+            </>
+          )}
+          <GhostButton onClick={onCancel} className="whitespace-nowrap">
+            {cancelLabel}
+          </GhostButton>
+          {onSave ? (
+            <PrimaryButton onClick={onSave} autoFocus className="whitespace-nowrap">
               {saveLabel}
             </PrimaryButton>
+          ) : (
+            <button
+              type="button"
+              onClick={onConfirm}
+              autoFocus
+              className="rounded-full bg-danger px-4 py-2 text-sm font-semibold text-white transition active:scale-95"
+            >
+              {confirmLabel}
+            </button>
           )}
         </div>
       </div>
