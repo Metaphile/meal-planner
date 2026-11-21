@@ -893,6 +893,8 @@ const EASE_OUT = 'cubic-bezier(0.2, 0.9, 0.25, 1)'
 const STAND = 'cubic-bezier(0.4, 0, 0.2, 1)' // standing up off / back onto the wheel
 
 const pose = (dy: number) => `translate(0px, ${dy}px)`
+/** How much wider a card in hand is than its column, each side. */
+const HAND_GROW = 8
 
 /** How a card comes out of the rolodex (or a pocket) into your hand:
  *  - 'arc': it slides up out of its slot and hands over, mid-flight, to the
@@ -1638,9 +1640,9 @@ export function CardDetail({
             style={{
               marginTop: facing === 'front' ? 'auto' : 0,
               marginBottom: 'auto',
-              // Same column as in the rolodex, so nothing scales.
-              marginLeft: origin.left,
-              width: origin.width,
+              // The rolodex's column, a little wider: in hand, closer to you.
+              marginLeft: origin.left - HAND_GROW,
+              width: origin.width + 2 * HAND_GROW,
               willChange: 'transform',
               perspective: '1600px',
             }}
