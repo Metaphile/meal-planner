@@ -74,6 +74,10 @@ export interface Have {
   /** How much is on hand (in the line's unit); none for a line without a
    *  quantity ("salt"). */
   amount?: number
+  /** The line as it was written when ticked, to show it by even when no
+   *  wanted recipe calls for it any more. (Absent on older rows: from id.) */
+  name?: string
+  unit?: string
 }
 
 /** A line's key for its Have: its name and unit, trimmed and lowercased. */

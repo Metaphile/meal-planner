@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from 'react'
+import { useMemo, useRef, useState, type ReactNode } from 'react'
 import type { AggregatedIngredient } from '../data/aggregate'
 import { haveKey, type Have } from '../data/types'
 import { useStore } from '../store/store'
@@ -30,17 +30,32 @@ export function IngredientsList({
 }) {
   const haves = useStore((s) => s.haves)
   const byKey = new Map(haves.map((h) => [h.id, h]))
+  // Ticked lines no wanted recipe calls for (any more) stay on the list:
+  // what's on hand is still worth knowing. In among the rest, by name.
+  const lines = useMemo(() => {
+    if (!checkable) return ingredients
+    const listed = new Set(ingredients.map((i) => haveKey(i.name, i.unit)))
+    const extra: AggregatedIngredient[] = haves
+      .filter((h) => !listed.has(h.id))
+      .map((h) => ({ ...lineOf(h), sources: [] }))
+    if (extra.length === 0) return ingredients
+    return [...ingredients, ...extra].sort(
+      (a, b) =>
+        a.name.localeCompare(b.name) ||
+        (a.unit ?? '').localeCompare(b.unit ?? ''),
+    )
+  }, [ingredients, haves, checkable])
 
   return (
     // A notepad sheet: each ingredient on a ruled line, where it's from below.
     <div className="paper-card notepad rounded-t-md px-4 pt-2.5 pb-3">
-      {ingredients.length === 0 ? (
+      {lines.length === 0 ? (
         <p className="paper-serif py-3 text-center italic text-ink-faint">
           {empty}
         </p>
       ) : (
         <ul>
-          {ingredients.map((ing) => {
+          {lines.map((ing) => {
             const key = haveKey(ing.name, ing.unit)
             return (
               <IngredientLine
@@ -48,6 +63,7 @@ export function IngredientsList({
                 ing={ing}
                 haveKey={key}
                 have={checkable ? byKey.get(key) : undefined}
+                needed={ing.sources.length > 0 || !checkable}
                 checkable={checkable}
                 canEdit={canEdit}
               />
@@ -63,12 +79,15 @@ function IngredientLine({
   ing,
   haveKey: key,
   have,
+  needed,
   checkable,
   canEdit,
 }: {
   ing: AggregatedIngredient
   haveKey: string
   have: Have | undefined
+  /** Some wanted recipe calls for it (else it's here only as ticked). */
+  needed: boolean
   checkable: boolean
   canEdit: boolean
 }) {
@@ -84,14 +103,19 @@ function IngredientLine({
           state={!have ? 'off' : short ? 'short' : 'on'}
           disabled={!canEdit}
           label={`Have ${ing.name}`}
-          onChange={(on) => setHave(key, on, need)}
+          onChange={(on) =>
+            setHave(key, on, need, { name: ing.name, unit: ing.unit })
+          }
         />
       )}
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline justify-between gap-3">
           <span className="text-[17px]">{ing.name}</span>
           <span className="shrink-0 text-base text-ink-soft">
-            {formatAmount(ing.quantity, ing.unit)}
+            {needed
+              ? formatAmount(ing.quantity, ing.unit)
+              : // (Nothing calls for it: just its unit, for the amount below.)
+                (ing.unit ?? '')}
           </span>
         </div>
         {ing.sources.length > 0 && (
@@ -99,11 +123,11 @@ function IngredientLine({
             {ing.sources.join(', ')}
           </div>
         )}
-        {have && need !== undefined && (
+        {have && (needed ? need !== undefined : have.amount !== undefined) && (
           <HaveCounter
             haveKey={key}
             amount={have.amount ?? 0}
-            need={need}
+            need={needed ? need : undefined}
             unit={ing.unit}
             canEdit={canEdit}
           />
@@ -183,7 +207,8 @@ function HaveCounter({
 }: {
   haveKey: string
   amount: number
-  need: number
+  /** What's needed (none: nothing calls for it, so no "of"). */
+  need?: number
   unit?: string
   canEdit: boolean
 }) {
@@ -191,7 +216,7 @@ function HaveCounter({
   // The text being typed (so "1." or an empty field survive while typing).
   const [draft, setDraft] = useState<string | null>(null)
   const justFocused = useRef(false)
-  const short = amount < need
+  const short = need !== undefined && amount < need
   const step =
     'grid h-7 w-8 place-items-center text-lg leading-none active:opacity-60 disabled:opacity-35'
   return (
@@ -247,7 +272,11 @@ function HaveCounter({
           }`}
         />
         {/* (No unit: it's right above.) */}
-        <span className="pr-1 pl-1.5 whitespace-nowrap">of {round(need)}</span>
+        {need !== undefined ? (
+          <span className="pr-1 pl-1.5 whitespace-nowrap">of {round(need)}</span>
+        ) : (
+          <span className="w-1" />
+        )}
         <button
           type="button"
           aria-label={`More ${unitName(unit)}`}
@@ -263,6 +292,17 @@ function HaveCounter({
 }
 
 const unitName = (unit?: string) => unit || 'of it'
+
+/** A ticked line by itself: as written when ticked, or (older rows) from
+ *  its key, capitalized. */
+function lineOf(h: Have): { name: string; unit?: string; quantity?: number } {
+  if (h.name !== undefined) return { name: h.name, unit: h.unit || undefined }
+  const [name, unit] = h.id.split('|')
+  return {
+    name: name.charAt(0).toUpperCase() + name.slice(1),
+    unit: unit || undefined,
+  }
+}
 
 const round = (n: number) => Math.round(n * 100) / 100
 

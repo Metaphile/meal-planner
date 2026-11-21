@@ -52,7 +52,12 @@ interface AppState {
 
   // Haves
   /** Tick a line (having all it needs: `amount`), or untick it. */
-  setHave: (key: string, have: boolean, amount?: number) => void
+  setHave: (
+    key: string,
+    have: boolean,
+    amount?: number,
+    line?: { name: string; unit?: string },
+  ) => void
   /** How much of a ticked line is on hand (at least 0). */
   setHaveAmount: (key: string, amount: number) => void
 
@@ -193,10 +198,10 @@ export const useStore = create<AppState>((set, get) => ({
     enqueueDelete('addons', id)
   },
 
-  setHave: (key, have, amount) => {
+  setHave: (key, have, amount, line) => {
     const was = get().haves.find((h) => h.id === key)
     if (have) {
-      const row: Have = { id: key, amount }
+      const row: Have = { id: key, amount, ...line }
       set((s) => ({
         haves: was
           ? s.haves.map((h) => (h.id === key ? row : h))
