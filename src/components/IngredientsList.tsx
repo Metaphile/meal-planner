@@ -114,13 +114,14 @@ function IngredientLine({
           <span className="shrink-0 text-base text-ink-soft">
             {needed
               ? formatAmount(ing.quantity, ing.unit)
-              : // (Nothing calls for it: just its unit, for the amount below.)
-                (ing.unit ?? '')}
+              : // (Nothing calls for it: no quantity needed.)
+                '—'}
           </span>
         </div>
-        {ing.sources.length > 0 && (
+        {(ing.sources.length > 0 || !needed) && (
           <div className="text-xs italic leading-[18px] text-ink-faint">
-            {ing.sources.join(', ')}
+            {/* (Ticked, but no wanted recipe calls for it.) */}
+            {needed ? ing.sources.join(', ') : '[no recipe]'}
           </div>
         )}
         {have && (needed ? need !== undefined : have.amount !== undefined) && (
