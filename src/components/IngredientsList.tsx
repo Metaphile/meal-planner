@@ -169,7 +169,7 @@ function Tickbox({
 }
 
 /**
- * How much is on hand, against what's needed: − [have] of need unit +. The
+ * How much is on hand, against what's needed: − [have] of need +. The
  * number can be typed (decimals, or fractions like 1/2 or 1 1/2); − and +
  * go a whole unit at a time (not below 0). Short of what's needed, it shows
  * in red.
@@ -226,14 +226,13 @@ function HaveCounter({
           autoComplete="off"
           aria-label="How much you have"
           // (16px: no zooming in on iOS.)
-          className={`h-7 w-11 rounded-md bg-paper/70 text-right text-[16px] font-semibold focus:outline-none ${
-            short ? 'text-danger' : ''
+          // (Short of what's needed: a faint red field, to draw the eye.)
+          className={`h-7 w-12 rounded-md px-1.5 text-right text-[16px] font-semibold focus:outline-none ${
+            short ? 'bg-danger/15 text-danger' : 'bg-paper/70'
           }`}
         />
-        <span className="pr-1 pl-1.5 whitespace-nowrap">
-          of {round(need)}
-          {unit ? ` ${unit}` : ''}
-        </span>
+        {/* (No unit: it's right above.) */}
+        <span className="pr-1 pl-1.5 whitespace-nowrap">of {round(need)}</span>
         <button
           type="button"
           aria-label={`More ${unitName(unit)}`}
