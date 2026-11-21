@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 import type { AggregatedIngredient } from '../data/aggregate'
 import { haveKey, type Have } from '../data/types'
 import { useStore } from '../store/store'
@@ -190,6 +190,7 @@ function HaveCounter({
   const setHaveAmount = useStore((s) => s.setHaveAmount)
   // The text being typed (so "1." or an empty field survive while typing).
   const [draft, setDraft] = useState<string | null>(null)
+  const justFocused = useRef(false)
   const short = amount < need
   const step =
     'grid h-7 w-8 place-items-center text-lg leading-none active:opacity-60 disabled:opacity-35'
@@ -217,6 +218,19 @@ function HaveCounter({
             setDraft(e.target.value)
             const n = parseAmount(e.target.value)
             if (n !== undefined) setHaveAmount(key, n)
+          }}
+          // Tapping in selects the whole number, to type over. (After the
+          // tap settles: iOS places the caret after focus, undoing an
+          // earlier selection; and the click that follows a focus mustn't
+          // put the caret back.)
+          onFocus={(e) => {
+            const field = e.currentTarget
+            justFocused.current = true
+            setTimeout(() => field.setSelectionRange(0, field.value.length))
+          }}
+          onMouseUp={(e) => {
+            if (justFocused.current) e.preventDefault()
+            justFocused.current = false
           }}
           onBlur={() => setDraft(null)}
           onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
