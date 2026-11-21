@@ -752,9 +752,9 @@ const pose = (dy: number) => `translate(0px, ${dy}px)`
 /** How a card comes out of the rolodex (or a pocket) into your hand:
  *  - 'arc': it slides up out of its slot and hands over, mid-flight, to the
  *    card in hand, on one continuous arc.
- *  - 'lift': at once, it lifts straight up out of its slot and off the
- *    screen while the card in hand fades in where it rests (and the reverse
- *    to put it back). */
+ *  - 'lift': it lifts straight up out of its slot and off the screen, and
+ *    then the card in hand fades in where it rests (putting it back, the
+ *    card in hand fades out as the other drops back into its slot). */
 const TAKE_OUT: 'arc' | 'lift' = 'lift'
 const LIFT_MS = 200 // the card lifting out of the box
 const DROP_MS = 300 // …and dropping back in
@@ -1038,7 +1038,8 @@ export function CardDetail({
               { opacity: 0, transform: pose(0) },
               { opacity: 1, transform: pose(0) },
             ],
-            { ...fade, easing: 'ease-out' },
+            // Not until the card coming out of the box is off the screen.
+            { ...fade, delay: LIFT_MS, easing: 'ease-out' },
           ),
           shade.animate([{ opacity: 0 }, { opacity: 1 }], {
             ...fade,
