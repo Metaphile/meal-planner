@@ -1483,6 +1483,8 @@ export function CardDetail({
         >
           <div
             ref={cardRef}
+            // (The one place outside fields where text can be selected.)
+            className="selectable"
             role="dialog"
             aria-modal="true"
             aria-label={shown.title}

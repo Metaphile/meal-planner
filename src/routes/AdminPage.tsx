@@ -135,7 +135,7 @@ function InviteLinkBox({ link }: { link: string }) {
         Share this one-time link (valid 7 days):
       </div>
       <div className="flex items-center gap-2">
-        <code className="min-w-0 flex-1 truncate text-xs">{link}</code>
+        <code className="selectable min-w-0 flex-1 truncate text-xs">{link}</code>
         <button
           onClick={copy}
           className="shrink-0 rounded-full bg-brand px-3 py-1 text-xs font-semibold text-on-brand active:scale-95"

@@ -111,6 +111,24 @@ body {
   select {
     font-size: 16px;
   }
+
+  /* Dragging about never selects the page: only fields, a card in hand, and
+     anything marked .selectable hold selectable text. (Fields say so
+     explicitly — on iOS an unselectable ancestor can otherwise stop them
+     taking text.) */
+  body {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+  input,
+  textarea,
+  [contenteditable],
+  .selectable {
+    -webkit-user-select: text;
+    user-select: text;
+    -webkit-touch-callout: default;
+  }
 }
 
 /* Utility: momentum scrolling containers used by lists. */
