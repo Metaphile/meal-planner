@@ -241,6 +241,34 @@ body {
     color: var(--color-pencil);
     opacity: 1;
   }
+  /* A one-line title too long for its card runs past like a ticker (see
+     TickerTitle). Two copies with a gap, sliding by half: a seamless loop. */
+  .ticker-box {
+    overflow: hidden;
+  }
+  .ticker {
+    display: inline-flex;
+    gap: var(--ticker-gap);
+    padding-right: var(--ticker-gap);
+    will-change: transform;
+    animation: ticker linear infinite;
+  }
+  @keyframes ticker {
+    to {
+      transform: translateX(-50%);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ticker {
+      animation: none;
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .ticker > :last-child {
+      display: none;
+    }
+  }
   .paper-serif {
     font-family:
       'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;

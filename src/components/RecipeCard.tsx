@@ -142,11 +142,9 @@ export const RecipeCard = forwardRef<HTMLDivElement, CardProps>(
               <div
                 className={`font-hand min-w-0 flex-1 text-center font-semibold text-black ${
                   large ? 'text-[29px] leading-[26px]' : 'text-[28px] leading-[25px]'
-                } ${
-                  oneLineTitle ? 'truncate' : ''
                 }`}
               >
-                {recipe.title}
+                {oneLineTitle ? <TickerTitle text={recipe.title} /> : recipe.title}
               </div>
               <WantBox recipeId={recipe.id} canEditPlan={canEditPlan} />
             </div>
@@ -210,6 +208,61 @@ export function EditButton({ onEdit }: { onEdit: () => void }) {
     <button type="button" onClick={onEdit} className={EDIT_CLASS}>
       Edit
     </button>
+  )
+}
+
+/**
+ * A title on one line: as it is if it fits; if not, it runs past like a
+ * ticker, round and round (two copies, a gap between, sliding by half
+ * their length). Whether it fits is measured when it's laid out (and
+ * resized), never per frame; the moving text is a layer of its own, so it
+ * slides without re-drawing the card. (Reduced motion: an ellipsis.)
+ */
+function TickerTitle({ text }: { text: string }) {
+  const boxRef = useRef<HTMLSpanElement>(null)
+  const textRef = useRef<HTMLSpanElement>(null)
+  const [runs, setRuns] = useState<number | null>(null) // its width, if it overflows
+  useLayoutEffect(() => {
+    const box = boxRef.current!
+    const t = textRef.current!
+    const measure = () => {
+      const w = t.offsetWidth
+      setRuns(w > box.clientWidth + 1 ? w : null)
+    }
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(box)
+    return () => ro.disconnect()
+  }, [text])
+  const gap = '1.5em'
+  return (
+    <span
+      ref={boxRef}
+      // (Running, it starts at the left; else it's centred like any title.)
+      className={`ticker-box block ${runs ? 'text-left' : ''}`}
+    >
+      <span
+        className={runs ? 'ticker' : 'inline-block max-w-full truncate align-top'}
+        style={
+          runs
+            ? ({
+                '--ticker-gap': gap,
+                // (A steady 40px a second, however long.)
+                animationDuration: `${(runs + 40) / 40}s`,
+              } as React.CSSProperties)
+            : undefined
+        }
+      >
+        <span ref={textRef} className="whitespace-nowrap">
+          {text}
+        </span>
+        {runs && (
+          <span aria-hidden className="whitespace-nowrap">
+            {text}
+          </span>
+        )}
+      </span>
+    </span>
   )
 }
 
