@@ -542,6 +542,7 @@ export default function RecipesPage() {
         height,
         viewTop,
         hiddenAbove: wheelTop, // (behind the header)
+        lean: { deg, z, rodOffset: off },
         wheelPose: `translate3d(0px, ${(headerU + rodY - off).toFixed(1)}px, ${z.toFixed(1)}px) rotateX(${(-deg).toFixed(2)}deg)`,
         flatPose: `translate3d(0px, ${(headerU + rodOnScreen - off).toFixed(1)}px, 0px) rotateX(0deg)`,
         shade: lastShade.current[index] ?? 0,

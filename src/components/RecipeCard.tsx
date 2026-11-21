@@ -883,6 +883,10 @@ export interface CardOrigin {
   /** Where a card lifting out goes out of sight behind something (the
    *  header), if that's below `viewTop`. */
   hiddenAbove?: number
+  /** How it leans on the wheel: degrees toward you (positive: low on the
+   *  wheel, leaning in), its rod's depth, and how far its top is above the
+   *  rod — in the wheel's units (see PERSPECTIVE). (None: it stands flat.) */
+  lean?: { deg: number; z: number; rodOffset: number }
   /** Its pose on the wheel, and stood upright in place (wrapper transforms). */
   wheelPose: string
   flatPose: string
@@ -1159,8 +1163,19 @@ export function CardDetail({
     for (const el of [card, rdxCard]) el.getAnimations().forEach((a) => a.cancel())
     // It keeps its tilt on the wheel and slides straight up along its own
     // face, out of its slot, until it's out of sight (behind the header, or
-    // past the top of the page; shadow and all). Tilted, it covers less of the screen for the same slide, so
-    // measure how far that is.
+    // past the top of the page; shadow and all). Tilted, it covers less of
+    // the screen for the same slide, so measure how far that is.
+    //
+    // A card leaning toward you comes closer as it slides up its face; a
+    // long one would reach the eye of the perspective (and vanish) before
+    // it was out of sight. So it slides no closer than halfway there — and
+    // if that's short of out of sight, it's faded out by the time it stops.
+    const lean = o.lean
+    const maxSlide =
+      lean && lean.deg > 1
+        ? (PERSPECTIVE / 2 - lean.z) / Math.sin((lean.deg * Math.PI) / 180) -
+          lean.rodOffset
+        : Infinity
     const clearOf = (o.hiddenAbove ?? o.viewTop) - 24
     const inline = rdxCard.style.transform
     const bottomAt = (d: number) => {
@@ -1168,13 +1183,16 @@ export function CardDetail({
       return rdxCard.getBoundingClientRect().bottom
     }
     const b0 = bottomAt(0)
-    let d = clearOf - b0
+    const within = (d: number) => Math.max(d, -maxSlide)
+    let d = within(clearOf - b0)
     for (let i = 0; i < 4; i++) {
       const b = bottomAt(d)
-      if (b <= clearOf) break
-      d *= ((b0 - clearOf) / Math.max(1, b0 - b)) * 1.1
+      if (b <= clearOf || d <= -maxSlide) break
+      d = within(d * ((b0 - clearOf) / Math.max(1, b0 - b)) * 1.1)
     }
     rdxCard.style.transform = inline
+    // (Stopped short of out of sight: gone by the time it stops.)
+    const fadesWithSlide = d <= -maxSlide
     const gone = `translateY(${d}px)`
     const home = 'translateY(0px)'
     const lift = {
@@ -1204,7 +1222,7 @@ export function CardDetail({
           rdxCard.animate([{ opacity: 1 }, { opacity: 0 }], {
             ...lift,
             delay: SINK_MS,
-            duration: LIFT_FADE_MS,
+            duration: fadesWithSlide ? LIFT_MS : LIFT_FADE_MS,
             easing: LIFT_FADE,
           }),
           card.animate(
@@ -1223,9 +1241,11 @@ export function CardDetail({
           }),
         ]
       : [
+          // (From where it stopped short of out of sight, it fades in as
+          // it drops — not appearing there all at once.)
           rdxCard.animate(
             [
-              { transform: gone, opacity: 1 },
+              { transform: gone, opacity: fadesWithSlide ? 0 : 1 },
               { transform: home, opacity: 1 },
             ],
             { ...lift, easing: DROP_IN },
