@@ -127,7 +127,7 @@ export const RecipeCard = forwardRef<HTMLDivElement, CardProps>(
           <div className="px-5 pt-3.5">
             <div className="paper-rule flex items-start gap-3 pb-1.5">
               <div
-                className={`font-hand min-w-0 flex-1 font-semibold ${
+                className={`font-hand min-w-0 flex-1 font-semibold text-black ${
                   large ? 'text-[29px] leading-[26px]' : 'text-[28px] leading-[25px]'
                 } ${
                   oneLineTitle ? 'truncate' : ''
