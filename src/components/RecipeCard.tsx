@@ -803,7 +803,7 @@ const DROP_IN = 'cubic-bezier(0.33, 1, 0.68, 1)' // the take-out's curve, revers
  *
  * Edit turns the card over: its back has the recipe on paper fields. Save or
  * Cancel turns it back. Turned over, tapping the shade or pulling it down
- * turns it back and puts it away — once you've confirmed it, if the draft
+ * puts it away as it is — once you've confirmed it, if the draft
  * says anything different from the recipe (as does Cancel, or Escape).
  */
 export function CardDetail({
@@ -1172,7 +1172,7 @@ export function CardDetail({
    * change of height can't be seen. At rest the turned card is drawn flat
    * (no 3D transforms on its fields, so typing in them is ordinary).
    */
-  const flip = (toBack: boolean, then?: () => void) => {
+  const flip = (toBack: boolean) => {
     if (flipping.current || closing.current) return
     if (toBack === editingRef.current) return
     flipping.current = true
@@ -1230,7 +1230,6 @@ export function CardDetail({
           flushSync(() => setEditing(false))
         }
         flipping.current = false
-        then?.()
       }
     }
   }
@@ -1252,12 +1251,11 @@ export function CardDetail({
   // Cancel: turn back over (or let a new card go).
   const cancel = () =>
     leave(() => (unsaved.current ? letGo() : flipRefFn.current(false)))
-  // Put away from the back: turn it over, then back into its slot (from
-  // `fromY` below its place, if it was pulled down).
-  const putAway = (fromY = 0) =>
-    unsaved.current
-      ? letGo()
-      : flipRefFn.current(false, () => closeRef.current(fromY))
+  // Put away from the back, as it is (no turning it over first: it fades
+  // away as the card in the box drops back in) — from `fromY` below its
+  // place, coasting on at `v`, if it was pulled down.
+  const putAway = (fromY = 0, v = 0) =>
+    unsaved.current ? letGo() : closeRef.current(fromY, v)
   const cancelRef = useRef(cancel)
   cancelRef.current = cancel
   const putAwayRef = useRef(putAway)
@@ -1380,7 +1378,8 @@ export function CardDetail({
         return
       }
       if (far && !changed.current) {
-        putAwayRef.current(d.dy)
+        const held = performance.now() - d.lastT > 80
+        putAwayRef.current(d.dy, Math.max(0.5, held ? 0 : d.v))
         return
       }
       // (Turned over with changes: it springs back while you decide.)
