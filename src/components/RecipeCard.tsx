@@ -132,8 +132,9 @@ function FavoritedBy({ recipeId, gap }: { recipeId: string; gap: boolean }) {
       className={`flex items-center gap-1.5 text-[#8a8170] ${gap ? 'mt-[22px]' : ''}`}
     >
       <span className="sr-only">Favorite of</span>
-      {/* (Others' stars: no outline, as in the header.) */}
-      <StarIcon on outlined={false} size={17} />
+      {/* (Others' stars: no outline, as in the header — so a little larger,
+          to look as big.) */}
+      <StarIcon on outlined={false} size={19} />
       <span className="min-w-0">{names}</span>
     </p>
   )
