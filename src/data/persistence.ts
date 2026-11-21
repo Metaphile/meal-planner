@@ -98,6 +98,7 @@ function scheduleFlush(): void {
 async function flushOutbox(): Promise<void> {
   if (flushing) return
   flushing = true
+  let more = false
   try {
     const rows = await db.outbox.orderBy('id').toArray()
     if (rows.length === 0) return
@@ -108,11 +109,40 @@ async function flushOutbox(): Promise<void> {
     for (const op of latest.values()) {
       await applyRemote(op) // throws if still offline → keep outbox, retry later
     }
-    await db.outbox.clear()
+    // Only what was sent: writes queued meanwhile wait for the next round.
+    const sentUpTo = rows[rows.length - 1].id!
+    await db.outbox.where('id').belowOrEqual(sentUpTo).delete()
+    more = (await db.outbox.count()) > 0
   } catch {
     // Still offline / a write failed — leave the outbox for the next attempt.
   } finally {
     flushing = false
+  }
+  if (more) scheduleFlush()
+}
+
+/**
+ * The data as this device sees it: the server's, with this device's writes
+ * not yet sent laid over it — so a pull (e.g. after another write's echo)
+ * never undoes a newer local change.
+ */
+async function withPending(data: Dataset): Promise<Dataset> {
+  const rows = await db.outbox.orderBy('id').toArray()
+  if (rows.length === 0) return data
+  const tables = {
+    recipes: new Map(data.recipes.map((r) => [r.id, r])),
+    plan: new Map(data.plan.map((p) => [p.id, p])),
+    wants: new Map(data.wants.map((w) => [w.id, w])),
+  }
+  for (const r of rows) {
+    const table = tables[r.collection] as Map<string, unknown>
+    if (r.op === 'delete') table.delete(r.key)
+    else table.set(r.key, r.data)
+  }
+  return {
+    recipes: [...tables.recipes.values()],
+    plan: [...tables.plan.values()],
+    wants: [...tables.wants.values()],
   }
 }
 
@@ -168,13 +198,14 @@ export async function startSync(onData: (data: Dataset) => void): Promise<void> 
   let data = await remotePull()
   if (await seedRemoteIfEmpty(data)) data = await remotePull()
 
+  data = await withPending(data)
   await cacheReplaceAll(data)
   onData(data)
 
   // Realtime: re-pull on any change (family-scale data is tiny).
   const handler = () => {
     void (async () => {
-      const fresh = await remotePull()
+      const fresh = await withPending(await remotePull())
       await cacheReplaceAll(fresh)
       onData(fresh)
     })()
