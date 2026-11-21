@@ -87,9 +87,6 @@ type CardProps = {
   canEditRecipes: boolean
   /** Lets the body scroll (when the card is capped to the screen). */
   scrollable?: boolean
-  /** Its title on one line (in the box, so each card shows the same lines
-   *  above the next; in hand it's written out in full). */
-  oneLineTitle?: boolean
   /** In hand: written a little larger (the card is a little bigger). */
   large?: boolean
   /** In the box: drawn only as far down as can ever show (this tall at
@@ -114,7 +111,6 @@ export const RecipeCard = forwardRef<HTMLDivElement, CardProps>(
       canEditPlan,
       canEditRecipes,
       scrollable = false,
-      oneLineTitle = false,
       large = false,
       peekHeight,
       actions,
@@ -144,7 +140,7 @@ export const RecipeCard = forwardRef<HTMLDivElement, CardProps>(
                   large ? 'text-[29px] leading-[26px]' : 'text-[28px] leading-[25px]'
                 }`}
               >
-                {oneLineTitle ? <TickerTitle text={recipe.title} /> : recipe.title}
+                <TickerTitle text={recipe.title} />
               </div>
               <WantBox recipeId={recipe.id} canEditPlan={canEditPlan} />
             </div>
@@ -213,43 +209,45 @@ export function EditButton({ onEdit }: { onEdit: () => void }) {
 
 /**
  * A title on one line: as it is if it fits; if not, it runs past like a
- * ticker, round and round (two copies, a gap between, sliding by half
- * their length). Whether it fits is measured when it's laid out (and
- * resized), never per frame; the moving text is a layer of its own, so it
- * slides without re-drawing the card. (Reduced motion: an ellipsis.)
+ * ticker, round and round (two copies, each followed by a dot that marks
+ * where the title ends and starts again, sliding by half their length).
+ * Whether it fits is measured when it's laid out (and resized), never per
+ * frame; the moving text is a layer of its own, so it slides without
+ * re-drawing the card. Running, its ends are feathered: the box reaches
+ * FEATHER px out into the space either side of it, fading there. (Reduced
+ * motion: an ellipsis.)
  */
 function TickerTitle({ text }: { text: string }) {
   const boxRef = useRef<HTMLSpanElement>(null)
   const textRef = useRef<HTMLSpanElement>(null)
-  const [runs, setRuns] = useState<number | null>(null) // its width, if it overflows
+  const trackRef = useRef<HTMLSpanElement>(null)
+  const [runs, setRuns] = useState(false)
+  const [loop, setLoop] = useState(0) // px: one title, its dot, and gaps
   useLayoutEffect(() => {
     const box = boxRef.current!
-    const t = textRef.current!
-    const measure = () => {
-      const w = t.offsetWidth
-      setRuns(w > box.clientWidth + 1 ? w : null)
-    }
+    const measure = () =>
+      setRuns(textRef.current!.offsetWidth > box.clientWidth - 2 * FEATHER + 1)
     measure()
     const ro = new ResizeObserver(measure)
     ro.observe(box)
     return () => ro.disconnect()
   }, [text])
-  const gap = '1.5em'
+  useLayoutEffect(() => {
+    if (runs) setLoop(trackRef.current!.offsetWidth / 2)
+  }, [runs, text])
   return (
     <span
       ref={boxRef}
       // (Running, it starts at the left; else it's centred like any title.)
-      className={`ticker-box block ${runs ? 'text-left' : ''}`}
+      className={`ticker-box block ${runs ? 'ticker-runs text-left' : ''}`}
+      style={{ '--feather': `${FEATHER}px` } as React.CSSProperties}
     >
       <span
-        className={runs ? 'ticker' : 'inline-block max-w-full truncate align-top'}
+        ref={trackRef}
+        className={runs ? 'ticker' : 'whitespace-nowrap'}
         style={
-          runs
-            ? ({
-                '--ticker-gap': gap,
-                // (A steady 40px a second, however long.)
-                animationDuration: `${(runs + 40) / 40}s`,
-              } as React.CSSProperties)
+          runs && loop
+            ? { animationDuration: `${loop / TICKER_SPEED}s` }
             : undefined
         }
       >
@@ -257,11 +255,28 @@ function TickerTitle({ text }: { text: string }) {
           {text}
         </span>
         {runs && (
-          <span aria-hidden className="whitespace-nowrap">
-            {text}
-          </span>
+          <>
+            <TickerDot />
+            <span aria-hidden className="whitespace-nowrap">
+              {text}
+            </span>
+            <TickerDot />
+          </>
         )}
       </span>
+    </span>
+  )
+}
+
+/** px a second. */
+const TICKER_SPEED = 36
+/** px: how far a running title's ends fade. */
+const FEATHER = 10
+
+function TickerDot() {
+  return (
+    <span aria-hidden className="ticker-dot">
+      •
     </span>
   )
 }
@@ -908,7 +923,10 @@ const RecipeCardBack = forwardRef<
             placeholder="Recipe"
             aria-label="Recipe"
             autoComplete="off"
-            className="min-w-0 flex-1 bg-transparent text-center text-[30px] font-semibold leading-[30px] focus:outline-none"
+            // (A title: each word capitalised, as the keyboard types it.)
+            autoCapitalize="words"
+            // (Too long to show: an ellipsis, until it's being written in.)
+            className="min-w-0 flex-1 text-ellipsis bg-transparent text-center text-[30px] font-semibold leading-[30px] focus:outline-none"
           />
           {/* (Balancing the star, so the title sits centred.) */}
           {!isNew && <span aria-hidden className="w-6 shrink-0" />}

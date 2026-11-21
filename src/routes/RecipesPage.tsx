@@ -1151,7 +1151,6 @@ const RolodexItem = memo(function RolodexItem({
       {/* The whole card, at its natural height. */}
       <RecipeCard
         recipe={item.recipe}
-        oneLineTitle
         peekHeight={full ? undefined : PEEK_H}
         canEditPlan={canEditPlan}
         canEditRecipes={canEditRecipes}

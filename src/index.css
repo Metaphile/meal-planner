@@ -242,14 +242,37 @@ body {
     opacity: 1;
   }
   /* A one-line title too long for its card runs past like a ticker (see
-     TickerTitle). Two copies with a gap, sliding by half: a seamless loop. */
+     TickerTitle). Two copies, each with its dot, sliding by half: a seamless
+     loop. The box reaches out past the title's column, by --feather either
+     side (where a running title fades) and by --slack above and below (room
+     for descenders, which the clip would otherwise cut). */
   .ticker-box {
+    --slack: 0.3em;
     overflow: hidden;
+    padding: var(--slack) var(--feather);
+    margin: calc(-1 * var(--slack)) calc(-1 * var(--feather));
+  }
+  .ticker-runs {
+    -webkit-mask-image: linear-gradient(
+      to right,
+      transparent,
+      #000 var(--feather),
+      #000 calc(100% - var(--feather)),
+      transparent
+    );
+    mask-image: linear-gradient(
+      to right,
+      transparent,
+      #000 var(--feather),
+      #000 calc(100% - var(--feather)),
+      transparent
+    );
   }
   .ticker {
+    --gap: 0.4em;
     display: inline-flex;
-    gap: var(--ticker-gap);
-    padding-right: var(--ticker-gap);
+    gap: var(--gap);
+    padding-right: var(--gap);
     will-change: transform;
     animation: ticker linear infinite;
   }
@@ -259,13 +282,20 @@ body {
     }
   }
   @media (prefers-reduced-motion: reduce) {
+    .ticker-runs {
+      -webkit-mask-image: none;
+      mask-image: none;
+    }
     .ticker {
       animation: none;
       display: block;
       overflow: hidden;
+      white-space: nowrap;
       text-overflow: ellipsis;
+      padding: var(--slack) 0;
+      margin: calc(-1 * var(--slack)) 0;
     }
-    .ticker > :last-child {
+    .ticker > :not(:first-child) {
       display: none;
     }
   }
