@@ -1,4 +1,5 @@
 import { pb } from './pb'
+import { sha256Hex } from '../lib/sha256'
 import type { Access } from './AuthProvider'
 
 // The group's members, and (for writers) managing them. PocketBase's rules
@@ -33,11 +34,6 @@ function randomHex(bytes: number): string {
   const a = new Uint8Array(bytes)
   crypto.getRandomValues(a)
   return [...a].map((b) => b.toString(16).padStart(2, '0')).join('')
-}
-
-async function sha256Hex(text: string): Promise<string> {
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text))
-  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('')
 }
 
 export const INVITE_TTL_DAYS = 7
