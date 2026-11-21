@@ -338,7 +338,7 @@ function FavoriteStar({ recipeId }: { recipeId: string }) {
  *  or person, so a stack of so many always looks the same. */
 const STACKED = [
   { x: -6, y: 3.2, scale: 0.74, opacity: 0.9 },
-  { x: 6, y: 3.2, scale: 0.74, opacity: 0.55 },
+  { x: 6, y: 3.2, scale: 0.74, opacity: 0.45 },
 ]
 
 /**
