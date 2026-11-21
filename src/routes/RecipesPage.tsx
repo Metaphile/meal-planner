@@ -759,10 +759,10 @@ export default function RecipesPage() {
               perspective: `${PERSPECTIVE}px`,
               perspectiveOrigin: `50% ${headerU + wheel.front}px`,
               // The box in a lighter light: paper 20% toward white, and the
-              // dividers' kraft too, then 10% darker (ink and edges as they
-              // are).
+              // dividers' kraft too, then 10% darker and 10% more saturated
+              // (ink and edges as they are).
               ['--color-paper' as string]: '#fdfaf4',
-              ['--color-kraft' as string]: '#d1c095',
+              ['--color-kraft' as string]: '#d4c192',
             }}
           >
             {items.map((item, i) => (
