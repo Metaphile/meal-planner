@@ -139,8 +139,10 @@ export function OneLine({
  * not the drum's, not the card's, and not a tap (no taking the card out).
  *
  * (Touches are followed by both their touch and their pointer events —
- * whichever comes first — and a sideways one is kept from everything else
- * by both.) Returns the cleanup.
+ * whichever comes first — and a sideways one's moves are kept from
+ * everything else by both. Not its start or its end: whatever saw the finger
+ * go down must see it lift — the drum waits for it before it'll take
+ * another.) Returns the cleanup.
  */
 function dragSideways(
   box: HTMLElement,
@@ -231,10 +233,7 @@ function dragSideways(
     }
   }
   const onTouchEnd = (e: TouchEvent) => {
-    if (end(e.timeStamp)) {
-      if (e.cancelable) e.preventDefault() // (no click from it)
-      e.stopPropagation()
-    }
+    if (end(e.timeStamp) && e.cancelable) e.preventDefault() // (no click)
   }
   const onPointerDown = (e: PointerEvent) => {
     if (e.pointerType !== 'mouse') begin(e.clientX, e.clientY, e.timeStamp)
@@ -245,9 +244,7 @@ function dragSideways(
       e.stopPropagation() // (not the drum's)
   }
   const onPointerUp = (e: PointerEvent) => {
-    if (e.pointerType === 'mouse') return
-    if (mode === 'sideways') e.stopPropagation()
-    end(e.timeStamp)
+    if (e.pointerType !== 'mouse') end(e.timeStamp)
   }
   const onCancel = () => {
     active = false
