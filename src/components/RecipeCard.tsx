@@ -782,7 +782,7 @@ function fadingAway(fromY: number, v: number, opacity: number): Keyframe[] {
 }
 
 const LIFT_UP = 'cubic-bezier(0.32, 0, 0.67, 0)' // slow to start, gathering speed
-const DROP_IN = 'cubic-bezier(0.15, 0.5, 0.55, 1)' // settling into the slot
+const DROP_IN = 'cubic-bezier(0.33, 1, 0.68, 1)' // the take-out's curve, reversed: fast, then settling
 
 /**
  * The lifted card. One continuous motion takes the card from wherever it
@@ -972,8 +972,8 @@ export function CardDetail({
 
   /**
    * 'lift' (see TAKE_OUT): the card in the rolodex lifts straight up out of
-   * its slot and off the top of the screen (standing up off the wheel as it
-   * goes) while this card fades in where it rests — or, putting it back,
+   * its slot and off the top of the screen (keeping its tilt) while this
+   * card fades in where it rests — or, putting it back,
    * fades out where it is (`fromY` below its place) while the other drops
    * back into its slot.
    */
@@ -989,17 +989,27 @@ export function CardDetail({
     // (Pulled down, it's already partly faded.)
     const cardOpacity = Number(card.style.opacity || 1)
     card.style.opacity = ''
-    const rdxWrap = rdxCard.parentElement ?? undefined
-    const rdxDim =
-      rdxCard.querySelector<HTMLElement>('.rolodex-dim') ?? undefined
-    // Clear of the top of the page, shadow and all.
-    const gone = `translateY(${o.viewTop - o.height - 40 - o.slotTop}px)`
+    for (const el of [card, rdxCard]) el.getAnimations().forEach((a) => a.cancel())
+    // It keeps its tilt on the wheel and slides straight up along its own
+    // face, out of its slot, until it's clear of the top of the page (shadow
+    // and all). Tilted, it covers less of the screen for the same slide, so
+    // measure how far that is.
+    const clearOf = o.viewTop - 40
+    const inline = rdxCard.style.transform
+    const bottomAt = (d: number) => {
+      rdxCard.style.transform = `translateY(${d}px)`
+      return rdxCard.getBoundingClientRect().bottom
+    }
+    const b0 = bottomAt(0)
+    let d = clearOf - b0
+    for (let i = 0; i < 4; i++) {
+      const b = bottomAt(d)
+      if (b <= clearOf) break
+      d *= ((b0 - clearOf) / Math.max(1, b0 - b)) * 1.1
+    }
+    rdxCard.style.transform = inline
+    const gone = `translateY(${d}px)`
     const home = 'translateY(0px)'
-    // Standing up off the wheel (or lying back onto it) takes the first
-    // (last) part of the lift.
-    const s = 0.4
-    for (const el of [card, rdxCard, rdxWrap, rdxDim])
-      el?.getAnimations().forEach((a) => a.cancel())
     const lift = {
       duration: opening ? LIFT_MS : DROP_MS,
       fill: 'both' as const,
@@ -1017,22 +1027,6 @@ export function CardDetail({
               { transform: gone, opacity: 0 },
             ],
             { ...lift, easing: LIFT_UP },
-          ),
-          rdxWrap?.animate(
-            [
-              { offset: 0, transform: o.wheelPose, easing: STAND },
-              { offset: s, transform: o.flatPose },
-              { offset: 1, transform: o.flatPose },
-            ],
-            lift,
-          ),
-          rdxDim?.animate(
-            [
-              { offset: 0, opacity: o.shade, easing: STAND },
-              { offset: s, opacity: 0 },
-              { offset: 1, opacity: 0 },
-            ],
-            lift,
           ),
           card.animate(
             [
@@ -1057,22 +1051,6 @@ export function CardDetail({
             ],
             { ...lift, easing: DROP_IN },
           ),
-          rdxWrap?.animate(
-            [
-              { offset: 0, transform: o.flatPose },
-              { offset: 1 - s, transform: o.flatPose, easing: STAND },
-              { offset: 1, transform: o.wheelPose },
-            ],
-            lift,
-          ),
-          rdxDim?.animate(
-            [
-              { offset: 0, opacity: 0 },
-              { offset: 1 - s, opacity: 0, easing: STAND },
-              { offset: 1, opacity: o.shade },
-            ],
-            lift,
-          ),
           card.animate(
             fadingAway(fromY, fromV, cardOpacity),
             { ...fade, easing: 'linear' },
@@ -1090,8 +1068,8 @@ export function CardDetail({
     for (const a of anims) if (a) a.startTime = now
     // Opening: the fade (only it is on this card, so its fill is what's
     // dropped once it ends). Closing: whichever ends last.
-    if (opening) return anims[3]!
-    return FADE_MS > DROP_MS ? anims[3]! : anims[0]!
+    if (opening) return anims[1]
+    return FADE_MS > DROP_MS ? anims[1] : anims[0]
   }
 
   // Fly out of the rolodex into place.
