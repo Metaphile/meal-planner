@@ -620,7 +620,6 @@ const RecipeCardBack = forwardRef<
     >
       {/* Written by hand: a draft, before it's typed up on the front. */}
       <div className="handwritten relative flex flex-1 flex-col">
-        <div className="paper-frame" />
         <div className="px-5 pt-3.5">
           <input
             value={title}
