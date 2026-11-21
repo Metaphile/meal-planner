@@ -764,7 +764,7 @@ const TAKE_OUT: 'arc' | 'lift' = 'lift'
 const LIFT_MS = 409 // the card lifting out of the box
 const DROP_MS = 300 // …and dropping back in
 const FADE_IN_DELAY_MS = 300 // the card in hand (and the shade) start fading in…
-const FADE_IN_MS = 596 // …over this
+const FADE_IN_MS = 450 // …over this
 const FADE_IN_EASE = 'linear' // steady, start to finish
 const FADE_MS = 225 // …and fading out
 /** Let go of while moving, a card coasts on, slowing as it goes. */
