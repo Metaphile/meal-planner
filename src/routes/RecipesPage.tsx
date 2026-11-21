@@ -57,7 +57,7 @@ const TAB_W = 44 // divider tab width
 // The shadow of the item in front: it starts this far above that item's
 // edge (the paper above it unshaded) and deepens to its darkest as far
 // below the edge, out of sight — so at the edge it's about halfway.
-const CAST = 0.2
+const CAST = 0.17
 const CAST_FADE = 28
 
 // The visible part of the wheel, as angles from the front line (where a card
@@ -331,14 +331,13 @@ export default function RecipesPage() {
       if (lastPose.current[i] !== pose) {
         lastPose.current[i] = pose
         el.style.transform = pose
-        // Shade as it tips back toward the top; a touch as it leans in below.
-        // (Only when it visibly changes — most cards' shade doesn't.)
+        // Shade as it tilts away from facing you, whether tipping back at the
+        // top or leaning in at the bottom. (Only when it visibly changes —
+        // most cards' shade doesn't.)
         const deg = phi / DEG
         const shade =
           Math.round(
-            (deg < 0
-              ? 0.7 * Math.min(1, Math.max(0, (-deg - 12) / 55))
-              : 0.15 * Math.min(1, Math.max(0, (deg - 20) / 25))) * 100,
+            0.7 * Math.min(1, Math.max(0, (Math.abs(deg) - 12) / 55)) * 100,
           ) / 100
         if (lastShade.current[i] !== shade) {
           lastShade.current[i] = shade
