@@ -58,8 +58,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (pb.authStore.isValid) {
         try {
           await pb.collection('users').authRefresh()
-        } catch {
-          pb.authStore.clear() // expired/revoked → signed out
+        } catch (e) {
+          // Signed out only if the server says the session is no good
+          // (expired, revoked, or the account's gone) — not when it can't be
+          // reached (offline, or the server restarting): the app works
+          // offline on what it has.
+          const status = (e as { status?: number }).status
+          if (status === 401 || status === 403 || status === 404)
+            pb.authStore.clear()
         }
       }
       setReady(true)
