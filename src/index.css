@@ -1,5 +1,31 @@
 @import 'tailwindcss';
 
+/* Handwriting, for the back of a card (where a recipe is drafted by hand).
+   Bundled (Latin only), so it works offline; "block" so a card turning over
+   never shows its draft in a stand-in font for a moment. */
+@font-face {
+  font-family: 'Caveat';
+  font-style: normal;
+  font-display: block;
+  font-weight: 400 700;
+  src: url('../node_modules/@fontsource-variable/caveat/files/caveat-latin-wght-normal.woff2')
+    format('woff2-variations');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191,
+    U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Caveat';
+  font-style: normal;
+  font-display: block;
+  font-weight: 400 700;
+  src: url('../node_modules/@fontsource-variable/caveat/files/caveat-latin-ext-wght-normal.woff2')
+    format('woff2-variations');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7,
+    U+02DD-02FF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0,
+    U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
 /* ---- Theme tokens -------------------------------------------------------- */
 /* The whole app is a recipe box on a kitchen counter: paper cards in ink on
    a sage counter, with kraft for tabs, pockets and primary actions. The
@@ -32,6 +58,8 @@
   --color-frame: #a9c9b9;
   --color-scrap: #fffbe8;
   --color-scrap-edge: #eadfb4;
+  --color-pen: #2c3e6b; /* ballpoint ink, for handwriting */
+  --color-pencil: #a3a8b5; /* faint pencil: hints on a draft */
 }
 
 /* ---- Base ---------------------------------------------------------------- */
@@ -150,6 +178,22 @@ body {
   }
   .no-scrollbar::-webkit-scrollbar {
     display: none;
+  }
+  /* Handwritten in ballpoint (the back of a card, being drafted). Inputs
+     inherit it; 22px suits the card's 22px rules (and is over iOS's 16px
+     zoom-on-focus threshold). */
+  .handwritten {
+    font-family: 'Caveat', 'Bradley Hand', 'Noteworthy', cursive;
+    font-size: 22px;
+    color: var(--color-pen);
+  }
+  .handwritten input,
+  .handwritten textarea {
+    font-size: inherit;
+  }
+  .handwritten ::placeholder {
+    color: var(--color-pencil);
+    opacity: 1;
   }
   .paper-serif {
     font-family:

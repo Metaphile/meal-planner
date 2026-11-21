@@ -247,7 +247,7 @@ function UnitCell({
   }
 
   const chip =
-    'rounded-full border px-2.5 py-1 text-sm leading-5 active:scale-95'
+    'rounded-full border px-2.5 py-1 text-[21px] leading-5 active:scale-95'
   return (
     <div ref={ref} className="relative min-w-0">
       <button
@@ -291,7 +291,7 @@ function UnitCell({
               setMenu(false)
               setTyping(true)
             }}
-            className={`${chip} border-paper-edge bg-paper italic text-ink-soft`}
+            className={`${chip} border-paper-edge bg-paper text-pencil`}
           >
             Other…
           </button>
@@ -302,7 +302,7 @@ function UnitCell({
                 onChange(undefined)
                 setMenu(false)
               }}
-              className={`${chip} border-paper-edge bg-paper italic text-ink-soft`}
+              className={`${chip} border-paper-edge bg-paper text-pencil`}
             >
               None
             </button>
@@ -361,8 +361,8 @@ function IngredientTable({
   const cols = 'grid grid-cols-[minmax(0,1fr)_3.25rem_4.25rem_1.75rem]'
   const cell =
     // Taller than the card's 22px ruled lines, so each line (and its ✕) is
-    // easy to hit with a finger.
-    'h-[30px] min-w-0 bg-transparent placeholder:italic placeholder:text-ink-faint focus:bg-kraft/15 focus:outline-none'
+    // easy to hit with a finger. The writing sits low, on its line.
+    'h-[30px] min-w-0 bg-transparent pt-[6px] leading-[24px] focus:bg-kraft/15 focus:outline-none'
   const rule = 'border-l border-line-blue'
 
   return (
@@ -416,9 +416,9 @@ function IngredientTable({
                 type="button"
                 onClick={() => remove(i)}
                 aria-label={`Remove ${row.name || 'ingredient'}`}
-                className="grid h-[30px] place-items-center text-sm text-ink-faint active:text-ink"
+                className="grid h-[30px] place-items-center pt-[3px] text-[30px] leading-none text-pencil active:text-pen"
               >
-                ✕
+                ×
               </button>
             )}
           </div>
@@ -428,7 +428,12 @@ function IngredientTable({
   )
 }
 
+// Fetch the handwriting now, so it's ready the first time a card turns over
+// (it's set to show nothing rather than a stand-in font while loading).
+if (typeof document !== 'undefined') void document.fonts?.load('22px Caveat')
+
 const NOTES_MIN_LINES = 6
+const NOTES_DROP = 3
 
 /**
  * The back of a card: the recipe written out on paper fields to edit. Nothing
@@ -468,13 +473,17 @@ const RecipeCardBack = forwardRef<
   const [confirmingDelete, setConfirmingDelete] = useState(false)
 
   // Notes grow a ruled line at a time as you write, so they never scroll.
+  // (The writing is set NOTES_DROP lower than the rules, to sit on them.)
   const notesRef = useRef<HTMLTextAreaElement>(null)
   useLayoutEffect(() => {
     const el = notesRef.current
     if (!el) return
     el.style.height = '0px'
-    const lines = Math.max(NOTES_MIN_LINES, Math.ceil(el.scrollHeight / 22))
-    el.style.height = `${lines * 22}px`
+    const lines = Math.max(
+      NOTES_MIN_LINES,
+      Math.ceil((el.scrollHeight - NOTES_DROP) / 22),
+    )
+    el.style.height = `${lines * 22 + NOTES_DROP}px`
   }, [notes])
 
   const save = () => {
@@ -493,8 +502,7 @@ const RecipeCardBack = forwardRef<
     onSaved()
   }
 
-  const label =
-    'paper-serif mb-1 block text-[13px] font-semibold uppercase tracking-wider text-[#8a8170]'
+  const label = 'block text-[22px] font-semibold leading-[26px]'
 
   return (
     <div
@@ -503,7 +511,8 @@ const RecipeCardBack = forwardRef<
       className={`paper-card relative flex flex-col text-left ${className}`}
       style={{ minHeight: CARD_H, ...style }}
     >
-      <div className="relative flex flex-1 flex-col">
+      {/* Written by hand: a draft, before it's typed up on the front. */}
+      <div className="handwritten relative flex flex-1 flex-col">
         <div className="paper-frame" />
         <div className="px-5 pt-3.5">
           <input
@@ -514,7 +523,7 @@ const RecipeCardBack = forwardRef<
             placeholder="Recipe"
             aria-label="Recipe"
             autoComplete="off"
-            className="paper-serif paper-rule w-full bg-transparent pb-1.5 text-[19px] font-semibold leading-[25px] placeholder:font-normal placeholder:italic placeholder:text-ink-faint focus:outline-none"
+            className="paper-rule w-full bg-transparent pb-0.5 text-[30px] font-semibold leading-[30px] focus:outline-none"
           />
         </div>
         <div className="mx-5 mt-3.5 mb-4 flex flex-col gap-4">
@@ -532,7 +541,7 @@ const RecipeCardBack = forwardRef<
               rows={NOTES_MIN_LINES}
               placeholder="Prep tips, substitutions…"
               autoComplete="off"
-              className="paper-lines block w-full resize-none overflow-hidden bg-transparent leading-[22px] placeholder:italic placeholder:text-ink-faint focus:outline-none"
+              className="paper-lines block w-full resize-none overflow-hidden bg-transparent pt-[3px] leading-[22px] focus:outline-none"
             />
           </label>
           <label className="block">
@@ -542,7 +551,7 @@ const RecipeCardBack = forwardRef<
               onChange={(e) => setTagsText(e.target.value)}
               placeholder="dinner, kid-friendly"
               autoComplete="off"
-              className="block h-[22px] w-full border-b border-line-blue bg-transparent leading-[21px] placeholder:italic placeholder:text-ink-faint focus:bg-kraft/15 focus:outline-none"
+              className="block h-[25px] w-full border-b border-line-blue bg-transparent pt-[3px] leading-[21px] focus:bg-kraft/15 focus:outline-none"
             />
           </label>
         </div>
