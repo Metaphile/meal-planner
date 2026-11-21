@@ -1,5 +1,11 @@
 import { create } from 'zustand'
-import type { Ingredient, MealComponent, PlanMeal, Recipe } from '../data/types'
+import type {
+  Ingredient,
+  MealComponent,
+  PlanMeal,
+  Recipe,
+  Want,
+} from '../data/types'
 import {
   enqueueDelete,
   enqueuePut,
@@ -14,6 +20,8 @@ const byPosition = (a: PlanMeal, b: PlanMeal) => a.position - b.position
 interface AppState {
   recipes: Recipe[]
   plan: PlanMeal[]
+  /** Recipes wanted (and how many times): they make the Ingredients list. */
+  wants: Want[]
   hydrated: boolean
 
   init: () => Promise<void>
@@ -21,6 +29,12 @@ interface AppState {
   // Recipes (the durable library)
   upsertRecipe: (recipe: Recipe) => void
   deleteRecipe: (id: string) => void
+
+  // Wants
+  /** Want a recipe (once), or not any more. */
+  setWanted: (recipeId: string, wanted: boolean) => void
+  /** How many times over a wanted recipe is wanted (at least 1). */
+  setWantCount: (recipeId: string, count: number) => void
 
   // Plan meals (anonymous groups that live only on the plan)
   addRecipeToPlan: (recipeId: string) => void
@@ -48,6 +62,7 @@ function makeMeal(components: MealComponent[], position: number): PlanMeal {
 export const useStore = create<AppState>((set, get) => ({
   recipes: [],
   plan: [],
+  wants: [],
   hydrated: false,
 
   init: async () => {
@@ -57,6 +72,7 @@ export const useStore = create<AppState>((set, get) => ({
     set({
       recipes: [...cached.recipes].sort(byTitle),
       plan: [...cached.plan].sort(byPosition),
+      wants: cached.wants,
       hydrated: true,
     })
     // 2. Reconcile with PocketBase + subscribe to realtime updates. Keeps the
@@ -66,6 +82,7 @@ export const useStore = create<AppState>((set, get) => ({
         set({
           recipes: [...data.recipes].sort(byTitle),
           plan: [...data.plan].sort(byPosition),
+          wants: data.wants,
         })
       })
     } catch {
@@ -90,6 +107,32 @@ export const useStore = create<AppState>((set, get) => ({
     // aggregation and UI both handle safely (shown as "deleted recipe").
     set((s) => ({ recipes: s.recipes.filter((r) => r.id !== id) }))
     enqueueDelete('recipes', id)
+  },
+
+  setWanted: (recipeId, wanted) => {
+    const has = get().wants.some((w) => w.recipeId === recipeId)
+    if (wanted === has) return
+    if (wanted) {
+      const want: Want = { id: recipeId, recipeId, count: 1 }
+      set((s) => ({ wants: [...s.wants, want] }))
+      enqueuePut('wants', want)
+    } else {
+      set((s) => ({ wants: s.wants.filter((w) => w.recipeId !== recipeId) }))
+      enqueueDelete('wants', recipeId)
+    }
+  },
+
+  setWantCount: (recipeId, count) => {
+    const n = Math.max(1, Math.round(count))
+    let updated: Want | undefined
+    set((s) => ({
+      wants: s.wants.map((w) => {
+        if (w.recipeId !== recipeId || w.count === n) return w
+        updated = { ...w, count: n }
+        return updated
+      }),
+    }))
+    if (updated) enqueuePut('wants', updated)
   },
 
   addRecipeToPlan: (recipeId) => {

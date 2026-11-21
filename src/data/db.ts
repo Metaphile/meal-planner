@@ -1,7 +1,7 @@
 import Dexie, { type EntityTable } from 'dexie'
-import type { PlanMeal, Recipe } from './types'
+import type { PlanMeal, Recipe, Want } from './types'
 
-export type TableName = 'recipes' | 'plan'
+export type TableName = 'recipes' | 'plan' | 'wants'
 
 /** A pending remote write, persisted so offline edits survive a reload. */
 export interface OutboxRow {
@@ -9,7 +9,7 @@ export interface OutboxRow {
   collection: TableName
   key: string
   op: 'put' | 'delete'
-  data?: Recipe | PlanMeal
+  data?: Recipe | PlanMeal | Want
 }
 
 /**
@@ -20,6 +20,7 @@ export interface OutboxRow {
 export const db = new Dexie('meal-planner') as Dexie & {
   recipes: EntityTable<Recipe, 'id'>
   plan: EntityTable<PlanMeal, 'id'>
+  wants: EntityTable<Want, 'id'>
   outbox: EntityTable<OutboxRow, 'id'>
 }
 
@@ -57,3 +58,11 @@ db.version(3)
     await tx.table('recipes').clear()
     await tx.table('plan').clear()
   })
+
+// v4: wants (recipes wanted, and how many times), cached like the rest.
+db.version(4).stores({
+  recipes: 'id, title',
+  plan: 'id, position',
+  wants: 'id',
+  outbox: '++id',
+})

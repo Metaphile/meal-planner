@@ -1,4 +1,4 @@
-import type { Ingredient, PlanMeal, Recipe } from './types'
+import type { Ingredient, PlanMeal, Recipe, Want } from './types'
 
 /** A line in the aggregated ingredients view. */
 export interface AggregatedIngredient {
@@ -48,6 +48,48 @@ export function aggregateIngredients(
   recipes: Recipe[],
 ): AggregatedIngredient[] {
   const recipeById = new Map(recipes.map((r) => [r.id, r]))
+  return aggregate((add) => {
+    for (const meal of plan) {
+      if (!meal.includeInIngredients) continue
+      for (const component of meal.components) {
+        if (component.kind === 'recipe') {
+          const recipe = recipeById.get(component.recipeId)
+          if (!recipe) continue
+          for (const ing of recipe.ingredients) add(ing, recipe.title, 1)
+        } else {
+          // Simple item: tag it with its own name.
+          add(component, component.name, 1)
+        }
+      }
+    }
+  })
+}
+
+/**
+ * Aggregate the ingredients of the wanted recipes, each as many times over
+ * as it's wanted (same rules as above). A want whose recipe is gone is
+ * skipped. A recipe wanted more than once is tagged "Title ×n".
+ */
+export function aggregateWanted(
+  wants: Want[],
+  recipes: Recipe[],
+): AggregatedIngredient[] {
+  const recipeById = new Map(recipes.map((r) => [r.id, r]))
+  return aggregate((add) => {
+    for (const want of wants) {
+      const recipe = recipeById.get(want.recipeId)
+      if (!recipe) continue
+      const times = Math.max(1, want.count)
+      const source = times > 1 ? `${recipe.title} ×${times}` : recipe.title
+      for (const ing of recipe.ingredients) add(ing, source, times)
+    }
+  })
+}
+
+type Add = (ing: Ingredient, source: string, times: number) => void
+
+/** Group, sum and tag the lines `collect` adds (see aggregateIngredients). */
+function aggregate(collect: (add: Add) => void): AggregatedIngredient[] {
 
   // Preserve the first-seen display name/unit so output isn't lowercased.
   const groups = new Map<
@@ -61,7 +103,7 @@ export function aggregateIngredients(
     }
   >()
 
-  const add = (ing: Ingredient, source: string) => {
+  const add: Add = (ing, source, times) => {
     if (!norm(ing.name)) return // skip blank ingredient names
     const key = keyFor(ing)
     let group = groups.get(key)
@@ -76,25 +118,13 @@ export function aggregateIngredients(
       groups.set(key, group)
     }
     if (typeof ing.quantity === 'number' && !Number.isNaN(ing.quantity)) {
-      group.quantity = (group.quantity ?? 0) + ing.quantity
+      group.quantity = (group.quantity ?? 0) + ing.quantity * times
       group.hasQuantity = true
     }
     if (source.trim()) group.sources.add(source.trim())
   }
 
-  for (const meal of plan) {
-    if (!meal.includeInIngredients) continue
-    for (const component of meal.components) {
-      if (component.kind === 'recipe') {
-        const recipe = recipeById.get(component.recipeId)
-        if (!recipe) continue
-        for (const ing of recipe.ingredients) add(ing, recipe.title)
-      } else {
-        // Simple item: tag it with its own name.
-        add(component, component.name)
-      }
-    }
-  }
+  collect(add)
 
   return [...groups.values()]
     .map((g) => {

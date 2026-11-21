@@ -242,6 +242,8 @@ export const seedData: Dataset = {
         'Bake at 400°F for 25 minutes, then broil 2 minutes to brown.',
     },
   ],
+  // Nothing wanted yet: tick Want on a card.
+  wants: [],
   // The plan is a flat list of anonymous meals; each meal groups components
   // (recipe refs and/or simple items). A single recipe can be its own meal.
   plan: [

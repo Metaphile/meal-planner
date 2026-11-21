@@ -1,5 +1,5 @@
 import { db, type OutboxRow, type TableName } from './db'
-import type { Dataset, PlanMeal, Recipe } from './types'
+import type { Dataset, PlanMeal, Recipe, Want } from './types'
 import { seedData } from './seed'
 import { pb } from '../auth/pb'
 
@@ -13,19 +13,21 @@ import { pb } from '../auth/pb'
 // ---- local cache (IndexedDB) ----------------------------------------------
 
 export async function hydrate(): Promise<Dataset> {
-  const [recipes, plan] = await Promise.all([
+  const [recipes, plan, wants] = await Promise.all([
     db.recipes.toArray(),
     db.plan.toArray(),
+    db.wants.toArray(),
   ])
-  return { recipes, plan }
+  return { recipes, plan, wants }
 }
 
 async function cacheReplaceAll(data: Dataset): Promise<void> {
-  await db.transaction('rw', db.recipes, db.plan, async () => {
-    await Promise.all([db.recipes.clear(), db.plan.clear()])
+  await db.transaction('rw', db.recipes, db.plan, db.wants, async () => {
+    await Promise.all([db.recipes.clear(), db.plan.clear(), db.wants.clear()])
     await Promise.all([
       db.recipes.bulkPut(data.recipes),
       db.plan.bulkPut(data.plan),
+      db.wants.bulkPut(data.wants),
     ])
   })
 }
@@ -37,9 +39,10 @@ const idMap = new Map<string, string>()
 const mapKey = (c: TableName, k: string) => `${c}:${k}`
 
 async function remotePull(): Promise<Dataset> {
-  const [recs, plans] = await Promise.all([
+  const [recs, plans, wantRecs] = await Promise.all([
     pb.collection('recipes').getFullList({ requestKey: null }),
     pb.collection('plan').getFullList({ requestKey: null }),
+    pb.collection('wants').getFullList({ requestKey: null }),
   ])
   idMap.clear()
   const recipes = recs.map((r) => {
@@ -50,7 +53,11 @@ async function remotePull(): Promise<Dataset> {
     idMap.set(mapKey('plan', p.key), p.id)
     return p.data as PlanMeal
   })
-  return { recipes, plan }
+  const wants = wantRecs.map((w) => {
+    idMap.set(mapKey('wants', w.key), w.id)
+    return w.data as Want
+  })
+  return { recipes, plan, wants }
 }
 
 /** Apply one op to PocketBase. Throws on failure (caller decides to retry). */
@@ -113,7 +120,11 @@ async function flushOutbox(): Promise<void> {
 
 export function enqueuePut(table: 'recipes', item: Recipe): void
 export function enqueuePut(table: 'plan', item: PlanMeal): void
-export function enqueuePut(table: TableName, item: Recipe | PlanMeal): void {
+export function enqueuePut(table: 'wants', item: Want): void
+export function enqueuePut(
+  table: TableName,
+  item: Recipe | PlanMeal | Want,
+): void {
   void db[table].put(item as never) // cache immediately
   void db.outbox.add({ collection: table, key: item.id, op: 'put', data: item })
   scheduleFlush()
@@ -170,6 +181,7 @@ export async function startSync(onData: (data: Dataset) => void): Promise<void> 
   }
   unsubscribers.push(await pb.collection('recipes').subscribe('*', handler))
   unsubscribers.push(await pb.collection('plan').subscribe('*', handler))
+  unsubscribers.push(await pb.collection('wants').subscribe('*', handler))
 
   window.addEventListener('online', () => void flushOutbox())
 }

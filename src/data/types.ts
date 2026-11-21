@@ -38,8 +38,21 @@ export interface PlanMeal {
   components: MealComponent[]
 }
 
+/**
+ * A recipe the household wants to make, and how many times. One per recipe
+ * (its id is the recipe's id); not wanting it any more removes it. Wanted
+ * recipes' ingredients make up the Ingredients list.
+ */
+export interface Want {
+  id: string
+  recipeId: string
+  /** How many times over (at least 1). */
+  count: number
+}
+
 /** Shape of the entire persisted dataset (one row per table on hydrate). */
 export interface Dataset {
   recipes: Recipe[]
   plan: PlanMeal[]
+  wants: Want[]
 }

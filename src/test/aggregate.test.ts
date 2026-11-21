@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { aggregateIngredients } from '../data/aggregate'
-import type { MealComponent, PlanMeal, Recipe } from '../data/types'
+import { aggregateIngredients, aggregateWanted } from '../data/aggregate'
+import type { MealComponent, PlanMeal, Recipe, Want } from '../data/types'
 
 const recipes: Recipe[] = [
   {
@@ -141,5 +141,29 @@ describe('aggregateIngredients', () => {
 
     const names = out.map((i) => i.name)
     expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b)))
+  })
+})
+
+describe('aggregateWanted', () => {
+  it('sums the wanted recipes, each as many times over as wanted', () => {
+    const wants: Want[] = [
+      { id: 'r-pancakes', recipeId: 'r-pancakes', count: 2 },
+      { id: 'r-tacos', recipeId: 'r-tacos', count: 1 },
+    ]
+    const out = aggregateWanted(wants, recipes)
+    const flourCup = out.find((l) => l.name === 'Flour' && l.unit === 'cup')
+    expect(flourCup?.quantity).toBe(2 * 2 + 1) // pancakes ×2 + tacos
+    expect(flourCup?.sources).toEqual(['Pancakes ×2', 'Tacos'])
+    expect(out.find((l) => l.name === 'Flour' && l.unit === 'g')?.quantity).toBe(200)
+    expect(out.find((l) => l.name === 'Bacon')?.quantity).toBe(4)
+    // No quantity stays no quantity, however many times over.
+    expect(out.find((l) => l.name === 'Salt')?.quantity).toBeUndefined()
+  })
+
+  it('skips wants whose recipe is gone, and is empty with nothing wanted', () => {
+    expect(aggregateWanted([], recipes)).toEqual([])
+    expect(
+      aggregateWanted([{ id: 'gone', recipeId: 'gone', count: 3 }], recipes),
+    ).toEqual([])
   })
 })

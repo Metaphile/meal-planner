@@ -1,5 +1,5 @@
 import { useStore } from './store'
-import { aggregateIngredients } from '../data/aggregate'
+import { aggregateIngredients, aggregateWanted } from '../data/aggregate'
 import type { AggregatedIngredient } from '../data/aggregate'
 import type { Recipe } from '../data/types'
 
@@ -24,6 +24,36 @@ export function useAggregatedIngredients(): AggregatedIngredient[] {
     cache = { plan: s.plan, recipes: s.recipes, result }
     return result
   })
+}
+
+/** The wanted recipes' ingredients (the Ingredients tab), memoized the same
+ *  way. */
+let wantedCache: {
+  wants: unknown
+  recipes: unknown
+  result: AggregatedIngredient[]
+} | null = null
+
+export function useWantedIngredients(): AggregatedIngredient[] {
+  return useStore((s) => {
+    if (
+      wantedCache &&
+      wantedCache.wants === s.wants &&
+      wantedCache.recipes === s.recipes
+    ) {
+      return wantedCache.result
+    }
+    const result = aggregateWanted(s.wants, s.recipes)
+    wantedCache = { wants: s.wants, recipes: s.recipes, result }
+    return result
+  })
+}
+
+/** How many times a recipe is wanted (0: not wanted). */
+export function useWantCount(recipeId: string): number {
+  return useStore(
+    (s) => s.wants.find((w) => w.recipeId === recipeId)?.count ?? 0,
+  )
 }
 
 /** Recipe lookup, used to render recipe titles inside plan components. */
