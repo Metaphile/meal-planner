@@ -54,6 +54,7 @@ const SIDE = 16 // horizontal inset
  *  converted, so a drag still moves the cards exactly with the finger. */
 const SCALE = 0.85
 const TAB_W = 44 // divider tab width
+const CAST = 0.2 // how dark the shadow of the item in front gets
 
 // The visible part of the wheel, as angles from the front line (where a card
 // faces you): the top of the screen is far round, the bottom a little past.
@@ -761,6 +762,13 @@ export default function RecipesPage() {
                 key={item.key}
                 item={item}
                 index={i}
+                coveredFrom={
+                  i + 1 < items.length
+                    ? items[i + 1].rod -
+                      rodOffset(items[i + 1]) -
+                      (item.rod - rodOffset(item))
+                    : undefined
+                }
                 setEl={setItemEl}
                 canEditPlan={canEditPlan}
                 canEditRecipes={canEditRecipes}
@@ -800,6 +808,7 @@ export default function RecipesPage() {
 const RolodexItem = memo(function RolodexItem({
   item,
   index,
+  coveredFrom,
   setEl,
   canEditPlan,
   canEditRecipes,
@@ -809,6 +818,8 @@ const RolodexItem = memo(function RolodexItem({
 }: {
   item: Item
   index: number
+  /** How far down it the item in front of it starts (none for the last). */
+  coveredFrom?: number
   setEl: (i: number, el: HTMLDivElement | null) => void
   canEditPlan: boolean
   canEditRecipes: boolean
@@ -817,6 +828,24 @@ const RolodexItem = memo(function RolodexItem({
   onNew: () => void
 }) {
   const off = rodOffset(item)
+  // The shadow of the item in front: the paper darkens toward where that
+  // item starts. It belongs to the slot, not the card — taking the card out,
+  // it slides up out of the shadow. (On the paper only: a divider's body,
+  // not the air beside its tab.)
+  const paperTop = item.kind === 'divider' ? TAB_H : 0
+  const shadowEnd = coveredFrom === undefined ? 0 : coveredFrom - paperTop
+  const shadow =
+    shadowEnd > 0 ? (
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 bottom-0"
+        style={{
+          top: paperTop,
+          borderRadius: '14px 14px 0 0',
+          background: `linear-gradient(to bottom, rgb(40 30 15 / 0) ${shadowEnd - 64}px, rgb(40 30 15 / ${CAST}) ${shadowEnd}px)`,
+        }}
+      />
+    ) : null
   // Rides the wheel (transform set per frame), hinged at its rod. Trimmed to
   // the part above the rod — the rest is behind the cards in front — with a
   // margin so its shadow still shows.
@@ -866,6 +895,7 @@ const RolodexItem = memo(function RolodexItem({
             <span className="rolodex-dim" />
           </button>
         )}
+        {shadow}
       </div>
     )
   }
@@ -898,6 +928,7 @@ const RolodexItem = memo(function RolodexItem({
           <div className="paper-lines mx-5 mb-2 flex-1" />
           <span className="rolodex-dim" />
         </div>
+        {shadow}
       </div>
     )
   }
@@ -922,6 +953,7 @@ const RolodexItem = memo(function RolodexItem({
           }
         }}
       />
+      {shadow}
     </div>
   )
 })
