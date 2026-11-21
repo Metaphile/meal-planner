@@ -26,7 +26,7 @@ export default function InvitePage() {
           body: { token },
         })
         pb.authStore.save(data.token, data.record)
-        navigate('/plan', { replace: true })
+        navigate('/recipes', { replace: true })
       } catch (e) {
         const msg =
           (e as { response?: { message?: string }; message?: string })?.response

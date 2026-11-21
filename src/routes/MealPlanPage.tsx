@@ -18,7 +18,7 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useStore, type NewComponent } from '../store/store'
-import { useRecipeMap } from '../store/selectors'
+import { useAggregatedIngredients, useRecipeMap } from '../store/selectors'
 import { useAuth } from '../auth/AuthProvider'
 import { useSwipeToRemove } from '../lib/useSwipeToRemove'
 import { EmptyState, PageHeader } from '../components/ui'
@@ -42,6 +42,7 @@ const restrictToVerticalAxis: Modifier = ({ transform }) => ({
 export default function MealPlanPage() {
   const plan = useStore((s) => s.plan)
   const recipeMap = useRecipeMap()
+  const planIngredients = useAggregatedIngredients()
   const addEmptyMeal = useStore((s) => s.addEmptyMeal)
   const reorderPlan = useStore((s) => s.reorderPlan)
   const { hasCapability } = useAuth()
@@ -132,7 +133,10 @@ export default function MealPlanPage() {
             </span>
           </div>
           <div className="kraft-pocket rounded-tl-none p-2">
-            <IngredientsList />
+            <IngredientsList
+              ingredients={planIngredients}
+              empty="Tick Include on a meal to see what it needs."
+            />
           </div>
         </div>
       )}

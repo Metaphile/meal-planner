@@ -8,6 +8,7 @@ import { useAuth } from './auth/AuthProvider'
 // small — each tab's code loads on demand.
 const RecipesPage = lazy(() => import('./routes/RecipesPage'))
 const MealPlanPage = lazy(() => import('./routes/MealPlanPage'))
+const IngredientsPage = lazy(() => import('./routes/IngredientsPage'))
 const AccountPage = lazy(() => import('./routes/AccountPage'))
 const AdminPage = lazy(() => import('./routes/AdminPage'))
 const InvitePage = lazy(() => import('./routes/InvitePage'))
@@ -40,14 +41,17 @@ export default function App() {
               <Route path="/invite" element={<InvitePage />} />
               {user ? (
                 <>
-                  <Route path="/" element={<Navigate to="/plan" replace />} />
+                  <Route path="/" element={<Navigate to="/recipes" replace />} />
                   <Route path="/recipes" element={<RecipesPage />} />
                   {/* (Recipes are written and edited on their cards now.) */}
                   <Route
                     path="/recipes/*"
                     element={<Navigate to="/recipes" replace />}
                   />
+                  {/* (Meals is off the tab bar: recipes are wanted on their
+                      cards now. Still here at its address for the moment.) */}
                   <Route path="/plan" element={<MealPlanPage />} />
+                  <Route path="/ingredients" element={<IngredientsPage />} />
                   <Route path="/account" element={<AccountPage />} />
                   <Route
                     path="/admin"
@@ -72,7 +76,7 @@ export default function App() {
                     path="/meals/*"
                     element={<Navigate to="/plan" replace />}
                   />
-                  <Route path="*" element={<Navigate to="/plan" replace />} />
+                  <Route path="*" element={<Navigate to="/recipes" replace />} />
                 </>
               ) : (
                 <Route path="*" element={<SignedOut />} />

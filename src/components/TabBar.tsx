@@ -3,19 +3,24 @@ import type { ReactNode } from 'react'
 
 const tabs: { to: string; label: string; icon: ReactNode }[] = [
   {
-    to: '/plan',
-    label: 'Meals',
-    icon: (
-      <path d="M4 7h16M4 12h16M4 17h10" strokeLinecap="round" />
-    ),
-  },
-  {
     to: '/recipes',
     label: 'Recipes',
     // A stack of index cards.
     icon: (
       <path
         d="M7 4h10M5.5 7h13M5 10h14a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-8a1 1 0 0 1 1-1Z"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    ),
+  },
+  {
+    to: '/ingredients',
+    label: 'Ingredients',
+    // A notepad sheet, ruled.
+    icon: (
+      <path
+        d="M6 4h12a1 1 0 0 1 1 1v15a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Zm3 5h6M9 13h6M9 17h4"
         strokeLinecap="round"
         strokeLinejoin="round"
       />

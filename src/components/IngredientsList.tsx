@@ -1,19 +1,24 @@
-import { useAggregatedIngredients } from '../store/selectors'
+import type { AggregatedIngredient } from '../data/aggregate'
 
 /**
  * Read-only aggregated ingredients, with each line tagged by its sources —
  * the recipes that call for it and/or standalone items by their own name.
- * Presentational — pulls straight from the memoized selector.
+ * Presentational: the lines come from a memoized selector.
  */
-export function IngredientsList() {
-  const ingredients = useAggregatedIngredients()
-
+export function IngredientsList({
+  ingredients,
+  empty,
+}: {
+  ingredients: AggregatedIngredient[]
+  /** What it says with nothing on it. */
+  empty: string
+}) {
   return (
     // A notepad sheet: each ingredient on a ruled line, where it's from below.
     <div className="paper-card notepad rounded-t-md px-4 pt-2.5 pb-3">
       {ingredients.length === 0 ? (
         <p className="paper-serif py-3 text-center italic text-ink-faint">
-          Tick Include on a meal to see what it needs.
+          {empty}
         </p>
       ) : (
         <ul>
