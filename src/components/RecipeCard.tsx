@@ -333,11 +333,11 @@ function FavoriteStar({ recipeId }: { recipeId: string }) {
 }
 
 /** Where others' stars sit under yours, by depth (first: just under it):
- *  a spiral — each deeper one further round (anticlockwise: up, then left,
- *  away from the title) and further out, smaller and fainter. (Upright, as
+ *  a spiral — each deeper one further round (anticlockwise: up and to the
+ *  left, then left and a little down — away from the title) and further out, smaller and fainter. (Upright, as
  *  stars are.) Fixed — nothing per recipe or person. */
 const STACKED = [1, 2].map((depth) => {
-  const angle = ((-20 - 85 * depth) * Math.PI) / 180 // (screen: y down)
+  const angle = ((-40 - 85 * depth) * Math.PI) / 180 // (screen: y down)
   const out = [5, 7.5][depth - 1] // px (the last clear of the card's frame)
   return {
     x: out * Math.cos(angle),
