@@ -15,6 +15,7 @@ import { useStore } from '../store/store'
 import {
   useFavoritedBy,
   useIsFavorite,
+  useOthersFavorites,
   useWantCount,
 } from '../store/selectors'
 import { useAuth } from '../auth/AuthProvider'
@@ -275,13 +276,21 @@ export function EditButton({ onEdit }: { onEdit: () => void }) {
 function FavoriteStar({ recipeId }: { recipeId: string }) {
   const { user } = useAuth()
   const on = useIsFavorite(user?.id, recipeId)
+  // Others who've favorited it, under yours (two at most: enough to say a
+  // recipe's liked; who, the foot of the card in hand says).
+  const othersAll = useOthersFavorites(recipeId, user?.id)
+  const others = Math.min(STACKED.length, othersAll)
   const setFavorite = useStore((s) => s.setFavorite)
   const starRef = useRef<HTMLSpanElement>(null)
   return (
     <button
       type="button"
       aria-pressed={on}
-      aria-label="Favorite"
+      aria-label={
+        othersAll
+          ? `Favorite (also ${othersAll === 1 ? 'one other’s' : `${othersAll} others’`})`
+          : 'Favorite'
+      }
       disabled={!user}
       onClick={(e) => {
         e.stopPropagation() // (not taking the card out)
@@ -296,12 +305,39 @@ function FavoriteStar({ recipeId }: { recipeId: string }) {
       className="-m-2 flex shrink-0 justify-center p-2"
       style={{ width: STAR_ROOM + 16 }}
     >
-      <span ref={starRef} className="block">
-        <StarIcon on={on} size={22} />
+      <span className="relative block">
+        {/* Others' stars, under yours: filled (they're favorites), faded
+            (not yours to change), fainter the deeper. Each depth always in
+            the same place, so a stack of so many looks the same anywhere. */}
+        {STACKED.slice(0, others)
+          .map((s, i) => (
+            <span
+              key={i}
+              aria-hidden
+              className="pointer-events-none absolute inset-0 block"
+              style={{
+                transform: `translate(${s.x}px, ${s.y}px) rotate(${s.turn}deg) scale(${s.scale})`,
+                opacity: s.opacity,
+              }}
+            >
+              <StarIcon on size={22} />
+            </span>
+          ))
+          .reverse()}
+        <span ref={starRef} className="relative block">
+          <StarIcon on={on} size={22} />
+        </span>
       </span>
     </button>
   )
 }
+
+/** Where others' stars sit under yours, by depth (first: just under it).
+ *  Fixed — no randomness, nothing per recipe or person. */
+const STACKED = [
+  { x: -4.5, y: -3, turn: -16, scale: 0.94, opacity: 0.5 },
+  { x: -7, y: 2.5, turn: 14, scale: 0.88, opacity: 0.28 },
+]
 
 /**
  * A star toggled by a tap: on, it pops — swelling with a little turn, and

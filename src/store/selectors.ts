@@ -77,6 +77,16 @@ export function useFavoritedBy(recipeId: string, me?: string): string {
   )
 }
 
+/** How many others (not `me`) have favorited a recipe. */
+export function useOthersFavorites(recipeId: string, me?: string): number {
+  return useStore(
+    (s) =>
+      s.favorites.filter(
+        (f) => f.recipeId === recipeId && favoriteUser(f) !== me,
+      ).length,
+  )
+}
+
 /** How many times a recipe is wanted (0: not wanted). */
 export function useWantCount(recipeId: string): number {
   return useStore((s) => {
