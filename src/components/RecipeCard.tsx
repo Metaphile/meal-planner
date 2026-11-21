@@ -23,7 +23,7 @@ import { useAuth } from '../auth/AuthProvider'
 import {
   UNTITLED_SECTION,
   allIngredients,
-  sectionLabel,
+  sectionLabels,
   sectionsOf,
   type Ingredient,
   type Recipe,
@@ -69,13 +69,14 @@ const PEEK_LINES = 16
 function CardBody({ recipe, peek }: { recipe: Recipe; peek: boolean }) {
   // Its sections, empty ones too (a heading with nothing under it yet) —
   // but not an untitled first section with nothing in it while there are
-  // others: that's no section anyone made. Each headed as sectionLabel says:
-  // its title; else "Section", among others; else (the only one) none.
+  // others: that's no section anyone made. Each headed as sectionLabels
+  // says: its title; else "Section 1", "Section 2"…, among others; else (the
+  // only one) none.
   const all = sectionsOf(recipe)
   const sections = all.filter(
     (s, i) => s.ingredients.length > 0 || !!s.title || (i === 0 && all.length === 1),
   )
-  const heads = sections.map((s) => sectionLabel(s.title, sections.length))
+  const heads = sectionLabels(sections.map((s) => s.title))
   // (Peeking: only as many lines as can show, headings included.)
   let room = peek ? PEEK_LINES : Infinity
   return (
@@ -1023,7 +1024,8 @@ function dragRow(
     target = best
     // (Headed for a new section: "Add section…" reads as it'll be named.)
     if (addField)
-      addField.placeholder = target === add ? UNTITLED_SECTION : addHint
+      addField.placeholder =
+        target === add ? (els[add].dataset.newLabel ?? UNTITLED_SECTION) : addHint
     els.forEach((el, k) => {
       if (k === o) return
       const shift =
@@ -1132,6 +1134,10 @@ function IngredientTable({
     gs[to.g].rows.splice(at, 0, row)
     set(gs)
   }
+  // (What each untitled section's called, as the card will call it — and
+  // what a new one, dragged into being at the end, would be.)
+  const labels = sectionLabels(groups.map((x) => x.title))
+  const newLabel = sectionLabels([...groups.map((x) => x.title), ''])[groups.length]
   const setStruck = (g: number, struck: boolean) =>
     set(groups.map((x, i) => (i === g ? { ...x, struck } : x)))
   // (A whole section moved: to just before the section at `to`, or last.)
@@ -1196,6 +1202,7 @@ function IngredientTable({
             <div
               role="row"
               data-new-section={g}
+              data-new-label={newLabel ?? undefined}
               className="grid grid-cols-[1rem_minmax(0,1fr)] items-end border-b border-line-blue"
             >
               <span />
@@ -1240,7 +1247,7 @@ function IngredientTable({
                 (t) => setTitle(g, t),
                 // (Untitled: what it'll be called — or, the only one, that a
                 // title's optional.)
-                groups.length > 1 ? UNTITLED_SECTION : 'Title (optional)',
+                labels[g] ?? 'Section (optional)',
                 group.struck,
               )}
             </div>

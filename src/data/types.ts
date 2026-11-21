@@ -14,7 +14,7 @@ export interface Recipe {
   tags: string[]
   /** The first section's lines (every recipe has it). */
   ingredients: Ingredient[]
-  /** The first section's title, if it's given one (see sectionLabel). */
+  /** The first section's title, if it's given one (see sectionLabels). */
   ingredientsTitle?: string
   /** Sections after the first, in order. */
   sections?: IngredientSection[]
@@ -28,16 +28,22 @@ export interface IngredientSection {
   ingredients: Ingredient[]
 }
 
-/** What an untitled section is called where it needs a name: among others. */
+/** What an untitled section is called where it needs a name (numbered). */
 export const UNTITLED_SECTION = 'Section'
 
 /**
- * A section's heading. Titles are optional: one that's given always shows;
- * untitled, a section is "Section" if there are others, and has no heading
- * if it's the only one (`null`).
+ * Sections' headings, in order. Titles are optional: one that's given
+ * always shows; untitled, a section has no heading if it's the only one
+ * (`null`), and among others is "Section 1", "Section 2"… — the untitled
+ * ones numbered in the order they stand.
  */
-export const sectionLabel = (title: string, sections: number) =>
-  title.trim() || (sections > 1 ? UNTITLED_SECTION : null)
+export const sectionLabels = (titles: string[]): (string | null)[] => {
+  let n = 0
+  return titles.map(
+    (t) =>
+      t.trim() || (titles.length > 1 ? `${UNTITLED_SECTION} ${++n}` : null),
+  )
+}
 
 /** A recipe's sections, the first included (titles as given: maybe none). */
 export const sectionsOf = (r: Recipe): IngredientSection[] => [

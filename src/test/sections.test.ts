@@ -1,17 +1,23 @@
 import { describe, expect, it } from 'vitest'
-import { sectionLabel, sectionsOf, type Recipe } from '../data/types'
+import { sectionLabels, sectionsOf, type Recipe } from '../data/types'
 
-describe('sectionLabel', () => {
+describe('sectionLabels', () => {
   it('shows a given title, always', () => {
-    expect(sectionLabel('Dough', 1)).toBe('Dough')
-    expect(sectionLabel('Dough', 3)).toBe('Dough')
+    expect(sectionLabels(['Dough'])).toEqual(['Dough'])
+    expect(sectionLabels(['Dough', 'Filling'])).toEqual(['Dough', 'Filling'])
   })
   it('gives a lone untitled section no heading', () => {
-    expect(sectionLabel('', 1)).toBeNull()
-    expect(sectionLabel('   ', 1)).toBeNull()
+    expect(sectionLabels([''])).toEqual([null])
+    expect(sectionLabels(['   '])).toEqual([null])
   })
-  it('calls an untitled section "Section" among others', () => {
-    expect(sectionLabel('', 2)).toBe('Section')
+  it('numbers untitled sections among others, in order', () => {
+    expect(sectionLabels(['', ''])).toEqual(['Section 1', 'Section 2'])
+    expect(sectionLabels(['Dough', '', 'Glaze', ''])).toEqual([
+      'Dough',
+      'Section 1',
+      'Glaze',
+      'Section 2',
+    ])
   })
 })
 
