@@ -1121,7 +1121,7 @@ export function CardDetail({
       // Nowhere in view to go back to (e.g. it doesn't match the search):
       // let it fade away instead.
       closing.current = false
-      dismiss()
+      dismiss(fromY, fromV)
       return
     }
     const rdxCard = TAKE_OUT === 'lift' ? getRolodexCard() : undefined
@@ -1132,34 +1132,28 @@ export function CardDetail({
   }
   const closeRef = useRef(close)
   closeRef.current = close
-  const dismissRef = useRef<() => void>(() => {})
+  const dismissRef = useRef<(fromY?: number, v?: number) => void>(() => {})
 
-  // Fade away where it is (it's not going back into its slot).
-  const dismiss = () => {
+  // Fade away where it is (it's not going back into its slot), the same
+  // fade as putting a card back — from `fromY` below its place, coasting on
+  // at `v`, if it was pulled down.
+  const dismiss = (fromY = 0, v = 0) => {
     if (closing.current) return
     closing.current = true
     const card = cardRef.current!
     const shade = shadeRef.current!
     card.getAnimations().forEach((a) => a.cancel())
-    const from = card.style.transform || pose(0)
     const fromOpacity = Number(card.style.opacity || 1)
     card.style.transform = ''
     card.style.opacity = ''
-    const timing = {
-      duration: 220,
-      easing: EASE_OUT,
-      fill: 'forwards' as const,
-    }
-    const anim = card.animate(
-      [
-        { opacity: fromOpacity, transform: from },
-        { opacity: 0, transform: `${from} translateY(28px) scale(0.97)` },
-      ],
-      timing,
-    )
+    const timing = { duration: FADE_MS, fill: 'forwards' as const }
+    const anim = card.animate(fadingAway(fromY, v, fromOpacity), {
+      ...timing,
+      easing: 'linear',
+    })
     shade.animate(
       [{ opacity: Number(getComputedStyle(shade).opacity) }, { opacity: 0 }],
-      timing,
+      { ...timing, easing: 'ease-in' },
     )
     anim.onfinish = () => onClosedRef.current()
   }
@@ -1238,9 +1232,9 @@ export function CardDetail({
   const edit = () => flipRefFn.current(true)
   const unedit = () => flipRefFn.current(false)
   // A new card never saved just goes (fades away from where it is).
-  const letGo = () => {
+  const letGo = (fromY = 0, v = 0) => {
     editingRef.current = false
-    dismissRef.current()
+    dismissRef.current(fromY, v)
   }
   // Leaving the back: straight away if the draft is unchanged, else once
   // you've agreed to lose the changes.
@@ -1255,7 +1249,7 @@ export function CardDetail({
   // away as the card in the box drops back in) — from `fromY` below its
   // place, coasting on at `v`, if it was pulled down.
   const putAway = (fromY = 0, v = 0) =>
-    unsaved.current ? letGo() : closeRef.current(fromY, v)
+    unsaved.current ? letGo(fromY, v) : closeRef.current(fromY, v)
   const cancelRef = useRef(cancel)
   cancelRef.current = cancel
   const putAwayRef = useRef(putAway)
@@ -1507,7 +1501,7 @@ export function CardDetail({
                 canEditRecipes={canEditRecipes}
                 actions={
                   renderActions ? (
-                    renderActions({ dismiss, edit })
+                    renderActions({ dismiss: () => dismiss(), edit })
                   ) : (
                     <>
                       {canEditPlan && <AddToMealButton recipeId={shown.id} />}
