@@ -1465,7 +1465,11 @@ const RecipeCardBack = forwardRef<
       .map((t) => t.trim())
       .filter(Boolean),
   })
-  if (changedRef) changedRef.current = !sameText(draft(), recipe)
+  // Changed: says something different — or a section's crossed out (even
+  // an empty one, which saving wouldn't change: still, it's been marked).
+  if (changedRef)
+    changedRef.current =
+      !sameText(draft(), recipe) || groups.some((g) => g.struck)
 
   const save = () => {
     upsertRecipe(draft())
