@@ -363,31 +363,37 @@ const withSpareLine = (rows: Row[]) => {
 }
 
 const MARK_BUTTON =
-  // (The table's rule blue.)
-  'grid h-[30px] place-items-center text-line-blue active:text-pen'
+  // (The table's rule blue, at half its lightness.)
+  'grid h-[30px] place-items-center text-[#457ca1] active:text-pen'
 
-/** × (cross a line out) and ↺ (bring it back): drawn, so they're centred on
- *  the line and drawn with the same pen. */
+/** × (cross a line out), drawn so it's centred on the line, and ↺ (bring
+ *  it back). */
 function RowMark({ kind }: { kind: 'cross' | 'restore' }) {
-  // Sized separately, with one stroke width in screen pixels.
-  const size = kind === 'cross' ? 14 : 12
+  if (kind === 'restore')
+    // (The character itself, in the system's font: its tip and tail sit
+    // well apart, so it reads at a glance.)
+    return (
+      <span
+        aria-hidden
+        className="text-[19px] leading-none"
+        style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}
+      >
+        ↺
+      </span>
+    )
   return (
     <svg
       aria-hidden
       viewBox="0 0 24 24"
-      width={size}
-      height={size}
+      width={14}
+      height={14}
       fill="none"
       stroke="currentColor"
-      strokeWidth={(1.6 * 24) / size}
+      strokeWidth={(1.6 * 24) / 14}
       strokeLinecap="round"
       strokeLinejoin="round"
     >
-      {kind === 'cross' ? (
-        <path d="M6 6l12 12M18 6L6 18" />
-      ) : (
-        <path d="M2 4v6h6M4.5 15a9 9 0 1 0 2.1-9.4L2 10" />
-      )}
+      <path d="M6 6l12 12M18 6L6 18" />
     </svg>
   )
 }
