@@ -57,7 +57,7 @@ const TAB_W = 44 // divider tab width
 // The shadow of the item in front: it starts this far above that item's
 // edge (the paper above it unshaded) and deepens to its darkest as far
 // below the edge, out of sight — so at the edge it's about halfway.
-const CAST = 0.3
+const CAST = 0.45
 const CAST_FADE = 28
 
 // The visible part of the wheel, as angles from the front line (where a card
