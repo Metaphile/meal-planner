@@ -758,6 +758,26 @@ const pose = (dy: number) => `translate(0px, ${dy}px)`
 const TAKE_OUT: 'arc' | 'lift' = 'lift'
 const LIFT_MS = 300 // the card lifting out of the box (or dropping back)
 const FADE_MS = 450 // the card in hand fading in (or out)
+/** Let go of while moving, a card coasts on, slowing as it goes. */
+const COAST_TAU = 500 // ms; the same slowing as scrolling (0.998 per ms)
+
+/** Keyframes for the card in hand fading away from `fromY` below its place,
+ *  coasting on from `v` px/ms (if it was flung) as it fades. */
+function fadingAway(fromY: number, v: number, opacity: number): Keyframe[] {
+  const frames: Keyframe[] = []
+  const n = 12
+  for (let i = 0; i <= n; i++) {
+    const k = i / n
+    const t = k * FADE_MS
+    frames.push({
+      offset: k,
+      transform: pose(fromY + v * COAST_TAU * (1 - Math.exp(-t / COAST_TAU))),
+      opacity: opacity * (1 - k * k), // easing in
+    })
+  }
+  return frames
+}
+
 const LIFT_UP = 'cubic-bezier(0.45, 0, 0.85, 0.5)' // gathering speed
 const DROP_IN = 'cubic-bezier(0.15, 0.5, 0.55, 1)' // settling into the slot
 
@@ -958,6 +978,7 @@ export function CardDetail({
     rdxCard: HTMLElement,
     opening: boolean,
     fromY = 0,
+    fromV = 0,
   ) => {
     const card = cardRef.current!
     const shade = shadeRef.current!
@@ -1040,11 +1061,8 @@ export function CardDetail({
             lift,
           ),
           card.animate(
-            [
-              { opacity: cardOpacity, transform: pose(fromY) },
-              { opacity: 0, transform: pose(fromY) },
-            ],
-            { ...fade, easing: 'ease-in' },
+            fadingAway(fromY, fromV, cardOpacity),
+            { ...fade, easing: 'linear' },
           ),
           shade.animate(
             [
@@ -1094,7 +1112,7 @@ export function CardDetail({
 
   // Put back: fly from where it is now (after any scrolling or drag) back
   // into its slot.
-  const close = (fromY = 0) => {
+  const close = (fromY = 0, fromV = 0) => {
     if (closing.current) return
     closing.current = true
     const card = cardRef.current!
@@ -1111,7 +1129,7 @@ export function CardDetail({
     }
     const rdxCard = TAKE_OUT === 'lift' ? getRolodexCard() : undefined
     const anim = rdxCard
-      ? liftFade(o, rdxCard, false, fromY)
+      ? liftFade(o, rdxCard, false, fromY, fromV)
       : fly(arcThrough(base + fromY, o.clearTop, o.slotTop), o, false, base)
     anim.onfinish = () => onClosedRef.current()
   }
@@ -1339,7 +1357,9 @@ export function CardDetail({
       }
       if (!d.active) return false
       const now = performance.now()
-      d.v = (y - d.lastY) / Math.max(1, now - d.lastT)
+      // (Smoothed: a single step is jittery.)
+      const step = (y - d.lastY) / Math.max(1, now - d.lastT)
+      d.v = 0.7 * step + 0.3 * d.v
       d.lastY = y
       d.lastT = now
       d.dy = Math.max(0, dy)
@@ -1356,7 +1376,10 @@ export function CardDetail({
       // Far enough, or a real downward flick (not just a twitch).
       const far = d.dy > 110 || (d.v > 0.5 && d.dy > 40)
       if (far && !editingRef.current) {
-        closeRef.current(d.dy)
+        // It carries on from the finger: never stopping dead, nor (held
+        // still before letting go) flying off.
+        const held = performance.now() - d.lastT > 80
+        closeRef.current(d.dy, Math.max(0.5, held ? 0 : d.v))
         return
       }
       if (far && !changed.current) {
