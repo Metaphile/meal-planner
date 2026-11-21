@@ -362,6 +362,35 @@ const withSpareLine = (rows: Row[]) => {
   return out
 }
 
+const MARK_BUTTON =
+  'grid h-[30px] place-items-center text-pencil active:text-pen'
+
+/** × (cross a line out) and ↺ (bring it back): drawn, so they're centred on
+ *  the line and drawn with the same pen. */
+function RowMark({ kind }: { kind: 'cross' | 'restore' }) {
+  // Sized separately, with one stroke width in screen pixels.
+  const size = kind === 'cross' ? 14 : 12
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 24 24"
+      width={size}
+      height={size}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={(1.6 * 24) / size}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      {kind === 'cross' ? (
+        <path d="M6 6l12 12M18 6L6 18" />
+      ) : (
+        <path d="M2 4v6h6M4.5 15a9 9 0 1 0 2.1-9.4L2 10" />
+      )}
+    </svg>
+  )
+}
+
 /**
  * Ingredients written on the back of a card: a ruled table (name · qty ·
  * unit) with no boxes, like the notes below it. The heading line doubles as
@@ -403,7 +432,7 @@ function IngredientTable({
     <div role="table" aria-label="Ingredients">
       <div role="row" className={`${cols} items-end border-b border-line-blue`}>
         <span role="columnheader" className={headClass}>
-          Ingredients
+          Ingredient
         </span>
         <span role="columnheader" className={`${headClass} pr-1 text-right`}>
           Qty
@@ -453,18 +482,18 @@ function IngredientTable({
                 type="button"
                 onClick={() => update(i, { struck: false })}
                 aria-label={`Bring back ${row.name || 'ingredient'}`}
-                className="grid h-[30px] place-items-center pt-[3px] text-[23px] leading-none text-pencil active:text-pen"
+                className={MARK_BUTTON}
               >
-                ↺
+                <RowMark kind="restore" />
               </button>
             ) : (
               <button
                 type="button"
                 onClick={() => update(i, { struck: true })}
                 aria-label={`Cross out ${row.name || 'ingredient'}`}
-                className="grid h-[30px] place-items-center pt-[3px] text-[30px] leading-none text-pencil active:text-pen"
+                className={MARK_BUTTON}
               >
-                ×
+                <RowMark kind="cross" />
               </button>
             )}
             {row.struck && (
