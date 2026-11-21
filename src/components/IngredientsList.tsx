@@ -8,8 +8,9 @@ import { useStore } from '../store/store'
  * the recipes that call for it and/or standalone items by their own name.
  * The lines come from a memoized selector.
  *
- * With `checkable`, each line has a box to tick when it's on hand. Ticking
- * it takes it you have just what's needed ("3 of 3"); under a ticked line,
+ * With `checkable`, each line has a box to tick when it's on hand (– in red
+ * when there's some, but short). Ticking it takes it you have just what's
+ * needed ("3 of 3"); under a ticked line,
  * how much you have can be changed — typed (fractions too) or a whole unit
  * at a time. It stays put if what's needed changes later (untick and tick
  * again to match it).
@@ -73,11 +74,14 @@ function IngredientLine({
 }) {
   const setHave = useStore((s) => s.setHave)
   const need = ing.quantity === undefined ? undefined : round(ing.quantity)
+  // Have some but not enough: short.
+  const short =
+    !!have && need !== undefined && round(have.amount ?? 0) < need
   return (
     <li className="paper-serif flex gap-2.5 border-b border-line-blue pt-1.5 pb-1 last:border-b-0">
       {checkable && (
         <Tickbox
-          checked={!!have}
+          state={!have ? 'off' : short ? 'short' : 'on'}
           disabled={!canEdit}
           label={`Have ${ing.name}`}
           onChange={(on) => setHave(key, on, need)}
@@ -109,23 +113,28 @@ function IngredientLine({
   )
 }
 
-/** The box to tick (as on the recipe cards). */
+/**
+ * The box to tick (as on the recipe cards), in three states: empty (not on
+ * hand), ✓ (enough), or – in red (some, but short). Tapping an empty box
+ * ticks it; tapping a ticked or short one unticks it.
+ */
 function Tickbox({
-  checked,
+  state,
   disabled,
   label,
   onChange,
 }: {
-  checked: boolean
+  state: 'off' | 'on' | 'short'
   disabled: boolean
   label: string
   onChange: (checked: boolean) => void
 }) {
+  const checked = state !== 'off'
   return (
     <button
       type="button"
       role="checkbox"
-      aria-checked={checked}
+      aria-checked={state === 'short' ? 'mixed' : checked}
       aria-label={label}
       disabled={disabled}
       onClick={() => onChange(!checked)}
@@ -134,20 +143,24 @@ function Tickbox({
     >
       <span
         className={`grid h-[18px] w-[18px] place-items-center rounded-[4px] border-[1.5px] ${
-          checked ? 'border-kraft-edge bg-kraft' : 'border-[#c9bda4] bg-paper'
+          state === 'on'
+            ? 'border-kraft-edge bg-kraft text-kraft-ink'
+            : state === 'short'
+              ? 'border-danger bg-danger text-white'
+              : 'border-[#c9bda4] bg-paper'
         }`}
       >
         {checked && (
           <svg
             viewBox="0 0 12 12"
-            className="h-3 w-3 text-kraft-ink"
+            className="h-3 w-3"
             fill="none"
             stroke="currentColor"
             strokeWidth={2}
             strokeLinecap="round"
             strokeLinejoin="round"
           >
-            <path d="M2.5 6.2 5 8.5l4.5-5" />
+            <path d={state === 'short' ? 'M3 6h6' : 'M2.5 6.2 5 8.5l4.5-5'} />
           </svg>
         )}
       </span>
