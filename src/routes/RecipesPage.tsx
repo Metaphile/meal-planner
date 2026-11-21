@@ -241,6 +241,8 @@ function boundsOf(w: Wheel, items: Item[], faceFirst: boolean) {
 /** The box as it was left (on switching tabs), to come back to. */
 let leftAs: {
   pos: number
+  /** Where the whole box was before the search in progress. */
+  beforeSearch: number | null
   searching: boolean
   query: string
   wantedOnly: boolean
@@ -397,7 +399,11 @@ export default function RecipesPage() {
     drumRef.current = drum
     return () => {
       // Leaving (another tab): remember where the box was turned to.
-      leftAs = { ...leftStateRef.current, pos: drum.get() }
+      leftAs = {
+        ...leftStateRef.current,
+        pos: drum.get(),
+        beforeSearch: beforeSearch.current,
+      }
       drum.destroy()
       drumRef.current = null
     }
@@ -411,26 +417,36 @@ export default function RecipesPage() {
   const positionedFor = useRef<string | null>(null)
   // (Back from another tab: turned where it was left, once it's measured.)
   const returnTo = useRef(leftAs?.pos)
+  // Where the whole box was turned to when a search narrowed it: the search
+  // done (cancelled, or its text cleared), it goes back there.
+  const beforeSearch = useRef<number | null>(leftAs?.beforeSearch ?? null)
+  const wasNarrowed = useRef(narrowed)
   useLayoutEffect(() => {
+    const drum = drumRef.current
     const measured = pageH > 0 && headerH > 0
     const key = `${q}|${wantedOnly}|${measured}`
+    const within = (p: number) => Math.min(Math.max(0, p), bounds.max * SCALE)
     if (positionedFor.current !== key) {
       positionedFor.current = key
+      if (narrowed && !wasNarrowed.current && drum)
+        beforeSearch.current = drum.get()
       if (returnTo.current !== undefined && measured) {
-        drumRef.current?.set(
-          Math.min(Math.max(0, returnTo.current), bounds.max * SCALE),
-        )
+        drum?.set(within(returnTo.current))
         returnTo.current = undefined
       } else if (returnTo.current === undefined) {
-        drumRef.current?.set(bounds.initial * SCALE)
+        if (!narrowed && beforeSearch.current !== null) {
+          drum?.set(within(beforeSearch.current))
+          beforeSearch.current = null
+        } else drum?.set(bounds.initial * SCALE)
       }
     }
+    wasNarrowed.current = narrowed
     lastPose.current = []
     lastZ.current = []
     lastShade.current = []
     shown.current = []
     paint()
-  }, [paint, q, pageH, headerH, bounds])
+  }, [paint, q, wantedOnly, narrowed, pageH, headerH, bounds])
 
   useLayoutEffect(() => {
     const scroller = scrollRef.current
