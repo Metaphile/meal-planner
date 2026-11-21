@@ -132,9 +132,10 @@ export const RecipeCard = forwardRef<HTMLDivElement, CardProps>(
         <div className="relative flex min-h-0 flex-1 flex-col">
           <div className="paper-frame" />
           <div className="px-5 pt-3.5">
-            <div className="paper-rule flex items-start gap-2 pb-1.5">
-              {/* (Centred, like the box, between the frame and the rule.) */}
-              <FavoriteStar recipeId={recipe.id} className="pt-[7px]" />
+            {/* (The star and the box, centred on the title's line: midway
+                between the frame and the rule.) */}
+            <div className="paper-rule flex items-center gap-2 pb-1.5">
+              <FavoriteStar recipeId={recipe.id} />
               <CountBalance recipeId={recipe.id} />
               <div
                 className={`font-hand min-w-0 flex-1 text-center font-semibold text-black ${
@@ -224,18 +225,59 @@ function TickerTitle({ text }: { text: string }) {
   const trackRef = useRef<HTMLSpanElement>(null)
   const [runs, setRuns] = useState(false)
   const [loop, setLoop] = useState(0) // px: one title, its dot, and gaps
+  // Where a still title last sat (px, from its row's left: see xOf), so a
+  // title that starts running — its column narrowed — runs on from there,
+  // rather than jumping to where a running title starts. And how far that
+  // is from the start (px; + to the right of it).
+  const stillAt = useRef<number | null>(null)
+  const [lead, setLead] = useState(0)
   useLayoutEffect(() => {
     // (Against the title's own column: the box reaches out past it.)
     const column = boxRef.current!.parentElement!
-    const measure = () =>
-      setRuns(textRef.current!.offsetWidth > column.clientWidth + 1)
-    measure()
-    const ro = new ResizeObserver(measure)
+    const measure = () => {
+      const t = textRef.current!
+      const fits = t.offsetWidth <= column.clientWidth + 1
+      // (Still, and staying still: where it's about to be drawn.)
+      if (fits && !runsRef.current) stillAt.current = xOf(t)
+      return !fits
+    }
+    setRuns(measure())
+    // (Resized: settled at once, before it's drawn — else a frame is drawn
+    // of the title overflowing, still.)
+    const ro = new ResizeObserver(() => {
+      const r = measure()
+      if (r !== runsRef.current) flushSync(() => setRuns(r))
+    })
     ro.observe(column)
     return () => ro.disconnect()
   }, [text])
+  const runsRef = useRef(runs)
   useLayoutEffect(() => {
-    if (runs) setLoop(trackRef.current!.offsetWidth / 2)
+    runsRef.current = runs
+    const t = textRef.current!
+    if (!runs) {
+      setLead(0)
+      // (Still where it's drawn: unless it's about to run, on its first
+      // measure, never drawn still.)
+      if (t.offsetWidth <= boxRef.current!.parentElement!.clientWidth + 1)
+        stillAt.current = xOf(t)
+      return
+    }
+    const track = trackRef.current!
+    setLoop(track.offsetWidth / 2)
+    const from = stillAt.current
+    stillAt.current = null
+    if (from === null) return
+    const d = from - xOf(t)
+    setLead(d)
+    // To the right of the start: it slides in to the start, at the ticker's
+    // speed, and the ticker waits for it (see animationDelay). To the left:
+    // the ticker starts that far along instead.
+    if (d > 0)
+      track.animate(
+        [{ transform: `translateX(${d}px)` }, { transform: 'translateX(0)' }],
+        { duration: (d / TICKER_SPEED) * 1000, easing: 'linear' },
+      )
   }, [runs, text])
   return (
     <span
@@ -251,7 +293,10 @@ function TickerTitle({ text }: { text: string }) {
         className={runs ? 'ticker' : 'whitespace-nowrap'}
         style={
           runs && loop
-            ? { animationDuration: `${loop / TICKER_SPEED}s` }
+            ? {
+                animationDuration: `${loop / TICKER_SPEED}s`,
+                animationDelay: `${lead / TICKER_SPEED}s`,
+              }
             : undefined
         }
       >
@@ -274,6 +319,18 @@ function TickerTitle({ text }: { text: string }) {
 
 /** px a second. */
 const TICKER_SPEED = 36
+
+/** Where a title's text sits, px from the left of its row (the title's
+ *  row, which stays put as its column narrows): in the card's own px,
+ *  however the card is drawn (tilted in the box, scaled). (Not offsetLeft:
+ *  a running title's track becomes the offset parent.) */
+function xOf(text: HTMLElement) {
+  const row = text.closest('.paper-rule') as HTMLElement
+  const r = row.getBoundingClientRect()
+  return (
+    ((text.getBoundingClientRect().left - r.left) * row.offsetWidth) / r.width
+  )
+}
 /** px: how far the title's box reaches out either side of its column (into
  *  the space between it and the star, and the box). */
 const OUTSET = 8
@@ -294,14 +351,7 @@ function TickerDot() {
  * the Want box, it's marked right there in the box — and on a card's back
  * too, where (unlike the rest of the back) it's kept at once, not on Save.
  */
-function FavoriteStar({
-  recipeId,
-  className = '',
-}: {
-  recipeId: string
-  /** (Placing the star: its padding, around a generous target.) */
-  className?: string
-}) {
+function FavoriteStar({ recipeId }: { recipeId: string }) {
   const { user } = useAuth()
   const on = useIsFavorite(user?.id, recipeId)
   const setFavorite = useStore((s) => s.setFavorite)
@@ -318,11 +368,15 @@ function FavoriteStar({
         setFavorite(user.id, recipeId, !on)
         twinkle(starRef.current, !on)
       }}
-      // A generous target around the small star.
-      className={`-mt-2 -mb-4 -ml-2 flex shrink-0 items-start p-2 pr-0 ${className}`}
+      // A generous target around the small star, taking no room: in the row
+      // it's as wide as the Want box (STAR_ROOM), so a title between them is
+      // centred on the card. (The star itself a touch wider: a star looks
+      // smaller than a square its size. It reaches a little past its room.)
+      className="-m-2 flex shrink-0 justify-center p-2"
+      style={{ width: STAR_ROOM + 16 }}
     >
       <span ref={starRef} className="block">
-        <StarIcon on={on} size={28} />
+        <StarIcon on={on} size={22} />
       </span>
     </button>
   )
@@ -352,21 +406,30 @@ function twinkle(el: HTMLElement | null, on: boolean) {
   )
 }
 
-/** A five-pointed star, filled (lavender, inked) when on. */
+/** px: the star's room in a card's title row — the Want box's width. */
+const STAR_ROOM = 18
+
+/** The star's own bounds (its outline's, with room for the stroke): its
+ *  picture is the star, no margin around it. */
+const STAR_BOX = { x: 2.62, y: 2.3, w: 18.76, h: 17.93 }
+
+/** A five-pointed star, filled (lavender, inked) when on. `size` is its
+ *  width. */
 export function StarIcon({ on, size = 20 }: { on: boolean; size?: number }) {
   return (
     <svg
-      viewBox="0 0 24 24"
+      viewBox={`${STAR_BOX.x} ${STAR_BOX.y} ${STAR_BOX.w} ${STAR_BOX.h}`}
       width={size}
-      height={size}
+      height={(size * STAR_BOX.h) / STAR_BOX.w}
+      className={`block shrink-0 ${on ? 'text-kraft-edge' : 'text-[#c9bda4]'}`}
       aria-hidden
-      className={on ? 'text-kraft-edge' : 'text-[#c9bda4]'}
     >
       <path
         d="M12 3.2l2.62 5.31 5.86.85-4.24 4.13 1 5.84L12 16.58l-5.24 2.75 1-5.84-4.24-4.13 5.86-.85z"
         fill={on ? 'var(--color-kraft)' : 'var(--color-paper)'}
         stroke="currentColor"
-        strokeWidth={1.6}
+        // (Drawn 1.5px wide whatever its size, like the Want box's border.)
+        strokeWidth={(1.5 * STAR_BOX.w) / size}
         strokeLinejoin="round"
       />
     </svg>
@@ -401,7 +464,7 @@ function WantBox({
       }}
       // A generous target around the small box. (No label: a box to tick
       // speaks for itself.)
-      className="-mt-1 -mb-2 -mr-2 flex shrink-0 items-center gap-1.5 p-2 disabled:cursor-default"
+      className="-m-2 flex shrink-0 items-center gap-1.5 p-2 disabled:cursor-default"
     >
       {/* Wanted more than once: how many times, beside the box. */}
       {count > 1 && (
@@ -966,11 +1029,11 @@ const RecipeCardBack = forwardRef<
       {/* Written by hand: a draft, before it's typed up on the front. */}
       <div className="handwritten relative flex flex-1 flex-col">
         {/* (Underlined in the same pen as the writing.) */}
-        <div className="mx-5 mt-3.5 flex items-start gap-2 border-b-[1.5px] border-pen pb-0.5">
+        <div className="mx-5 mt-3.5 flex items-center gap-2 border-b-[1.5px] border-pen pb-0.5">
           {/* The favorite star, as on the front — kept at once. (Not on a
               new card until it's saved: there's no recipe yet.) */}
           {!isNew && (
-            <FavoriteStar recipeId={recipe.id} className="pt-[12px]" />
+            <FavoriteStar recipeId={recipe.id} />
           )}
           <input
             value={title}
@@ -999,7 +1062,9 @@ const RecipeCardBack = forwardRef<
             className="min-w-0 flex-1 text-ellipsis bg-transparent text-center text-[30px] font-semibold leading-[30px] focus:outline-none"
           />
           {/* (Balancing the star, so the title sits centred.) */}
-          {!isNew && <span aria-hidden className="w-7 shrink-0" />}
+          {!isNew && (
+            <span aria-hidden className="shrink-0" style={{ width: STAR_ROOM }} />
+          )}
         </div>
         <div className="mx-5 mt-3.5 mb-4 flex flex-col gap-4">
           <IngredientTable

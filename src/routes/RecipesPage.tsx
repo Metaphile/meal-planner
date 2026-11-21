@@ -830,7 +830,7 @@ export default function RecipesPage() {
       }}
       className="-mx-1 grid h-9 w-9 shrink-0 place-items-center"
     >
-      <StarIcon on={favoritesOnly} size={25} />
+      <StarIcon on={favoritesOnly} size={20} />
     </button>
   )
   const closeSearch = () => {
