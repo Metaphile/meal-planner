@@ -761,8 +761,9 @@ const pose = (dy: number) => `translate(0px, ${dy}px)`
 const TAKE_OUT: 'arc' | 'lift' = 'lift'
 const LIFT_MS = 348 // the card lifting out of the box
 const DROP_MS = 300 // …and dropping back in
-const FADE_IN_DELAY_MS = 500 // the card in hand (and the shade) start fading in…
-const FADE_IN_MS = 325 // …over this
+const FADE_IN_DELAY_MS = 400 // the card in hand (and the shade) start fading in…
+const FADE_IN_MS = 390 // …over this
+const FADE_IN_EASE = 'cubic-bezier(0.33, 1, 0.68, 1)' // quick to appear, then easing
 const FADE_MS = 225 // …and fading out
 /** Let go of while moving, a card coasts on, slowing as it goes. */
 const COAST_TAU = 500 // ms; the same slowing as scrolling (0.998 per ms)
@@ -1037,13 +1038,13 @@ export function CardDetail({
               { opacity: 1, transform: pose(0) },
             ],
             // After a fixed pause (wherever the card coming out has got to).
-            { ...fade, delay: FADE_IN_DELAY_MS, easing: 'ease-out' },
+            { ...fade, delay: FADE_IN_DELAY_MS, easing: FADE_IN_EASE },
           ),
           // The shade darkens with it.
           shade.animate([{ opacity: 0 }, { opacity: 1 }], {
             ...fade,
             delay: FADE_IN_DELAY_MS,
-            easing: 'ease-out',
+            easing: FADE_IN_EASE,
           }),
         ]
       : [
