@@ -114,10 +114,11 @@ function IngredientLine({
           <span className="shrink-0 text-base text-ink-soft">
             {needed
               ? formatAmount(ing.quantity, ing.unit)
-              : // (Nothing calls for it: no quantity needed, in its unit.)
+              : // (Nothing calls for it: no quantity needed, in its unit —
+                // nothing at all without one.)
                 ing.unit
                 ? `— ${ing.unit}`
-                : '—'}
+                : ''}
           </span>
         </div>
         {(ing.sources.length > 0 || !needed) && (
