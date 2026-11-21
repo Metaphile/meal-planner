@@ -10,13 +10,13 @@ describe('sectionLabels', () => {
     expect(sectionLabels([''])).toEqual([null])
     expect(sectionLabels(['   '])).toEqual([null])
   })
-  it('numbers untitled sections among others, in order', () => {
+  it('numbers an untitled section among others by its place', () => {
     expect(sectionLabels(['', ''])).toEqual(['Section 1', 'Section 2'])
     expect(sectionLabels(['Dough', '', 'Glaze', ''])).toEqual([
       'Dough',
-      'Section 1',
-      'Glaze',
       'Section 2',
+      'Glaze',
+      'Section 4',
     ])
   })
 })

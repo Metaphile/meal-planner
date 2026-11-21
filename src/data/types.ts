@@ -34,16 +34,13 @@ export const UNTITLED_SECTION = 'Section'
 /**
  * Sections' headings, in order. Titles are optional: one that's given
  * always shows; untitled, a section has no heading if it's the only one
- * (`null`), and among others is "Section 1", "Section 2"… — the untitled
- * ones numbered in the order they stand.
+ * (`null`), and among others is "Section n" — n its place among all
+ * the sections (the third is "Section 3", titled or not those before it).
  */
-export const sectionLabels = (titles: string[]): (string | null)[] => {
-  let n = 0
-  return titles.map(
-    (t) =>
-      t.trim() || (titles.length > 1 ? `${UNTITLED_SECTION} ${++n}` : null),
+export const sectionLabels = (titles: string[]): (string | null)[] =>
+  titles.map(
+    (t, i) => t.trim() || (titles.length > 1 ? `${UNTITLED_SECTION} ${i + 1}` : null),
   )
-}
 
 /** A recipe's sections, the first included (titles as given: maybe none). */
 export const sectionsOf = (r: Recipe): IngredientSection[] => [

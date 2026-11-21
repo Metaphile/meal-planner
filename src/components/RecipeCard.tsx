@@ -70,7 +70,7 @@ function CardBody({ recipe, peek }: { recipe: Recipe; peek: boolean }) {
   // Its sections, empty ones too (a heading with nothing under it yet) —
   // but not an untitled first section with nothing in it while there are
   // others: that's no section anyone made. Each headed as sectionLabels
-  // says: its title; else "Section 1", "Section 2"…, among others; else (the
+  // says: its title; else, among others, "Section n" by its place; else (the
   // only one) none.
   const all = sectionsOf(recipe)
   const sections = all.filter(
