@@ -307,8 +307,7 @@ function FavoriteStar({ recipeId }: { recipeId: string }) {
     >
       <span className="relative block">
         {/* Others' stars, under yours: filled (they're favorites), faded
-            (not yours to change), fainter the deeper. Each depth always in
-            the same place, so a stack of so many looks the same anywhere. */}
+            (not yours to change). See STACKED. */}
         {STACKED.slice(0, others)
           .map((s, i) => (
             <span
@@ -316,7 +315,7 @@ function FavoriteStar({ recipeId }: { recipeId: string }) {
               aria-hidden
               className="pointer-events-none absolute inset-0 block"
               style={{
-                transform: `translate(${s.x}px, ${s.y}px) rotate(${s.turn}deg) scale(${s.scale})`,
+                transform: `translate(${s.x}px, ${s.y}px) scale(${s.scale})`,
                 opacity: s.opacity,
               }}
             >
@@ -332,27 +331,15 @@ function FavoriteStar({ recipeId }: { recipeId: string }) {
   )
 }
 
-/** Degrees the spiral sweeps from one star to the next (anticlockwise). */
-const SPIRAL_STEP = 85
-
-/** Where others' stars sit under yours, by depth (first: just under it):
- *  a spiral — each deeper one further round (anticlockwise: up and to the
- *  left, then down and to the left — away from the title), further out,
- *  turned as the spiral turns, smaller and fainter, and unoutlined (just
- *  their fill). Fixed: nothing per
- *  recipe or person, so a stack of so many always looks the same. */
-const STACKED = [1, 2].map((depth) => {
-  const angle = ((-65 - SPIRAL_STEP * depth) * Math.PI) / 180 // (screen: y down)
-  const out = [7, 9.5][depth - 1] // px
-  return {
-    x: out * Math.cos(angle),
-    y: out * Math.sin(angle),
-    // Turned as far as the spiral has swept to reach it: following it.
-    turn: -SPIRAL_STEP * depth,
-    scale: 1 - 0.06 * depth,
-    opacity: [0.55, 0.32][depth - 1],
-  }
-})
+/** Where others' stars sit, under yours: a triangle — yours at the top
+ *  (where it always is), the first other's down and to the left, the
+ *  second's down and to the right, each partly under it. Upright, smaller,
+ *  just their fill, the second a little fainter. Fixed: nothing per recipe
+ *  or person, so a stack of so many always looks the same. */
+const STACKED = [
+  { x: -7.5, y: 6.5, scale: 0.74, opacity: 0.6 },
+  { x: 7.5, y: 6.5, scale: 0.74, opacity: 0.45 },
+]
 
 /**
  * A star toggled by a tap: on, it pops — swelling with a little turn, and
