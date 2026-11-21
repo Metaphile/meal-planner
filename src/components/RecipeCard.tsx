@@ -728,6 +728,9 @@ export interface CardOrigin {
    *  it is clipped there — the foreground card's layer starts at the same
    *  edge, so it's clipped identically. */
   viewTop: number
+  /** Where a card lifting out goes out of sight behind something (the
+   *  header), if that's below `viewTop`. */
+  hiddenAbove?: number
   /** Its pose on the wheel, and stood upright in place (wrapper transforms). */
   wheelPose: string
   flatPose: string
@@ -991,10 +994,10 @@ export function CardDetail({
     card.style.opacity = ''
     for (const el of [card, rdxCard]) el.getAnimations().forEach((a) => a.cancel())
     // It keeps its tilt on the wheel and slides straight up along its own
-    // face, out of its slot, until it's clear of the top of the page (shadow
-    // and all). Tilted, it covers less of the screen for the same slide, so
+    // face, out of its slot, until it's out of sight (behind the header, or
+    // past the top of the page; shadow and all). Tilted, it covers less of the screen for the same slide, so
     // measure how far that is.
-    const clearOf = o.viewTop - 40
+    const clearOf = (o.hiddenAbove ?? o.viewTop) - 24
     const inline = rdxCard.style.transform
     const bottomAt = (d: number) => {
       rdxCard.style.transform = `translateY(${d}px)`

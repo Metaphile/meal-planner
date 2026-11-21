@@ -465,6 +465,7 @@ export default function RecipesPage() {
         width: scroller.clientWidth - SIDE * 2,
         height,
         viewTop,
+        hiddenAbove: wheelTop, // (behind the header)
         wheelPose: `translate3d(0px, ${(headerH + rodY - off).toFixed(1)}px, ${z.toFixed(1)}px) rotateX(${(-deg).toFixed(2)}deg)`,
         flatPose: `translate3d(0px, ${(headerH + rodOnScreen - off).toFixed(1)}px, 0px) rotateX(0deg)`,
         shade: lastShade.current[index] ?? 0,
@@ -613,7 +614,13 @@ export default function RecipesPage() {
     setQuery('')
   }
   const header = (
-    <div ref={headerRef} className="absolute inset-x-0 top-0 z-0">
+    // Over the rolodex, casting a shadow onto it (and onto a card sliding
+    // up behind it).
+    <div
+      ref={headerRef}
+      className="absolute inset-x-0 top-0 z-[3]"
+      style={{ boxShadow: '0 4px 12px -6px rgb(0 0 0 / 0.35)' }}
+    >
       {searching ? (
         <header className="flex items-center gap-3 bg-backdrop px-4 pt-2.5 pb-2 text-ink">
           <div className="relative min-w-0 flex-1">
@@ -696,17 +703,13 @@ export default function RecipesPage() {
         {/* The rolodex's backdrop, below the header. */}
         <div
           className="absolute inset-x-0 bottom-0 bg-[#9cb0a5]"
-          style={{
-            top: headerH,
-            boxShadow: 'inset 0 10px 14px -10px rgb(0 0 0 / 0.25)',
-          }}
+          style={{ top: headerH }}
         />
-        {/* The rolodex layer: the whole page, header included, so a card
-              being taken out passes over the header rather than behind it.
-              Touches go to the drum's own iOS-style physics (no native touch
-              scrolling); the wheel and trackpad scroll it natively, so they
-              rubber-band the way the Mac does. The header lives inside the
-              stage, beneath every card, so its buttons still work. */}
+        {/* The rolodex layer: the whole page, under the header (a card
+              being taken out slides up behind it). Touches go to the drum's
+              own iOS-style physics (no native touch scrolling); the wheel and
+              trackpad scroll it natively, so they rubber-band the way the
+              Mac does. */}
         <div
           ref={scrollRef}
           className="scroll-y no-scrollbar absolute inset-0 z-[2] overflow-x-hidden"
@@ -721,7 +724,6 @@ export default function RecipesPage() {
               perspectiveOrigin: `50% ${headerH + wheel.front}px`,
             }}
           >
-            {header}
             {items.map((item, i) => (
               <RolodexItem
                 key={item.key}
@@ -739,6 +741,7 @@ export default function RecipesPage() {
           {/* The drum's travel, from one stop to the other. */}
           <div style={{ height: bounds.max }} />
         </div>
+        {header}
       </>
 
       {open && (
