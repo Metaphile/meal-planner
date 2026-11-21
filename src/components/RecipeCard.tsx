@@ -756,9 +756,10 @@ const pose = (dy: number) => `translate(0px, ${dy}px)`
  *    screen while the card in hand fades in where it rests (and the reverse
  *    to put it back). */
 const TAKE_OUT: 'arc' | 'lift' = 'lift'
-const LIFT_MS = 300 // the card lifting out of the box (or dropping back)
-const FADE_IN_MS = 650 // the card in hand fading in
-const FADE_MS = 450 // …and fading out
+const LIFT_MS = 200 // the card lifting out of the box
+const DROP_MS = 300 // …and dropping back in
+const FADE_IN_MS = 325 // the card in hand fading in
+const FADE_MS = 225 // …and fading out
 /** Let go of while moving, a card coasts on, slowing as it goes. */
 const COAST_TAU = 500 // ms; the same slowing as scrolling (0.998 per ms)
 
@@ -997,7 +998,10 @@ export function CardDetail({
     const s = 0.4
     for (const el of [card, rdxCard, rdxWrap, rdxDim])
       el?.getAnimations().forEach((a) => a.cancel())
-    const lift = { duration: LIFT_MS, fill: 'both' as const }
+    const lift = {
+      duration: opening ? LIFT_MS : DROP_MS,
+      fill: 'both' as const,
+    }
     const fade = {
       duration: opening ? FADE_IN_MS : FADE_MS,
       fill: 'both' as const,
@@ -1082,7 +1086,7 @@ export function CardDetail({
     // Opening: the fade (only it is on this card, so its fill is what's
     // dropped once it ends). Closing: whichever ends last.
     if (opening) return anims[3]!
-    return FADE_MS > LIFT_MS ? anims[3]! : anims[0]!
+    return FADE_MS > DROP_MS ? anims[3]! : anims[0]!
   }
 
   // Fly out of the rolodex into place.
