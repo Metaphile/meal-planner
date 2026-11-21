@@ -246,6 +246,7 @@ let leftAs: {
   searching: boolean
   query: string
   wantedOnly: boolean
+  kept: ReadonlySet<string>
 } | null = null
 
 export default function RecipesPage() {
@@ -262,17 +263,28 @@ export default function RecipesPage() {
   // …and, ticked, to just the wanted recipes.
   const [wantedOnly, setWantedOnly] = useState(leftAs?.wantedOnly ?? false)
   const wants = useStore((s) => s.wants)
+  // The recipes wanted when it was ticked stay in the box until it's
+  // unticked — unwanting one there doesn't whisk it away (and any wanted
+  // since join them).
+  const [kept, setKept] = useState<ReadonlySet<string>>(
+    () => leftAs?.kept ?? new Set(),
+  )
+  const toggleWantedOnly = () => {
+    if (!wantedOnly)
+      setKept(new Set(wants.filter(isWanted).map((w) => w.recipeId)))
+    setWantedOnly(!wantedOnly)
+  }
   const matches = useMemo(() => {
     const wanted = new Set(wants.filter(isWanted).map((w) => w.recipeId))
     return recipes.filter(
       (r) =>
-        (!wantedOnly || wanted.has(r.id)) &&
+        (!wantedOnly || wanted.has(r.id) || kept.has(r.id)) &&
         (!q ||
           r.title.toLowerCase().includes(q) ||
           r.tags.some((t) => t.toLowerCase().includes(q)) ||
           r.ingredients.some((i) => i.name.toLowerCase().includes(q))),
     )
-  }, [recipes, q, wantedOnly, wants])
+  }, [recipes, q, wantedOnly, wants, kept])
   // Any narrowing at all: a search (it opens on its first match).
   const narrowed = !!q || wantedOnly
   // The rolodex layer covers the whole page, header included (so a card
@@ -381,8 +393,8 @@ export default function RecipesPage() {
   // tells us when it moves, and we paint.
   const drumRef = useRef<DrumScroll | null>(null)
   // The search as it is now (remembered with the drum on leaving).
-  const leftStateRef = useRef({ searching, query, wantedOnly })
-  leftStateRef.current = { searching, query, wantedOnly }
+  const leftStateRef = useRef({ searching, query, wantedOnly, kept })
+  leftStateRef.current = { searching, query, wantedOnly, kept }
   const paintRef = useRef(paint)
   paintRef.current = paint
   useLayoutEffect(() => {
@@ -746,7 +758,7 @@ export default function RecipesPage() {
             aria-checked={wantedOnly}
             aria-label="Only wanted recipes"
             onPointerDown={(e) => e.preventDefault()} // (keeps the keyboard up)
-            onClick={() => setWantedOnly((w) => !w)}
+            onClick={toggleWantedOnly}
             className="-mx-1 grid h-9 w-9 shrink-0 place-items-center"
           >
             <span
