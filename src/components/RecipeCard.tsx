@@ -1204,14 +1204,12 @@ function IngredientTable({
           role="rowgroup"
           className={`relative ${g > 0 ? 'mt-3' : ''}`}
         >
-          {/* The section's title (the first's beside the column headings):
-              its grip, to drag the whole section by (when there's more than
-              one), and its mark, to cross the whole section out. */}
+          {/* The section's title, beside its column headings: its grip, to
+              drag the whole section by (when there's more than one), and its
+              mark, to cross the whole section out. */}
           <div
             role="row"
-            className={`${
-              g === 0 ? cols : 'grid grid-cols-[1rem_minmax(0,1fr)_1.75rem]'
-            } relative items-end border-b border-line-blue`}
+            className={`${cols} relative items-end border-b border-line-blue`}
           >
             {groups.length > 1 ? (
               <span
@@ -1234,16 +1232,12 @@ function IngredientTable({
                 group.struck,
               )}
             </div>
-            {g === 0 && (
-              <>
-                <span role="columnheader" className={`${headClass} pr-1 text-right`}>
-                  Qty
-                </span>
-                <span role="columnheader" className={`${headClass} pl-1.5`}>
-                  Unit
-                </span>
-              </>
-            )}
+            <span role="columnheader" className={`${headClass} pr-1 text-right`}>
+              Qty
+            </span>
+            <span role="columnheader" className={`${headClass} pl-1.5`}>
+              Unit
+            </span>
             <button
               type="button"
               onClick={() => setStruck(g, !group.struck)}
