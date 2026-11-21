@@ -52,7 +52,9 @@ export const PERSPECTIVE = 900
 function IngredientLine({ ing }: { ing: Ingredient }) {
   return (
     <li className="flex justify-between gap-3">
-      <span className="truncate">{ing.name}</span>
+      {/* (Room for the handwriting's last letter, which reaches past its
+          own width: else the clip that makes "…" cuts it.) */}
+      <span className="-mr-1 truncate pr-1">{ing.name}</span>
       <span className="shrink-0 whitespace-nowrap text-[#8a8170]">
         <Amount quantity={ing.quantity} unit={ing.unit} />
       </span>
@@ -207,7 +209,9 @@ export const RecipeCard = forwardRef<HTMLDivElement, CardProps>(
           <div
             ref={bodyRef}
             // Written by hand, sitting on the rules (3px down to meet them).
-            className={`paper-lines font-hand mx-5 mb-2 min-h-0 flex-1 pt-[3px] ${
+            // (Room inside its right edge for the handwriting, whose letters
+            // reach past their own width — an amount ends flush against it.)
+            className={`paper-lines font-hand mb-2 ml-5 mr-4 min-h-0 flex-1 pt-[3px] pr-1 ${
               large ? 'text-[22px]' : 'text-[21px]'
             } ${
               scrollable ? 'scroll-y no-scrollbar' : 'overflow-hidden'
@@ -1559,7 +1563,7 @@ const RecipeCardBack = forwardRef<
               autoComplete="off"
               // (Tags are written lowercase.)
               autoCapitalize="none"
-              className="block h-[25px] w-full border-b border-line-blue bg-transparent pt-[3px] leading-[21px] focus:bg-kraft/15 focus:outline-none"
+              className="block h-[25px] w-full border-b border-line-blue bg-transparent pt-[3px] pr-1 leading-[21px] focus:bg-kraft/15 focus:outline-none"
             />
           </label>
           <label className="block">
@@ -1571,7 +1575,7 @@ const RecipeCardBack = forwardRef<
               rows={NOTES_MIN_LINES}
               placeholder="Prep tips, substitutions…"
               autoComplete="off"
-              className="paper-lines block w-full resize-none overflow-hidden bg-transparent pt-[3px] leading-[22px] focus:outline-none"
+              className="paper-lines block w-full resize-none overflow-hidden bg-transparent pt-[3px] pr-1 leading-[22px] focus:outline-none"
             />
           </label>
         </div>

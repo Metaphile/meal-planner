@@ -9,7 +9,8 @@ export function Unit({ children }: { children?: string }) {
   return (
     <span
       title={children}
-      className="inline-block max-w-[3.6em] truncate align-bottom"
+      // (A little room inside the clip: handwriting reaches past its width.)
+      className="-mr-[0.15em] inline-block max-w-[3.75em] truncate pr-[0.15em] align-bottom"
     >
       {children}
     </span>
