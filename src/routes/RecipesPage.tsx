@@ -337,7 +337,7 @@ export default function RecipesPage() {
         const deg = phi / DEG
         const shade =
           Math.round(
-            0.7 * Math.min(1, Math.max(0, (Math.abs(deg) - 12) / 55)) * 100,
+            0.595 * Math.min(1, Math.max(0, (Math.abs(deg) - 12) / 55)) * 100,
           ) / 100
         if (lastShade.current[i] !== shade) {
           lastShade.current[i] = shade
