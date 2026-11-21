@@ -1,15 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <rect width="512" height="512" rx="96" fill="#c3bbd5" />
-  <g fill="#443d54" transform="translate(256 256) scale(1.12) translate(-260 -252)">
-    <!-- fork: four tines, a head that narrows to the neck, a tapered handle -->
-    <rect x="156" y="104" width="12" height="96" rx="6" />
-    <rect x="176" y="104" width="12" height="96" rx="6" />
-    <rect x="196" y="104" width="12" height="96" rx="6" />
-    <rect x="216" y="104" width="12" height="96" rx="6" />
-    <path d="M156 176 H228 C228 212 222 232 212 246 C205 256 200 264 200 276 H184 C184 264 179 256 172 246 C162 232 156 212 156 176 Z" />
-    <path d="M184 270 H200 C201 314 206 354 206 386 A14 14 0 0 1 178 386 C178 354 183 314 184 270 Z" />
-    <!-- spoon: an egg-shaped bowl, a slim neck, a handle widening to its end -->
-    <path d="M320 104 C352 104 364 140 364 168 C364 204 342 230 320 232 C298 230 276 204 276 168 C276 140 288 104 320 104 Z" />
-    <path d="M312 226 H328 C326 262 334 340 334 386 A14 14 0 0 1 306 386 C306 340 314 262 312 226 Z" />
+  <g fill="#443d54" transform="translate(-2.5 3.5)">
+    <!-- fork: tapering tines, a head sweeping into a slim neck -->
+    <path d="M154 200 L162 96.5 A4.5 4.5 0 0 1 171 96.5 L167.37 190 A4 4 0 0 0 175.37 190 L175.37 190 L179 96.5 A4.5 4.5 0 0 1 188 96.5 L188 190 A4 4 0 0 0 196 190 L196 190 L196 96.5 A4.5 4.5 0 0 1 205 96.5 L208.63 190 A4 4 0 0 0 216.63 190 L216.63 190 L213 96.5 A4.5 4.5 0 0 1 222 96.5 L230 200 C232 228 205 252 199.5 296 C198.5 324 205 372 205 402 A13 13 0 0 1 179 402 C179 372 185.5 324 184.5 296 C179 252 152 228 154 200Z" />
+    <!-- spoon: an egg-shaped bowl, rounded into its neck -->
+    <path d="M320 92 C350 92 365 122 365 160 C365 200 346 228 333 240 C327 246 326.5 258 326.5 278 C327.5 322 333 372 333 402 A13 13 0 0 1 307 402 C307 372 312.5 322 313.5 278 C313.5 258 313 246 307 240 C294 228 275 200 275 160 C275 122 290 92 320 92Z" />
   </g>
 </svg>
