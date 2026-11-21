@@ -733,7 +733,7 @@ export default function RecipesPage() {
       <>
         {/* The rolodex's backdrop, below the header. */}
         <div
-          className="absolute inset-x-0 bottom-0 bg-[#9cb0a5]"
+          className="absolute inset-x-0 bottom-0 bg-[#bac8c0]"
           style={{ top: headerH }}
         />
         {/* The rolodex layer: the whole page, under the header (a card
