@@ -191,7 +191,9 @@ export const RecipeCard = forwardRef<HTMLDivElement, CardProps>(
               <>
                 {canEditRecipes && <EditLabel />}
                 <span className="flex-1" />
-                <WantCount recipeId={recipe.id} interactive={false} />
+                {canEditPlan && (
+                  <WantCount recipeId={recipe.id} interactive={false} />
+                )}
               </>
             )}
           </div>
@@ -501,8 +503,9 @@ function WantBox({
         setWanted(recipeId, !on)
       }}
       // A generous target around the small box. (No label: a box to tick
-      // speaks for itself.)
-      className="-m-2 flex shrink-0 items-center gap-1.5 p-2 disabled:cursor-default"
+      // speaks for itself.) Not to be ticked here (a reader): faded, but
+      // still showing what's wanted, and how many times.
+      className="-m-2 flex shrink-0 items-center gap-1.5 p-2 disabled:cursor-default disabled:opacity-55"
     >
       {/* Wanted more than once: how many times, beside the box. */}
       {count > 1 && (
@@ -2035,13 +2038,14 @@ export function CardDetail({
                 actions={
                   renderActions ? (
                     renderActions({ dismiss: () => dismiss(), edit })
-                  ) : (
+                  ) : canEditRecipes || canEditPlan ? (
                     <>
                       {canEditRecipes && <EditButton onEdit={edit} />}
                       <span className="flex-1" />
-                      <WantCount recipeId={shown.id} interactive={canEditPlan} />
+                      {canEditPlan && <WantCount recipeId={shown.id} interactive />}
                     </>
-                  )
+                  ) : // (A reader: nothing to do here — no footer at all.)
+                  undefined
                 }
                 aria-hidden={facing === 'back' || undefined}
                 style={{

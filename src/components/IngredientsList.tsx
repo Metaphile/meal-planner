@@ -124,7 +124,16 @@ function IngredientLine({
           <span className={`text-[17px] ${short ? 'text-danger' : ''}`}>
             {ing.name}
           </span>
-          {counted ? (
+          {counted && !canEdit ? (
+            // (A reader: how much there is, written — no counter to use.)
+            <span
+              className={`shrink-0 text-base ${short ? 'text-danger' : 'text-ink-soft'}`}
+            >
+              <span className="font-semibold">{round(have.amount ?? 0)}</span>
+              {needed && need !== undefined ? ` of ${need}` : ''}
+              {ing.unit ? ` ${ing.unit}` : ''}
+            </span>
+          ) : counted ? (
             <HaveCounter
               haveKey={key}
               amount={have.amount ?? 0}
@@ -174,8 +183,9 @@ function Tickbox({
       aria-label={label}
       disabled={disabled}
       onClick={() => onChange(!checked)}
-      // A generous target around the small box, level with the name.
-      className="-my-1 -ml-1.5 flex shrink-0 items-start p-1.5 pt-[7px] disabled:cursor-default"
+      // A generous target around the small box, level with the name. (Not
+      // to be ticked here — a reader: faded, still showing its state.)
+      className="-my-1 -ml-1.5 flex shrink-0 items-start p-1.5 pt-[7px] disabled:cursor-default disabled:opacity-55"
     >
       <span
         className={`grid h-[18px] w-[18px] place-items-center rounded-[4px] border-[1.5px] ${
