@@ -47,7 +47,7 @@ function IngredientLine({ ing }: { ing: Ingredient }) {
   )
 }
 
-function CardBody({ recipe }: { recipe: Recipe }) {
+function CardBody({ recipe, large }: { recipe: Recipe; large: boolean }) {
   return (
     <>
       <ul>
@@ -67,7 +67,11 @@ function CardBody({ recipe }: { recipe: Recipe }) {
       {recipe.notes && (
         <>
           <div className="h-[22px]" />
-          <div className="paper-serif text-[13px] font-semibold uppercase tracking-wider text-[#8a8170]">
+          <div
+            className={`paper-serif font-semibold uppercase tracking-wider text-[#8a8170] ${
+              large ? 'text-[14px]' : 'text-[13px]'
+            }`}
+          >
             Notes
           </div>
           <p className="whitespace-pre-wrap pb-[22px]">{recipe.notes}</p>
@@ -86,6 +90,8 @@ type CardProps = {
   /** Its title on one line (in the box, so each card shows the same lines
    *  above the next; in hand it's written out in full). */
   oneLineTitle?: boolean
+  /** In hand: written a little larger (the card is a little bigger). */
+  large?: boolean
   /** Replaces the usual actions (Add to Meal · Edit) below the border. */
   actions?: ReactNode
   bodyRef?: Ref<HTMLDivElement>
@@ -105,6 +111,7 @@ export const RecipeCard = forwardRef<HTMLDivElement, CardProps>(
       canEditRecipes,
       scrollable = false,
       oneLineTitle = false,
+      large = false,
       actions,
       bodyRef,
       className = '',
@@ -126,7 +133,9 @@ export const RecipeCard = forwardRef<HTMLDivElement, CardProps>(
           <div className="px-5 pt-3.5">
             <div className="paper-rule flex items-start gap-3 pb-1.5">
               <div
-                className={`paper-serif min-w-0 flex-1 text-[19px] font-semibold leading-[25px] ${
+                className={`paper-serif min-w-0 flex-1 font-semibold ${
+                  large ? 'text-[20px] leading-[26px]' : 'text-[19px] leading-[25px]'
+                } ${
                   oneLineTitle ? 'truncate' : ''
                 }`}
               >
@@ -137,11 +146,13 @@ export const RecipeCard = forwardRef<HTMLDivElement, CardProps>(
           </div>
           <div
             ref={bodyRef}
-            className={`paper-lines mx-5 mb-2 min-h-0 flex-1 text-[15px] ${
+            className={`paper-lines mx-5 mb-2 min-h-0 flex-1 ${
+              large ? 'text-[16px]' : 'text-[15px]'
+            } ${
               scrollable ? 'scroll-y no-scrollbar' : 'overflow-hidden'
             }`}
           >
-            <CardBody recipe={recipe} />
+            <CardBody recipe={recipe} large={large} />
           </div>
         </div>
 
@@ -1655,6 +1666,7 @@ export function CardDetail({
               <RecipeCard
                 ref={frontRef}
                 recipe={shown}
+                large
                 canEditPlan={canEditPlan}
                 canEditRecipes={canEditRecipes}
                 actions={
