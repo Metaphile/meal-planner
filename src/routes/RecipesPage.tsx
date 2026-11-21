@@ -703,10 +703,44 @@ export default function RecipesPage() {
   }, [])
 
   const searchRef = useRef<HTMLInputElement>(null)
+  // Only the wanted recipes: the same box as on the cards, beside the search
+  // button (and in the search field's bar while searching).
+  const wantedOnlyBox = (
+    <button
+      type="button"
+      role="checkbox"
+      aria-checked={wantedOnly}
+      aria-label="Only wanted recipes"
+      onPointerDown={(e) => e.preventDefault()} // (keeps the keyboard up)
+      onClick={toggleWantedOnly}
+      className="-mx-1 grid h-9 w-9 shrink-0 place-items-center"
+    >
+      <span
+        className={`grid h-[22px] w-[22px] place-items-center rounded-[5px] border-[1.5px] ${
+          wantedOnly
+            ? 'border-kraft-edge bg-kraft'
+            : 'border-[#c9bda4] bg-paper'
+        }`}
+      >
+        {wantedOnly && (
+          <svg
+            viewBox="0 0 12 12"
+            className="h-3.5 w-3.5 text-kraft-ink"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M2.5 6.2 5 8.5l4.5-5" />
+          </svg>
+        )}
+      </span>
+    </button>
+  )
   const closeSearch = () => {
     setSearching(false)
     setQuery('')
-    setWantedOnly(false)
   }
   const header = (
     // Over the rolodex, casting a shadow onto it (and onto a card sliding
@@ -756,38 +790,8 @@ export default function RecipesPage() {
               </button>
             )}
           </div>
-          {/* Only the wanted recipes: the same box as on the cards. */}
-          <button
-            type="button"
-            role="checkbox"
-            aria-checked={wantedOnly}
-            aria-label="Only wanted recipes"
-            onPointerDown={(e) => e.preventDefault()} // (keeps the keyboard up)
-            onClick={toggleWantedOnly}
-            className="-mx-1 grid h-9 w-9 shrink-0 place-items-center"
-          >
-            <span
-              className={`grid h-[22px] w-[22px] place-items-center rounded-[5px] border-[1.5px] ${
-                wantedOnly
-                  ? 'border-kraft-edge bg-kraft'
-                  : 'border-[#c9bda4] bg-paper'
-              }`}
-            >
-              {wantedOnly && (
-                <svg
-                  viewBox="0 0 12 12"
-                  className="h-3.5 w-3.5 text-kraft-ink"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M2.5 6.2 5 8.5l4.5-5" />
-                </svg>
-              )}
-            </span>
-          </button>
+          {/* (Still here while searching: it narrows the search too.) */}
+          {wantedOnlyBox}
           <button
             onClick={closeSearch}
             className="paper-serif h-9 shrink-0 text-[15px] font-semibold active:opacity-60"
@@ -800,23 +804,26 @@ export default function RecipesPage() {
           title="Recipes"
           // (New recipes start on the blank card at the back of the box.)
           action={
-            <button
-              onClick={() => setSearching(true)}
-              aria-label="Search recipes"
-              className="grid h-9 w-9 place-items-center rounded-full text-ink-soft active:bg-black/5"
-            >
-              <svg
-                viewBox="0 0 24 24"
-                className="h-[22px] w-[22px]"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
+            <div className="flex items-center gap-1">
+              {wantedOnlyBox}
+              <button
+                onClick={() => setSearching(true)}
+                aria-label="Search recipes"
+                className="grid h-9 w-9 place-items-center rounded-full text-ink-soft active:bg-black/5"
               >
-                <circle cx="11" cy="11" r="6.5" />
-                <path d="m16 16 4.5 4.5" />
-              </svg>
-            </button>
+                <svg
+                  viewBox="0 0 24 24"
+                  className="h-[22px] w-[22px]"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                >
+                  <circle cx="11" cy="11" r="6.5" />
+                  <path d="m16 16 4.5 4.5" />
+                </svg>
+              </button>
+            </div>
           }
         />
       )}
