@@ -756,8 +756,8 @@ const pose = (dy: number) => `translate(0px, ${dy}px)`
  *    screen while the card in hand fades in where it rests (and the reverse
  *    to put it back). */
 const TAKE_OUT: 'arc' | 'lift' = 'lift'
-const LIFT_MS = 440 // the card lifting out of the box (or dropping back)
-const FADE_MS = 300 // the card in hand fading in (or out)
+const LIFT_MS = 300 // the card lifting out of the box (or dropping back)
+const FADE_MS = 450 // the card in hand fading in (or out)
 const LIFT_UP = 'cubic-bezier(0.45, 0, 0.85, 0.5)' // gathering speed
 const DROP_IN = 'cubic-bezier(0.15, 0.5, 0.55, 1)' // settling into the slot
 
@@ -951,7 +951,7 @@ export function CardDetail({
    * its slot and off the top of the screen (standing up off the wheel as it
    * goes) while this card fades in where it rests — or, putting it back,
    * fades out where it is (`fromY` below its place) while the other drops
-   * back into its slot. Returns the animation that ends last.
+   * back into its slot.
    */
   const liftFade = (
     o: CardOrigin,
@@ -961,6 +961,9 @@ export function CardDetail({
   ) => {
     const card = cardRef.current!
     const shade = shadeRef.current!
+    // (Pulled down, it's already partly faded.)
+    const cardOpacity = Number(card.style.opacity || 1)
+    card.style.opacity = ''
     const rdxWrap = rdxCard.parentElement ?? undefined
     const rdxDim =
       rdxCard.querySelector<HTMLElement>('.rolodex-dim') ?? undefined
@@ -1038,7 +1041,7 @@ export function CardDetail({
           ),
           card.animate(
             [
-              { opacity: 1, transform: pose(fromY) },
+              { opacity: cardOpacity, transform: pose(fromY) },
               { opacity: 0, transform: pose(fromY) },
             ],
             { ...fade, easing: 'ease-in' },
@@ -1054,7 +1057,10 @@ export function CardDetail({
     // Same clock, to the frame.
     const now = document.timeline.currentTime
     for (const a of anims) if (a) a.startTime = now
-    return (opening ? anims[3] : anims[0])!
+    // Opening: the fade (only it is on this card, so its fill is what's
+    // dropped once it ends). Closing: whichever ends last.
+    if (opening) return anims[3]!
+    return FADE_MS > LIFT_MS ? anims[3]! : anims[0]!
   }
 
   // Fly out of the rolodex into place.
@@ -1121,7 +1127,9 @@ export function CardDetail({
     const shade = shadeRef.current!
     card.getAnimations().forEach((a) => a.cancel())
     const from = card.style.transform || pose(0)
+    const fromOpacity = Number(card.style.opacity || 1)
     card.style.transform = ''
+    card.style.opacity = ''
     const timing = {
       duration: 220,
       easing: EASE_OUT,
@@ -1129,7 +1137,7 @@ export function CardDetail({
     }
     const anim = card.animate(
       [
-        { opacity: 1, transform: from },
+        { opacity: fromOpacity, transform: from },
         { opacity: 0, transform: `${from} translateY(28px) scale(0.97)` },
       ],
       timing,
@@ -1336,6 +1344,8 @@ export function CardDetail({
       d.lastT = now
       d.dy = Math.max(0, dy)
       card.style.transform = pose(d.dy)
+      // It fades as you pull it, telling you it's on its way back.
+      card.style.opacity = String(1 - 0.65 * Math.min(1, d.dy / 280))
       shade.style.opacity = String(1 - Math.min(0.7, d.dy / 450))
       return true
     }
@@ -1356,13 +1366,17 @@ export function CardDetail({
       // (Turned over with changes: it springs back while you decide.)
       if (far) leaveRef.current(() => putAwayRef.current())
       card.animate(
-        [{ transform: card.style.transform }, { transform: pose(0) }],
+        [
+          { transform: card.style.transform, opacity: card.style.opacity },
+          { transform: pose(0), opacity: 1 },
+        ],
         { duration: 220, easing: EASE_OUT },
       )
       shade.animate([{ opacity: shade.style.opacity }, { opacity: 1 }], {
         duration: 220,
       })
       card.style.transform = ''
+      card.style.opacity = ''
       shade.style.opacity = ''
     }
 
