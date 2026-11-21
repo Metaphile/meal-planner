@@ -1149,9 +1149,11 @@ function IngredientTable({
   )
   const cell =
     // Taller than the card's 22px ruled lines, so each line (and its ✕) is
-    // easy to hit with a finger. The writing's middle is the line's middle —
-    // level with the grip and the ✕, so a stroke through it meets them.
-    'h-[30px] min-w-0 bg-transparent pt-[2.5px] leading-[24px] focus:bg-kraft/15 focus:outline-none'
+    // easy to hit with a finger. The middle of its lowercase letters (most
+    // of the writing) is the line's middle — level with the grip and the ✕,
+    // so a stroke through them meets those. (A field centres its writing in
+    // what its padding leaves: so, padded below, the writing's 2px high.)
+    'h-[30px] min-w-0 bg-transparent pt-0 pb-[4px] leading-[24px] focus:bg-kraft/15 focus:outline-none'
   const rule = 'border-l border-line-blue'
   // A section's title, written in (a heading, across the whole line). Its
   // key is its place among the sections — and "Add section…" takes the next
@@ -1171,7 +1173,7 @@ function IngredientTable({
       aria-label="Section"
       autoComplete="off"
       autoCapitalize="words"
-      className={`${headClass} h-[34px] min-w-0 bg-transparent pt-[4px] placeholder:font-normal placeholder:text-pencil focus:bg-kraft/15 focus:outline-none`}
+      className={`${headClass} h-[34px] min-w-0 bg-transparent pt-0 pb-[4px] placeholder:font-normal placeholder:text-pencil focus:bg-kraft/15 focus:outline-none`}
     />
   )
 
@@ -1234,10 +1236,10 @@ function IngredientTable({
               )}
             </div>
             {/* (Raised as the title is: written on the same line.) */}
-            <span role="columnheader" className={`${headClass} pb-[4px] pr-1 text-right`}>
+            <span role="columnheader" className={`${headClass} pb-[6px] pr-1 text-right`}>
               Qty
             </span>
-            <span role="columnheader" className={`${headClass} pb-[4px] pl-1.5`}>
+            <span role="columnheader" className={`${headClass} pb-[6px] pl-1.5`}>
               Unit
             </span>
             <button

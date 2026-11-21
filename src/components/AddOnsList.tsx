@@ -13,8 +13,10 @@ import {
 // The lines: the item, how much, its unit, and × to take it off.
 const COLS = 'grid grid-cols-[minmax(0,1fr)_3.25rem_4.25rem_1.75rem]'
 const CELL =
-  // (The writing's middle the line's middle: a stroke through it meets the ×.)
-  'h-[30px] min-w-0 bg-transparent pt-[2.5px] leading-[24px] focus:bg-kraft/15 focus:outline-none'
+  // (The middle of its lowercase letters the line's middle: a stroke
+  // through them meets the ×. A field centres its writing in what its
+  // padding leaves: padded below, it's 2px high.)
+  'h-[30px] min-w-0 bg-transparent pt-0 pb-[4px] leading-[24px] focus:bg-kraft/15 focus:outline-none'
 const RULE = 'border-l border-line-blue'
 
 /**
