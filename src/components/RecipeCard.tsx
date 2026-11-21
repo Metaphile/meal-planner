@@ -133,8 +133,8 @@ export const RecipeCard = forwardRef<HTMLDivElement, CardProps>(
           <div className="paper-frame" />
           <div className="px-5 pt-3.5">
             <div className="paper-rule flex items-start gap-2 pb-1.5">
-              {/* (Level with the title's first line.) */}
-              <FavoriteStar recipeId={recipe.id} className="pt-[3px]" />
+              {/* (Centred, like the box, between the frame and the rule.) */}
+              <FavoriteStar recipeId={recipe.id} className="pt-[7px]" />
               <div
                 className={`font-hand min-w-0 flex-1 text-center font-semibold text-black ${
                   large ? 'text-[29px] leading-[26px]' : 'text-[28px] leading-[25px]'
@@ -318,7 +318,7 @@ function FavoriteStar({
         twinkle(starRef.current, !on)
       }}
       // A generous target around the small star.
-      className={`-my-2 -ml-2 flex shrink-0 items-start p-2 pr-0 ${className}`}
+      className={`-mt-2 -mb-4 -ml-2 flex shrink-0 items-start p-2 pr-0 ${className}`}
     >
       <span ref={starRef} className="block">
         <StarIcon on={on} size={28} />
@@ -400,7 +400,7 @@ function WantBox({
       }}
       // A generous target around the small box. (No label: a box to tick
       // speaks for itself.)
-      className="-my-2 -mr-2 flex shrink-0 items-center gap-1.5 p-2 disabled:cursor-default"
+      className="-mt-1 -mb-2 -mr-2 flex shrink-0 items-center gap-1.5 p-2 disabled:cursor-default"
     >
       {/* Wanted more than once: how many times, beside the box. */}
       {count > 1 && (
