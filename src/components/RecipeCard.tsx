@@ -342,7 +342,7 @@ const SPIRAL_STEP = 85
  *  recipe or person, so a stack of so many always looks the same. */
 const STACKED = [1, 2].map((depth) => {
   const angle = ((-65 - SPIRAL_STEP * depth) * Math.PI) / 180 // (screen: y down)
-  const out = [5, 7.5][depth - 1] // px (the last clear of the card's frame)
+  const out = [7, 9.5][depth - 1] // px
   return {
     x: out * Math.cos(angle),
     y: out * Math.sin(angle),
