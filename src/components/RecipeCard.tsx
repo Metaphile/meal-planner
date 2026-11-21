@@ -1475,20 +1475,27 @@ export function CardDetail({
           else close()
         }}
       >
+        {/* A card shorter than the screen rests centred on it (its front:
+            turned over to write on, it sits near the top, so it doesn't
+            creep up the screen as it grows). The switch happens edge-on,
+            mid-turn, where it can't be seen. */}
         <div
+          className="flex min-h-full flex-col"
           style={{
             paddingTop: '12vh',
-            paddingBottom: 'calc(var(--safe-bottom) + 32px)',
+            paddingBottom: 'max(12vh, calc(var(--safe-bottom) + 32px))',
           }}
         >
           <div
             ref={cardRef}
             // (The one place outside fields where text can be selected.)
-            className="selectable"
+            className="selectable shrink-0"
             role="dialog"
             aria-modal="true"
             aria-label={shown.title}
             style={{
+              marginTop: facing === 'front' ? 'auto' : 0,
+              marginBottom: 'auto',
               // Same column as in the rolodex, so nothing scales.
               marginLeft: origin.left,
               width: origin.width,
