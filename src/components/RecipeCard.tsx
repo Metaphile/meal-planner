@@ -808,6 +808,8 @@ const RecipeCardBack = forwardRef<
               onChange={(e) => setTagsText(e.target.value)}
               placeholder="dinner, kid-friendly"
               autoComplete="off"
+              // (Tags are written lowercase.)
+              autoCapitalize="none"
               className="block h-[25px] w-full border-b border-line-blue bg-transparent pt-[3px] leading-[21px] focus:bg-kraft/15 focus:outline-none"
             />
           </label>
