@@ -72,7 +72,12 @@ export default function AccountPage() {
             <div className="paper-card divide-y divide-line-blue px-4 py-1">
               {members.map((m) =>
                 m.id === user.id ? (
-                  <YouRow key={m.id} member={m} onRenamed={refresh} />
+                  <YouRow
+                    key={m.id}
+                    member={m}
+                    canInvite={canWrite}
+                    onRenamed={refresh}
+                  />
                 ) : (
                   <MemberRow
                     key={m.id}
@@ -109,16 +114,21 @@ function GroupTab() {
   )
 }
 
-/** Your own row: tapped open to change your name. (Your access is shown,
- *  not changed: nobody changes their own.) */
+/** Your own row: tapped open to change your name, and (writers) to get a
+ *  link to sign in on another device — such as the app added to an iPhone's
+ *  Home Screen, which keeps a sign-in of its own. (Your access is shown, not
+ *  changed: nobody changes their own.) */
 function YouRow({
   member,
+  canInvite,
   onRenamed,
 }: {
   member: Member
+  canInvite: boolean
   onRenamed: () => void
 }) {
   const [open, setOpen] = useState(false)
+  const [link, setLink] = useState<string | null>(null)
   const [draft, setDraft] = useState(member.name)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -126,6 +136,18 @@ function YouRow({
   const close = () => {
     setOpen(false)
     setError(null)
+    setLink(null)
+  }
+  const newLink = async () => {
+    setBusy(true)
+    setError(null)
+    try {
+      setLink(await createInvite(member.id))
+    } catch (e) {
+      setError(reasonOf(e, 'Couldn’t make a sign-in link.'))
+    } finally {
+      setBusy(false)
+    }
   }
   const save = async () => {
     const next = draft.trim()
@@ -178,6 +200,18 @@ function YouRow({
               Save
             </PrimaryButton>
           </div>
+          {canInvite &&
+            (link ? (
+              <InviteLink name={member.name} link={link} />
+            ) : (
+              <button
+                onClick={() => void newLink()}
+                disabled={busy}
+                className="text-sm font-medium text-brand-ink active:opacity-60"
+              >
+                Sign in on another device
+              </button>
+            ))}
         </div>
       )}
     </div>

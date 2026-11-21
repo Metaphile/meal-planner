@@ -1,5 +1,6 @@
-import { Suspense, lazy, useEffect } from 'react'
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Suspense, lazy, useEffect, useState } from 'react'
+import { Navigate, Route, Routes, useNavigate } from 'react-router-dom'
+import { PrimaryButton, TextInput } from './components/ui'
 import { TabBar } from './components/TabBar'
 import { useStore } from './store/store'
 import { useAuth } from './auth/AuthProvider'
@@ -79,14 +80,48 @@ export default function App() {
   )
 }
 
+/**
+ * Signed out: an invite link signs you in. Opened, it does so in the
+ * browser it opens in; pasted here, in this app — on an iPhone, the app on
+ * the Home Screen keeps its own sign-in, apart from Safari's, and links open
+ * in Safari.
+ */
 function SignedOut() {
+  const navigate = useNavigate()
+  const [link, setLink] = useState('')
+  // (The code after the "#"; or the code alone, pasted.)
+  const code = (link.split('#').pop() ?? '').trim()
+  const signIn = () => {
+    if (code) navigate({ pathname: '/invite', hash: code })
+  }
   return (
     <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
       <h1 className="paper-serif text-2xl font-semibold">Meals</h1>
       <p className="max-w-xs text-sm text-muted">
-        This is a private app. Open the invite link someone in your group
-        shared with you to sign in on this device.
+        This is a private app. To sign in, paste the invite link someone in
+        your group shared with you.
       </p>
+      <form
+        className="flex w-full max-w-xs flex-col gap-2"
+        onSubmit={(e) => {
+          e.preventDefault()
+          signIn()
+        }}
+      >
+        <TextInput
+          value={link}
+          onChange={(e) => setLink(e.target.value)}
+          placeholder="Invite link"
+          aria-label="Invite link"
+          autoCapitalize="off"
+          autoCorrect="off"
+          spellCheck={false}
+          enterKeyHint="go"
+        />
+        <PrimaryButton type="submit" disabled={!code}>
+          Sign in
+        </PrimaryButton>
+      </form>
     </div>
   )
 }
