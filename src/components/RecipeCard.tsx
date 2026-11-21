@@ -205,14 +205,15 @@ function WantBox({
   recipeId: string
   canEditPlan: boolean
 }) {
-  const on = useWantCount(recipeId) > 0
+  const count = useWantCount(recipeId)
+  const on = count > 0
   const setWanted = useStore((s) => s.setWanted)
   return (
     <button
       type="button"
       role="checkbox"
       aria-checked={on}
-      aria-label="Want"
+      aria-label={count > 1 ? `Want (×${count})` : 'Want'}
       disabled={!canEditPlan}
       onClick={(e) => {
         e.stopPropagation() // (not taking the card out)
@@ -220,8 +221,14 @@ function WantBox({
       }}
       // A generous target around the small box. (No label: a box to tick
       // speaks for itself.)
-      className="-my-2 -mr-2 flex shrink-0 items-center p-2 disabled:cursor-default"
+      className="-my-2 -mr-2 flex shrink-0 items-center gap-1.5 p-2 disabled:cursor-default"
     >
+      {/* Wanted more than once: how many times, beside the box. */}
+      {count > 1 && (
+        <span className="paper-serif text-[15px] font-semibold leading-[18px] text-brand-ink">
+          ×{count}
+        </span>
+      )}
       <span
         className={`grid h-[18px] w-[18px] place-items-center rounded-[4px] border-[1.5px] ${
           on ? 'border-kraft-edge bg-kraft' : 'border-[#c9bda4] bg-paper'
