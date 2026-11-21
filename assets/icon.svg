@@ -4,16 +4,20 @@
        rsvg-convert -w 180 assets/icon.svg -o public/apple-touch-icon.png
        rsvg-convert -w 192 assets/icon.svg -o public/pwa-192.png
        rsvg-convert -w 512 assets/icon.svg -o public/pwa-512.png
-     Lavender (color-kraft) with its ink (color-kraft-ink) — see index.css. -->
+     (public/favicon.svg is the same with rounded corners.) Lavender
+     (color-kraft) with its ink (color-kraft-ink): see index.css. -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <rect width="512" height="512" fill="#c3bbd5" />
-  <g fill="none" stroke="#443d54" stroke-width="26" stroke-linecap="round">
-    <!-- fork -->
-    <path d="M150 120 v110 a34 34 0 0 0 68 0 v-110" />
-    <path d="M184 120 v130" />
-    <path d="M184 250 v140" />
-    <!-- spoon -->
-    <ellipse cx="340" cy="170" rx="40" ry="58" />
-    <path d="M340 228 v162" />
+  <g fill="#443d54" transform="translate(256 256) scale(1.12) translate(-260 -252)">
+    <!-- fork: four tines, a head that narrows to the neck, a tapered handle -->
+    <rect x="156" y="104" width="12" height="96" rx="6" />
+    <rect x="176" y="104" width="12" height="96" rx="6" />
+    <rect x="196" y="104" width="12" height="96" rx="6" />
+    <rect x="216" y="104" width="12" height="96" rx="6" />
+    <path d="M156 180 H228 V198 C228 232 206 244 200 258 H184 C178 244 156 232 156 198 Z" />
+    <path d="M184 252 H200 C201 300 206 350 206 386 A14 14 0 0 1 178 386 C178 350 183 300 184 252 Z" />
+    <!-- spoon: an egg-shaped bowl, a slim neck, a handle widening to its end -->
+    <path d="M320 104 C352 104 364 140 364 168 C364 204 342 230 320 232 C298 230 276 204 276 168 C276 140 288 104 320 104 Z" />
+    <path d="M312 226 H328 C326 262 334 340 334 386 A14 14 0 0 1 306 386 C306 340 314 262 312 226 Z" />
   </g>
 </svg>
