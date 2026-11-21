@@ -35,8 +35,8 @@
   --color-surface: #fcf9f1; /* paper: cards, rows, inputs */
   --color-surface-2: #f1e8d2; /* a deeper paper: chips, selected rows */
   --color-border: #e4dac6; /* paper's edge */
-  --color-brand: #c5c1cf; /* "kraft" (now a greyed lavender): primary actions, focus */
-  --color-brand-strong: #d4d3db; /* light lavender highlight */
+  --color-brand: #c3bbd5; /* "kraft" (now a greyed lavender): primary actions, focus */
+  --color-brand-strong: #d1cfdf; /* light lavender highlight */
   --color-on-brand: #443d54; /* lavender's ink, on lavender fills */
   --color-brand-ink: #73688d; /* lavender-coloured text that reads on paper */
   --color-text: #3a3428; /* ink */
@@ -52,8 +52,8 @@
   --color-ink-faint: #a89e8a;
   /* "Kraft" — the tabs, pockets and primary buttons — is a soft, greyed
      lavender now (the names stay). */
-  --color-kraft: #c5c1cf;
-  --color-kraft-edge: #9c94ae;
+  --color-kraft: #c3bbd5;
+  --color-kraft-edge: #988bb7;
   --color-kraft-ink: #443d54;
   --color-rule-red: #e9a99f;
   --color-line-blue: #dce8f0;
