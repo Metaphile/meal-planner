@@ -320,7 +320,7 @@ function FavoriteStar({ recipeId }: { recipeId: string }) {
                 opacity: s.opacity,
               }}
             >
-              <StarIcon on size={22} />
+              <StarIcon on outlined={false} size={22} />
             </span>
           ))
           .reverse()}
@@ -338,7 +338,8 @@ const SPIRAL_STEP = 85
 /** Where others' stars sit under yours, by depth (first: just under it):
  *  a spiral — each deeper one further round (anticlockwise: up and to the
  *  left, then down and to the left — away from the title), further out,
- *  turned as the spiral turns, smaller and fainter. Fixed: nothing per
+ *  turned as the spiral turns, smaller and fainter, and unoutlined (just
+ *  their fill). Fixed: nothing per
  *  recipe or person, so a stack of so many always looks the same. */
 const STACKED = [1, 2].map((depth) => {
   const angle = ((-65 - SPIRAL_STEP * depth) * Math.PI) / 180 // (screen: y down)
@@ -386,7 +387,16 @@ const STAR_BOX = { x: 2.62, y: 2.3, w: 18.76, h: 17.93 }
 
 /** A five-pointed star, filled (lavender, inked) when on. `size` is its
  *  width. */
-export function StarIcon({ on, size = 20 }: { on: boolean; size?: number }) {
+export function StarIcon({
+  on,
+  size = 20,
+  outlined = true,
+}: {
+  on: boolean
+  size?: number
+  /** (Off: just the fill — others' stars, under yours.) */
+  outlined?: boolean
+}) {
   return (
     <svg
       viewBox={`${STAR_BOX.x} ${STAR_BOX.y} ${STAR_BOX.w} ${STAR_BOX.h}`}
@@ -398,7 +408,7 @@ export function StarIcon({ on, size = 20 }: { on: boolean; size?: number }) {
       <path
         d="M12 3.2l2.62 5.31 5.86.85-4.24 4.13 1 5.84L12 16.58l-5.24 2.75 1-5.84-4.24-4.13 5.86-.85z"
         fill={on ? 'var(--color-kraft)' : 'var(--color-paper)'}
-        stroke="currentColor"
+        stroke={outlined ? 'currentColor' : 'none'}
         // (Drawn 1.5px wide whatever its size, like the Want box's border.)
         strokeWidth={(1.5 * STAR_BOX.w) / size}
         strokeLinejoin="round"
