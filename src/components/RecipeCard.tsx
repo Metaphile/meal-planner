@@ -1143,14 +1143,15 @@ function IngredientTable({
     // A pen stroke through a line (from its writing to its mark).
     <span
       aria-hidden
-      className="pointer-events-none absolute left-[0.875rem] right-8 top-[62%] h-[1.5px] rounded-full bg-pen"
+      className="pointer-events-none absolute left-[0.875rem] right-8 top-[calc(50%-0.75px)] h-[1.5px] rounded-full bg-pen"
       style={{ transform: 'rotate(-0.5deg)' }}
     />
   )
   const cell =
     // Taller than the card's 22px ruled lines, so each line (and its ✕) is
-    // easy to hit with a finger. The writing sits low, on its line.
-    'h-[30px] min-w-0 bg-transparent pt-[6px] leading-[24px] focus:bg-kraft/15 focus:outline-none'
+    // easy to hit with a finger. The writing's middle is the line's middle —
+    // level with the grip and the ✕, so a stroke through it meets them.
+    'h-[30px] min-w-0 bg-transparent pt-[2.5px] leading-[24px] focus:bg-kraft/15 focus:outline-none'
   const rule = 'border-l border-line-blue'
   // A section's title, written in (a heading, across the whole line). Its
   // key is its place among the sections — and "Add section…" takes the next
@@ -1170,7 +1171,7 @@ function IngredientTable({
       aria-label="Section"
       autoComplete="off"
       autoCapitalize="words"
-      className={`${headClass} h-[34px] min-w-0 bg-transparent pt-[8px] placeholder:font-normal placeholder:text-pencil focus:bg-kraft/15 focus:outline-none`}
+      className={`${headClass} h-[34px] min-w-0 bg-transparent pt-[4px] placeholder:font-normal placeholder:text-pencil focus:bg-kraft/15 focus:outline-none`}
     />
   )
 
@@ -1232,10 +1233,11 @@ function IngredientTable({
                 group.struck,
               )}
             </div>
-            <span role="columnheader" className={`${headClass} pr-1 text-right`}>
+            {/* (Raised as the title is: written on the same line.) */}
+            <span role="columnheader" className={`${headClass} pb-[4px] pr-1 text-right`}>
               Qty
             </span>
-            <span role="columnheader" className={`${headClass} pl-1.5`}>
+            <span role="columnheader" className={`${headClass} pb-[4px] pl-1.5`}>
               Unit
             </span>
             <button

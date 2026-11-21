@@ -13,7 +13,8 @@ import {
 // The lines: the item, how much, its unit, and × to take it off.
 const COLS = 'grid grid-cols-[minmax(0,1fr)_3.25rem_4.25rem_1.75rem]'
 const CELL =
-  'h-[30px] min-w-0 bg-transparent pt-[6px] leading-[24px] focus:bg-kraft/15 focus:outline-none'
+  // (The writing's middle the line's middle: a stroke through it meets the ×.)
+  'h-[30px] min-w-0 bg-transparent pt-[2.5px] leading-[24px] focus:bg-kraft/15 focus:outline-none'
 const RULE = 'border-l border-line-blue'
 
 /**
@@ -154,7 +155,7 @@ function AddOnLine({
         // A pen stroke through the line.
         <span
           aria-hidden
-          className="pointer-events-none absolute -left-0.5 right-8 top-[62%] h-[1.5px] rounded-full bg-ink"
+          className="pointer-events-none absolute -left-0.5 right-8 top-[calc(50%-0.75px)] h-[1.5px] rounded-full bg-ink"
           style={{ transform: 'rotate(-0.5deg)' }}
         />
       )}
