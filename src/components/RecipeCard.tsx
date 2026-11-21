@@ -113,7 +113,7 @@ export const RecipeCard = forwardRef<HTMLDivElement, CardProps>(
       <div
         ref={ref}
         {...rest}
-        className={`paper-card rolodex-card relative flex flex-col overflow-hidden text-left ${className}`}
+        className={`paper-card rolodex-card relative flex flex-col text-left ${className}`}
         style={{ minHeight: CARD_H, ...style }}
       >
         <div className="relative flex min-h-0 flex-1 flex-col">

@@ -166,7 +166,7 @@ body {
      on the card's wrapper, so a divider's tab and body shade together. */
   .rolodex-dim {
     position: absolute;
-    inset: 0;
+    inset: -1px; /* over the paper's edge too */
     border-radius: inherit;
     background: #000;
     opacity: var(--shade, 0);
