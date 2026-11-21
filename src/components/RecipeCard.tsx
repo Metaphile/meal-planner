@@ -915,10 +915,15 @@ const HAND_GROW = 8
 // ('arc' predates the Recipes rolodex being drawn scaled down: its flight
 // would need converting to the stage's units before being used there again.)
 const TAKE_OUT: 'arc' | 'lift' = 'lift'
-const LIFT_MS = 409 // the card lifting out of the box
+const LIFT_MS = 409 // the card lifting out of the box (after its sink)
+/** Taking a card out, it first sinks a little into the box, as if pressed,
+ *  then springs out. */
+const SINK_PX = 8
+const SINK_MS = 110
+const SINK = 'cubic-bezier(0.25, 0.6, 0.4, 1)' // easing into the bottom
 const DROP_MS = 300 // …and dropping back in
-const FADE_IN_DELAY_MS = 300 // the card in hand (and the shade) start fading in…
-const FADE_IN_MS = 450 // …over this
+const FADE_IN_DELAY_MS = 400 // the card in hand (and the shade) start fading in…
+const FADE_IN_MS = 375 // …over this
 const FADE_IN_EASE = 'linear' // steady, start to finish
 const FADE_MS = 225 // …and fading out
 /** Let go of while moving, a card coasts on, slowing as it goes. */
@@ -1182,16 +1187,23 @@ export function CardDetail({
     }
     const anims = opening
       ? [
-          // It fades out as it goes, gently at first.
+          // It sinks a little into its slot, then springs up out of it;
+          // and fades out as it goes, gently at first.
           rdxCard.animate(
             [
-              { transform: home, easing: LIFT_UP },
-              { transform: gone },
+              { offset: 0, transform: home, easing: SINK },
+              {
+                offset: SINK_MS / (SINK_MS + LIFT_MS),
+                transform: `translateY(${SINK_PX}px)`,
+                easing: LIFT_UP,
+              },
+              { offset: 1, transform: gone },
             ],
-            lift,
+            { ...lift, duration: SINK_MS + LIFT_MS },
           ),
           rdxCard.animate([{ opacity: 1 }, { opacity: 0 }], {
             ...lift,
+            delay: SINK_MS,
             duration: LIFT_FADE_MS,
             easing: LIFT_FADE,
           }),
