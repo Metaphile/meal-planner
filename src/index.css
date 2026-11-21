@@ -98,13 +98,13 @@ body {
 }
 
 /* The app installed on an iPhone (from the Home Screen): iOS 26 blurs a
-   band just below the status bar, whatever's there. The page starts 24px
+   band just below the status bar, whatever's there. The page starts 16px
    further down, so only the plain counter is under it. (iOS only: what
    -webkit-touch-callout picks out.) */
 @media (display-mode: standalone) {
   @supports (-webkit-touch-callout: none) {
     :root {
-      --safe-top: calc(env(safe-area-inset-top, 0px) + 24px);
+      --safe-top: calc(env(safe-area-inset-top, 0px) + 16px);
     }
   }
 }
