@@ -965,6 +965,8 @@ const RecipeCardBack = forwardRef<
   const deleteRecipe = useStore((s) => s.deleteRecipe)
   const [title, setTitle] = useState(recipe.title)
   const titleTapIn = useRef(false)
+  const titleRef = useRef<HTMLInputElement>(null)
+  const [titleFocused, setTitleFocused] = useState(false)
   const [groups, setGroups] = useState<Group[]>(() =>
     tidyGroups(
       sectionsOf(recipe).map((s) => ({ title: s.title, rows: s.ingredients })),
@@ -1038,9 +1040,16 @@ const RecipeCardBack = forwardRef<
           {!isNew && (
             <FavoriteStar recipeId={recipe.id} />
           )}
+          {/* Not being written in, the title is shown as on the front (a
+              long one cut off, feathered, dragged sideways to read); tapped,
+              it's written in, the caret at its end. */}
+          <div className="relative flex min-w-0 flex-1">
           <input
+            ref={titleRef}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
+            onFocus={() => setTitleFocused(true)}
+            onBlur={() => setTitleFocused(false)}
             // Tapped into, the caret goes to the end of the title (not where
             // the tap fell). Only on the tap that brings it in: once it's
             // being written in, a tap places the caret as usual.
@@ -1061,9 +1070,31 @@ const RecipeCardBack = forwardRef<
             autoComplete="off"
             // (A title: each word capitalised, as the keyboard types it.)
             autoCapitalize="words"
-            // (Too long to show: an ellipsis, until it's being written in.)
-            className="min-w-0 flex-1 text-ellipsis bg-transparent text-center text-[30px] font-semibold leading-[30px] focus:outline-none"
+            className="min-w-0 flex-1 bg-transparent text-center text-[30px] font-semibold leading-[30px] focus:outline-none"
+            // (Shown by the line over it while not being written in.)
+            style={!titleFocused && title ? { color: 'transparent' } : undefined}
           />
+          {!titleFocused && title && (
+            <div
+              aria-hidden
+              className="absolute inset-0 flex cursor-text items-center"
+              onClick={() => {
+                const field = titleRef.current
+                if (!field) return
+                field.focus()
+                setTitleFocused(true) // (whether or not the window has focus)
+                const end = field.value.length
+                field.setSelectionRange(end, end)
+                field.scrollLeft = field.scrollWidth
+              }}
+            >
+              <div className="min-w-0 flex-1 text-center text-[30px] font-semibold leading-[30px]">
+                {/* (A vertical drag on it is the card's, as on the front.) */}
+                <OneLine text={title} panY={false} />
+              </div>
+            </div>
+          )}
+          </div>
           {/* (Balancing the star, so the title sits centred.) */}
           {!isNew && (
             <span aria-hidden className="shrink-0" style={{ width: STAR_ROOM }} />
