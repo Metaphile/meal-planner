@@ -363,7 +363,8 @@ const withSpareLine = (rows: Row[]) => {
 }
 
 const MARK_BUTTON =
-  'grid h-[30px] place-items-center text-pencil active:text-pen'
+  // (The table's rule blue.)
+  'grid h-[30px] place-items-center text-line-blue active:text-pen'
 
 /** × (cross a line out) and ↺ (bring it back): drawn, so they're centred on
  *  the line and drawn with the same pen. */
@@ -629,7 +630,8 @@ const RecipeCardBack = forwardRef<
             placeholder="Recipe"
             aria-label="Recipe"
             autoComplete="off"
-            className="paper-rule w-full bg-transparent pb-0.5 text-[30px] font-semibold leading-[30px] focus:outline-none"
+            // (Underlined in the same pen as the writing.)
+            className="w-full border-b-[1.5px] border-pen bg-transparent pb-0.5 text-[30px] font-semibold leading-[30px] focus:outline-none"
           />
         </div>
         <div className="mx-5 mt-3.5 mb-4 flex flex-col gap-4">
