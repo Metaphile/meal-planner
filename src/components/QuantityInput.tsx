@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 
 function fmtQty(value: number | undefined): string {
   return value === undefined ? '' : String(value)
@@ -37,6 +37,7 @@ export function QuantityInput({
   enterKeyHint?: React.InputHTMLAttributes<HTMLInputElement>['enterKeyHint']
 }) {
   const [draft, setDraft] = useState(() => fmtQty(value))
+  const justFocused = useRef(false)
   const [prevValue, setPrevValue] = useState(value)
   if (value !== prevValue) {
     setPrevValue(value)
@@ -53,6 +54,19 @@ export function QuantityInput({
       inputMode="decimal"
       placeholder={placeholder}
       readOnly={readOnly}
+      // Tapped into, what's there is selected, to type over. (After the tap
+      // settles: iOS places the caret after focus, undoing an earlier
+      // selection; and the click that follows mustn't put it back.)
+      onFocus={(e) => {
+        if (readOnly) return
+        const field = e.currentTarget
+        justFocused.current = true
+        setTimeout(() => field.setSelectionRange(0, field.value.length))
+      }}
+      onMouseUp={(e) => {
+        if (justFocused.current) e.preventDefault()
+        justFocused.current = false
+      }}
       onKeyDown={onKeyDown}
       enterKeyHint={enterKeyHint}
       aria-label="Quantity"

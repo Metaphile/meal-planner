@@ -1191,6 +1191,17 @@ function IngredientTable({
     <input
       value={value}
       onChange={(e) => onTitle(e.target.value)}
+      // Return: on to the section's first line (its "Add ingredient…", if
+      // it has none), to write it.
+      onKeyDown={(e) => {
+        if (e.key !== 'Enter') return
+        e.preventDefault()
+        e.currentTarget
+          .closest('[role=rowgroup]')
+          ?.querySelector<HTMLInputElement>('[role=row][data-g] input')
+          ?.focus()
+      }}
+      enterKeyHint="next"
       readOnly={readOnly}
       placeholder={placeholder}
       aria-label="Section"
