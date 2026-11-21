@@ -282,7 +282,7 @@ function HaveCounter({
         // (16px: no zooming in on iOS.)
         // (Short of what's needed: a faint red field, to draw the eye — as
         // light as the usual one.)
-        className={`h-7 rounded-md px-1.5 text-right text-[16px] font-semibold tabular-nums focus:outline-none ${
+        className={`h-7 rounded-md px-1.5 text-center text-[16px] font-semibold tabular-nums focus:outline-none ${
           short ? 'bg-[#f6e3e1] text-danger' : 'bg-paper/70'
         }`}
       />
