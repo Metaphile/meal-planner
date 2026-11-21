@@ -68,15 +68,10 @@ function IngredientLine({ ing }: { ing: Ingredient }) {
 const PEEK_LINES = 16
 
 function CardBody({ recipe, peek }: { recipe: Recipe; peek: boolean }) {
-  // Its sections, empty ones too (a heading with nothing under it yet) —
-  // but not an untitled first section with nothing in it while there are
-  // others: that's no section anyone made. Each headed as sectionLabels
-  // says: its title; else, among others, "Section n" by its place; else (the
-  // only one) none.
-  const all = sectionsOf(recipe)
-  const sections = all.filter(
-    (s, i) => s.ingredients.length > 0 || !!s.title || (i === 0 && all.length === 1),
-  )
+  // Its sections, every one — empty, untitled ones too (a heading with
+  // nothing under it). Each headed as sectionLabels says: its title; else,
+  // among others, "Section n" by its place; else (the only one) none.
+  const sections = sectionsOf(recipe)
   const heads = sectionLabels(sections.map((s) => s.title))
   // (Peeking: only as many lines as can show, headings included.)
   let room = peek ? PEEK_LINES : Infinity
@@ -780,16 +775,10 @@ type Group = {
   struck?: boolean
 }
 
-/** The groups as they should stand after a change: each with its spare line;
- *  and a section after the first that's been emptied — no title, nothing
- *  written in it — gone (back to "Add section…", which is where it came
- *  from). */
-const tidyGroups = (gs: Group[]) => {
-  const out = gs.map((g) => ({ ...g, rows: withSpareLine(g.rows) }))
-  const last = out[out.length - 1]
-  if (out.length > 1 && last.title === '' && last.rows.every(blank)) out.pop()
-  return out
-}
+/** The groups as they should stand after a change: each with its spare
+ *  line. (Sections stand on their own, empty and untitled too.) */
+const tidyGroups = (gs: Group[]) =>
+  gs.map((g) => ({ ...g, rows: withSpareLine(g.rows) }))
 
 /**
  * Dragging a whole section by its title's grip: up or down, among the
@@ -1107,8 +1096,21 @@ function IngredientTable({
     return [...COMMON_UNITS, ...[...extra].sort()]
   }, [recipes, groups])
   const set = (gs: Group[]) => onChange(tidyGroups(gs))
-  const setTitle = (g: number, title: string) =>
-    set(groups.map((x, i) => (i === g ? { ...x, title } : x)))
+  // (A title just written in "Add section…", rubbed out before anything's
+  // written under it: back to "Add section…" — undone, not left an empty
+  // section.)
+  const setTitle = (g: number, title: string) => {
+    const x = groups[g]
+    if (
+      title === '' &&
+      g > 0 &&
+      g === groups.length - 1 &&
+      x.title !== '' &&
+      x.rows.every(blank)
+    )
+      return set(groups.slice(0, -1))
+    set(groups.map((y, i) => (i === g ? { ...y, title } : y)))
+  }
   const update = (g: number, r: number, patch: Partial<Row>) =>
     set(
       groups.map((x, i) =>
@@ -1485,16 +1487,14 @@ const RecipeCardBack = forwardRef<
       .map(({ struck: _, ...i }) => ({ ...i, name: i.name.trim() }))
       .filter((i) => i.name.length > 0)
   // (A crossed-out section: none of its lines — and it goes, unless it's the
-  // first, which every recipe has: that's left untitled. A section with no
-  // lines is kept, if it's titled: sections stand on their own, empty or
-  // not. Only one with neither title nor lines goes.)
+  // first, which every recipe has: that's left untitled. Every other section
+  // is kept, titled or not, empty or not: sections stand on their own.)
   const linesOf = (g: Group) => (g.struck ? [] : lines(g.rows))
   const starterTitle = groups[0].struck ? '' : groups[0].title.trim()
   const sections = groups
     .slice(1)
     .filter((g) => !g.struck)
     .map((g) => ({ title: g.title.trim(), ingredients: linesOf(g) }))
-    .filter((s) => s.title || s.ingredients.length > 0)
   const draft = (): Recipe => ({
     ...recipe,
     title: title.trim(),
