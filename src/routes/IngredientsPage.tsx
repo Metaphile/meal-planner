@@ -31,6 +31,8 @@ export default function IngredientsPage() {
       <div className="scroll-y flex-1 px-4 pt-3 pb-6">
         <IngredientsList
           ingredients={ingredients}
+          checkable
+          canEdit={hasCapability('edit_plan')}
           empty={
             <>
               Tick <WantBoxPicture /> to include that recipe’s ingredients.
