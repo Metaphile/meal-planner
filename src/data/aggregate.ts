@@ -1,4 +1,5 @@
 import type { Ingredient, PlanMeal, Recipe, Want } from './types'
+import { isWanted } from './types'
 
 /** A line in the aggregated ingredients view. */
 export interface AggregatedIngredient {
@@ -77,6 +78,7 @@ export function aggregateWanted(
   const recipeById = new Map(recipes.map((r) => [r.id, r]))
   return aggregate((add) => {
     for (const want of wants) {
+      if (!isWanted(want)) continue
       const recipe = recipeById.get(want.recipeId)
       if (!recipe) continue
       const times = Math.max(1, want.count)

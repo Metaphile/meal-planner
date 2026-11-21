@@ -20,7 +20,7 @@ import {
   PERSPECTIVE,
   type CardOrigin,
 } from '../components/RecipeCard'
-import type { Recipe } from '../data/types'
+import { isWanted, type Recipe } from '../data/types'
 
 /*
  * Recipes — a rolodex of paper cards on a wheel.
@@ -253,7 +253,7 @@ export default function RecipesPage() {
   const [wantedOnly, setWantedOnly] = useState(false)
   const wants = useStore((s) => s.wants)
   const matches = useMemo(() => {
-    const wanted = new Set(wants.map((w) => w.recipeId))
+    const wanted = new Set(wants.filter(isWanted).map((w) => w.recipeId))
     return recipes.filter(
       (r) =>
         (!wantedOnly || wanted.has(r.id)) &&

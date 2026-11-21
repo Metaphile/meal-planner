@@ -160,6 +160,18 @@ describe('aggregateWanted', () => {
     expect(out.find((l) => l.name === 'Salt')?.quantity).toBeUndefined()
   })
 
+  it('leaves out wants not wanted just now (whatever count they keep)', () => {
+    const out = aggregateWanted(
+      [
+        { id: 'r-pancakes', recipeId: 'r-pancakes', count: 3, wanted: false },
+        { id: 'r-casserole', recipeId: 'r-casserole', count: 2, wanted: true },
+      ],
+      recipes,
+    )
+    expect(out.map((l) => l.name)).toEqual(['Broccoli', 'Cheese'])
+    expect(out[0].quantity).toBe(2)
+  })
+
   it('skips wants whose recipe is gone, and is empty with nothing wanted', () => {
     expect(aggregateWanted([], recipes)).toEqual([])
     expect(

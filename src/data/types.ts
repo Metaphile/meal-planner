@@ -40,15 +40,22 @@ export interface PlanMeal {
 
 /**
  * A recipe the household wants to make, and how many times. One per recipe
- * (its id is the recipe's id); not wanting it any more removes it. Wanted
+ * (its id is the recipe's id). Not wanting it any more keeps the row, with
+ * its count, so wanting it again picks up where it left off. Wanted
  * recipes' ingredients make up the Ingredients list.
  */
 export interface Want {
   id: string
   recipeId: string
-  /** How many times over (at least 1). */
+  /** How many times over (at least 1) — when not wanted, the count it will
+   *  have again when it is. */
   count: number
+  /** False: not wanted just now. (Absent on older rows: wanted.) */
+  wanted?: boolean
 }
+
+/** Whether a want row is wanted just now. */
+export const isWanted = (w: Want) => w.wanted !== false
 
 /** Shape of the entire persisted dataset (one row per table on hydrate). */
 export interface Dataset {

@@ -1,7 +1,7 @@
 import { useStore } from './store'
 import { aggregateIngredients, aggregateWanted } from '../data/aggregate'
 import type { AggregatedIngredient } from '../data/aggregate'
-import type { Recipe } from '../data/types'
+import { isWanted, type Recipe } from '../data/types'
 
 /**
  * Memoized ingredient aggregate. The store replaces the plan/recipes arrays
@@ -51,9 +51,10 @@ export function useWantedIngredients(): AggregatedIngredient[] {
 
 /** How many times a recipe is wanted (0: not wanted). */
 export function useWantCount(recipeId: string): number {
-  return useStore(
-    (s) => s.wants.find((w) => w.recipeId === recipeId)?.count ?? 0,
-  )
+  return useStore((s) => {
+    const w = s.wants.find((w) => w.recipeId === recipeId)
+    return w && isWanted(w) ? w.count : 0
+  })
 }
 
 /** Recipe lookup, used to render recipe titles inside plan components. */

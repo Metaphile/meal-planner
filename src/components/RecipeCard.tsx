@@ -269,7 +269,7 @@ function WantCount({
   const setWanted = useStore((s) => s.setWanted)
   const set = (n: number) => {
     if (n <= 0) setWanted(recipeId, false)
-    else if (count === 0) setWanted(recipeId, true)
+    else if (count === 0) setWanted(recipeId, true, n) // (stepping up: ×1)
     else setWantCount(recipeId, n)
   }
   const step =

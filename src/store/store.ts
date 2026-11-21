@@ -6,6 +6,7 @@ import type {
   Recipe,
   Want,
 } from '../data/types'
+import { isWanted } from '../data/types'
 import {
   enqueueDelete,
   enqueuePut,
@@ -31,8 +32,9 @@ interface AppState {
   deleteRecipe: (id: string) => void
 
   // Wants
-  /** Want a recipe (once), or not any more. */
-  setWanted: (recipeId: string, wanted: boolean) => void
+  /** Want a recipe, or not any more. Wanting it again brings back the count
+   *  it had (1 the first time) — unless `count` says otherwise. */
+  setWanted: (recipeId: string, wanted: boolean, count?: number) => void
   /** How many times over a wanted recipe is wanted (at least 1). */
   setWantCount: (recipeId: string, count: number) => void
 
@@ -109,17 +111,21 @@ export const useStore = create<AppState>((set, get) => ({
     enqueueDelete('recipes', id)
   },
 
-  setWanted: (recipeId, wanted) => {
-    const has = get().wants.some((w) => w.recipeId === recipeId)
-    if (wanted === has) return
-    if (wanted) {
-      const want: Want = { id: recipeId, recipeId, count: 1 }
-      set((s) => ({ wants: [...s.wants, want] }))
-      enqueuePut('wants', want)
-    } else {
-      set((s) => ({ wants: s.wants.filter((w) => w.recipeId !== recipeId) }))
-      enqueueDelete('wants', recipeId)
-    }
+  setWanted: (recipeId, wanted, count) => {
+    const was = get().wants.find((w) => w.recipeId === recipeId)
+    const n = Math.max(1, Math.round(count ?? was?.count ?? 1))
+    if (was && isWanted(was) === wanted && (!wanted || was.count === n)) return
+    if (!was && !wanted) return
+    // (Not wanted, it keeps its count for next time.)
+    const want: Want = wanted
+      ? { id: recipeId, recipeId, count: n, wanted: true }
+      : { ...was!, wanted: false }
+    set((s) => ({
+      wants: was
+        ? s.wants.map((w) => (w.recipeId === recipeId ? want : w))
+        : [...s.wants, want],
+    }))
+    enqueuePut('wants', want)
   },
 
   setWantCount: (recipeId, count) => {
@@ -127,7 +133,7 @@ export const useStore = create<AppState>((set, get) => ({
     let updated: Want | undefined
     set((s) => ({
       wants: s.wants.map((w) => {
-        if (w.recipeId !== recipeId || w.count === n) return w
+        if (w.recipeId !== recipeId || !isWanted(w) || w.count === n) return w
         updated = { ...w, count: n }
         return updated
       }),
