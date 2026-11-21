@@ -48,6 +48,11 @@ const DIVIDER_STRIP = TAB_H + 12 // tab + a sliver of the divider's edge
 // they still don't collide — you just see a staircase of tabs.
 const EMPTY_DIVIDER_STRIP = 13
 const SIDE = 16 // horizontal inset
+/** The cards in the box are a touch narrower than that column: NARROWER of
+ *  its width, taken off evenly either side. (The card in hand keeps the
+ *  column.) */
+const NARROWER = 0.05
+const ITEM_INSET = `calc(${SIDE}px + (100% - ${2 * SIDE}px) * ${NARROWER / 2})`
 /** The whole rolodex is drawn at this scale (so the card in hand, at full
  *  width, is larger than the cards in the box). Its geometry is worked out
  *  in its own unscaled units; the scroll position is in screen pixels, and
@@ -954,8 +959,8 @@ const RolodexItem = memo(function RolodexItem({
     // layer: an unselectable ancestor can break the search field on iOS.)
     className: 'pointer-events-auto absolute top-0 select-none',
     style: {
-      left: SIDE,
-      right: SIDE,
+      left: ITEM_INSET,
+      right: ITEM_INSET,
       height: off,
       clipPath: SLOT_CLIP,
       transformOrigin: `50% ${off}px`,
