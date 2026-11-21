@@ -77,9 +77,10 @@ export default function App() {
         )}
       </main>
       {user && <TabBar />}
-      {/* Behind the status bar (on a phone, from the Home Screen): the
+      {/* The top of the screen, kept clear (on an iPhone, from the Home
+          Screen: under the blur iOS puts just below the status bar): the
           counter, solid, over everything — a card lifting out of the box
-          mustn't show behind the clock. */}
+          mustn't show through it. */}
       <div
         aria-hidden
         className="pointer-events-none fixed inset-x-0 top-0 z-50 bg-backdrop"
