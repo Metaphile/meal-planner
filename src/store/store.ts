@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type {
+  AddOn,
   Ingredient,
   MealComponent,
   PlanMeal,
@@ -17,12 +18,15 @@ import { newId } from '../lib/id'
 
 const byTitle = (a: Recipe, b: Recipe) => a.title.localeCompare(b.title)
 const byPosition = (a: PlanMeal, b: PlanMeal) => a.position - b.position
+const byPos = (a: AddOn, b: AddOn) => a.position - b.position
 
 interface AppState {
   recipes: Recipe[]
   plan: PlanMeal[]
   /** Recipes wanted (and how many times): they make the Ingredients list. */
   wants: Want[]
+  /** Other things wanted (Add-ons on the Ingredients tab), in order. */
+  addons: AddOn[]
   hydrated: boolean
 
   init: () => Promise<void>
@@ -37,6 +41,11 @@ interface AppState {
   setWanted: (recipeId: string, wanted: boolean, count?: number) => void
   /** How many times over a wanted recipe is wanted (at least 1). */
   setWantCount: (recipeId: string, count: number) => void
+
+  // Add-ons
+  addAddOn: (item: Ingredient) => void
+  updateAddOn: (id: string, patch: Partial<Ingredient>) => void
+  removeAddOn: (id: string) => void
 
   // Plan meals (anonymous groups that live only on the plan)
   addRecipeToPlan: (recipeId: string) => void
@@ -65,6 +74,7 @@ export const useStore = create<AppState>((set, get) => ({
   recipes: [],
   plan: [],
   wants: [],
+  addons: [],
   hydrated: false,
 
   init: async () => {
@@ -75,6 +85,7 @@ export const useStore = create<AppState>((set, get) => ({
       recipes: [...cached.recipes].sort(byTitle),
       plan: [...cached.plan].sort(byPosition),
       wants: cached.wants,
+      addons: [...cached.addons].sort(byPos),
       hydrated: true,
     })
     // 2. Reconcile with PocketBase + subscribe to realtime updates. Keeps the
@@ -85,6 +96,7 @@ export const useStore = create<AppState>((set, get) => ({
           recipes: [...data.recipes].sort(byTitle),
           plan: [...data.plan].sort(byPosition),
           wants: data.wants,
+          addons: [...data.addons].sort(byPos),
         })
       })
     } catch {
@@ -139,6 +151,34 @@ export const useStore = create<AppState>((set, get) => ({
       }),
     }))
     if (updated) enqueuePut('wants', updated)
+  },
+
+  addAddOn: (item) => {
+    const addons = get().addons
+    const addon: AddOn = {
+      ...item,
+      id: newId(),
+      position: addons.length ? addons[addons.length - 1].position + 1 : 0,
+    }
+    set({ addons: [...addons, addon] })
+    enqueuePut('addons', addon)
+  },
+
+  updateAddOn: (id, patch) => {
+    let updated: AddOn | undefined
+    set((s) => ({
+      addons: s.addons.map((a) => {
+        if (a.id !== id) return a
+        updated = { ...a, ...patch }
+        return updated
+      }),
+    }))
+    if (updated) enqueuePut('addons', updated)
+  },
+
+  removeAddOn: (id) => {
+    set((s) => ({ addons: s.addons.filter((a) => a.id !== id) }))
+    enqueueDelete('addons', id)
   },
 
   addRecipeToPlan: (recipeId) => {

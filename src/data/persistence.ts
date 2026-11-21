@@ -1,5 +1,5 @@
 import { db, type OutboxRow, type TableName } from './db'
-import type { Dataset, PlanMeal, Recipe, Want } from './types'
+import type { AddOn, Dataset, PlanMeal, Recipe, Want } from './types'
 import { seedData } from './seed'
 import { pb } from '../auth/pb'
 
@@ -13,21 +13,24 @@ import { pb } from '../auth/pb'
 // ---- local cache (IndexedDB) ----------------------------------------------
 
 export async function hydrate(): Promise<Dataset> {
-  const [recipes, plan, wants] = await Promise.all([
+  const [recipes, plan, wants, addons] = await Promise.all([
     db.recipes.toArray(),
     db.plan.toArray(),
     db.wants.toArray(),
+    db.addons.toArray(),
   ])
-  return { recipes, plan, wants }
+  return { recipes, plan, wants, addons }
 }
 
 async function cacheReplaceAll(data: Dataset): Promise<void> {
-  await db.transaction('rw', db.recipes, db.plan, db.wants, async () => {
-    await Promise.all([db.recipes.clear(), db.plan.clear(), db.wants.clear()])
+  const tables = [db.recipes, db.plan, db.wants, db.addons]
+  await db.transaction('rw', tables, async () => {
+    await Promise.all(tables.map((t) => t.clear()))
     await Promise.all([
       db.recipes.bulkPut(data.recipes),
       db.plan.bulkPut(data.plan),
       db.wants.bulkPut(data.wants),
+      db.addons.bulkPut(data.addons),
     ])
   })
 }
@@ -39,10 +42,11 @@ const idMap = new Map<string, string>()
 const mapKey = (c: TableName, k: string) => `${c}:${k}`
 
 async function remotePull(): Promise<Dataset> {
-  const [recs, plans, wantRecs] = await Promise.all([
+  const [recs, plans, wantRecs, addonRecs] = await Promise.all([
     pb.collection('recipes').getFullList({ requestKey: null }),
     pb.collection('plan').getFullList({ requestKey: null }),
     pb.collection('wants').getFullList({ requestKey: null }),
+    pb.collection('addons').getFullList({ requestKey: null }),
   ])
   idMap.clear()
   const recipes = recs.map((r) => {
@@ -57,7 +61,11 @@ async function remotePull(): Promise<Dataset> {
     idMap.set(mapKey('wants', w.key), w.id)
     return w.data as Want
   })
-  return { recipes, plan, wants }
+  const addons = addonRecs.map((a) => {
+    idMap.set(mapKey('addons', a.key), a.id)
+    return a.data as AddOn
+  })
+  return { recipes, plan, wants, addons }
 }
 
 /** Apply one op to PocketBase. Throws on failure (caller decides to retry). */
@@ -133,6 +141,7 @@ async function withPending(data: Dataset): Promise<Dataset> {
     recipes: new Map(data.recipes.map((r) => [r.id, r])),
     plan: new Map(data.plan.map((p) => [p.id, p])),
     wants: new Map(data.wants.map((w) => [w.id, w])),
+    addons: new Map(data.addons.map((a) => [a.id, a])),
   }
   for (const r of rows) {
     const table = tables[r.collection] as Map<string, unknown>
@@ -143,6 +152,7 @@ async function withPending(data: Dataset): Promise<Dataset> {
     recipes: [...tables.recipes.values()],
     plan: [...tables.plan.values()],
     wants: [...tables.wants.values()],
+    addons: [...tables.addons.values()],
   }
 }
 
@@ -151,9 +161,10 @@ async function withPending(data: Dataset): Promise<Dataset> {
 export function enqueuePut(table: 'recipes', item: Recipe): void
 export function enqueuePut(table: 'plan', item: PlanMeal): void
 export function enqueuePut(table: 'wants', item: Want): void
+export function enqueuePut(table: 'addons', item: AddOn): void
 export function enqueuePut(
   table: TableName,
-  item: Recipe | PlanMeal | Want,
+  item: Recipe | PlanMeal | Want | AddOn,
 ): void {
   void db[table].put(item as never) // cache immediately
   void db.outbox.add({ collection: table, key: item.id, op: 'put', data: item })
@@ -213,6 +224,7 @@ export async function startSync(onData: (data: Dataset) => void): Promise<void> 
   unsubscribers.push(await pb.collection('recipes').subscribe('*', handler))
   unsubscribers.push(await pb.collection('plan').subscribe('*', handler))
   unsubscribers.push(await pb.collection('wants').subscribe('*', handler))
+  unsubscribers.push(await pb.collection('addons').subscribe('*', handler))
 
   window.addEventListener('online', () => void flushOutbox())
 }

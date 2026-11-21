@@ -57,9 +57,17 @@ export interface Want {
 /** Whether a want row is wanted just now. */
 export const isWanted = (w: Want) => w.wanted !== false
 
+/** Something wanted that isn't from a recipe ("milk", "2 bags of ice"):
+ *  listed under Add-ons on the Ingredients tab, in the order added. */
+export interface AddOn extends Ingredient {
+  id: string
+  position: number
+}
+
 /** Shape of the entire persisted dataset (one row per table on hydrate). */
 export interface Dataset {
   recipes: Recipe[]
   plan: PlanMeal[]
   wants: Want[]
+  addons: AddOn[]
 }
