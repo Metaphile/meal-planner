@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type {
   AddOn,
+  Have,
   Ingredient,
   MealComponent,
   PlanMeal,
@@ -27,6 +28,8 @@ interface AppState {
   wants: Want[]
   /** Other things wanted (Add-ons on the Ingredients tab), in order. */
   addons: AddOn[]
+  /** Ingredients on hand (ticked on the Ingredients tab), by line key. */
+  haves: Have[]
   hydrated: boolean
 
   init: () => Promise<void>
@@ -46,6 +49,12 @@ interface AppState {
   addAddOn: (item: Ingredient) => void
   updateAddOn: (id: string, patch: Partial<Ingredient>) => void
   removeAddOn: (id: string) => void
+
+  // Haves
+  /** Tick a line (having all it needs: `amount`), or untick it. */
+  setHave: (key: string, have: boolean, amount?: number) => void
+  /** How much of a ticked line is on hand (at least 0). */
+  setHaveAmount: (key: string, amount: number) => void
 
   // Plan meals (anonymous groups that live only on the plan)
   addRecipeToPlan: (recipeId: string) => void
@@ -75,6 +84,7 @@ export const useStore = create<AppState>((set, get) => ({
   plan: [],
   wants: [],
   addons: [],
+  haves: [],
   hydrated: false,
 
   init: async () => {
@@ -86,6 +96,7 @@ export const useStore = create<AppState>((set, get) => ({
       plan: [...cached.plan].sort(byPosition),
       wants: cached.wants,
       addons: [...cached.addons].sort(byPos),
+      haves: cached.haves,
       hydrated: true,
     })
     // 2. Reconcile with PocketBase + subscribe to realtime updates. Keeps the
@@ -97,6 +108,7 @@ export const useStore = create<AppState>((set, get) => ({
           plan: [...data.plan].sort(byPosition),
           wants: data.wants,
           addons: [...data.addons].sort(byPos),
+          haves: data.haves,
         })
       })
     } catch {
@@ -179,6 +191,35 @@ export const useStore = create<AppState>((set, get) => ({
   removeAddOn: (id) => {
     set((s) => ({ addons: s.addons.filter((a) => a.id !== id) }))
     enqueueDelete('addons', id)
+  },
+
+  setHave: (key, have, amount) => {
+    const was = get().haves.find((h) => h.id === key)
+    if (have) {
+      const row: Have = { id: key, amount }
+      set((s) => ({
+        haves: was
+          ? s.haves.map((h) => (h.id === key ? row : h))
+          : [...s.haves, row],
+      }))
+      enqueuePut('haves', row)
+    } else if (was) {
+      set((s) => ({ haves: s.haves.filter((h) => h.id !== key) }))
+      enqueueDelete('haves', key)
+    }
+  },
+
+  setHaveAmount: (key, amount) => {
+    const n = Math.max(0, Math.round(amount * 1000) / 1000)
+    let updated: Have | undefined
+    set((s) => ({
+      haves: s.haves.map((h) => {
+        if (h.id !== key || h.amount === n) return h
+        updated = { ...h, amount: n }
+        return updated
+      }),
+    }))
+    if (updated) enqueuePut('haves', updated)
   },
 
   addRecipeToPlan: (recipeId) => {

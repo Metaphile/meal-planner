@@ -1,5 +1,5 @@
 import { db, type OutboxRow, type TableName } from './db'
-import type { AddOn, Dataset, PlanMeal, Recipe, Want } from './types'
+import type { AddOn, Dataset, Have, PlanMeal, Recipe, Want } from './types'
 import { seedData } from './seed'
 import { pb } from '../auth/pb'
 
@@ -13,17 +13,18 @@ import { pb } from '../auth/pb'
 // ---- local cache (IndexedDB) ----------------------------------------------
 
 export async function hydrate(): Promise<Dataset> {
-  const [recipes, plan, wants, addons] = await Promise.all([
+  const [recipes, plan, wants, addons, haves] = await Promise.all([
     db.recipes.toArray(),
     db.plan.toArray(),
     db.wants.toArray(),
     db.addons.toArray(),
+    db.haves.toArray(),
   ])
-  return { recipes, plan, wants, addons }
+  return { recipes, plan, wants, addons, haves }
 }
 
 async function cacheReplaceAll(data: Dataset): Promise<void> {
-  const tables = [db.recipes, db.plan, db.wants, db.addons]
+  const tables = [db.recipes, db.plan, db.wants, db.addons, db.haves]
   await db.transaction('rw', tables, async () => {
     await Promise.all(tables.map((t) => t.clear()))
     await Promise.all([
@@ -31,6 +32,7 @@ async function cacheReplaceAll(data: Dataset): Promise<void> {
       db.plan.bulkPut(data.plan),
       db.wants.bulkPut(data.wants),
       db.addons.bulkPut(data.addons),
+      db.haves.bulkPut(data.haves),
     ])
   })
 }
@@ -42,11 +44,12 @@ const idMap = new Map<string, string>()
 const mapKey = (c: TableName, k: string) => `${c}:${k}`
 
 async function remotePull(): Promise<Dataset> {
-  const [recs, plans, wantRecs, addonRecs] = await Promise.all([
+  const [recs, plans, wantRecs, addonRecs, haveRecs] = await Promise.all([
     pb.collection('recipes').getFullList({ requestKey: null }),
     pb.collection('plan').getFullList({ requestKey: null }),
     pb.collection('wants').getFullList({ requestKey: null }),
     pb.collection('addons').getFullList({ requestKey: null }),
+    pb.collection('haves').getFullList({ requestKey: null }),
   ])
   idMap.clear()
   const recipes = recs.map((r) => {
@@ -65,7 +68,11 @@ async function remotePull(): Promise<Dataset> {
     idMap.set(mapKey('addons', a.key), a.id)
     return a.data as AddOn
   })
-  return { recipes, plan, wants, addons }
+  const haves = haveRecs.map((h) => {
+    idMap.set(mapKey('haves', h.key), h.id)
+    return h.data as Have
+  })
+  return { recipes, plan, wants, addons, haves }
 }
 
 /** Apply one op to PocketBase. Throws on failure (caller decides to retry). */
@@ -142,6 +149,7 @@ async function withPending(data: Dataset): Promise<Dataset> {
     plan: new Map(data.plan.map((p) => [p.id, p])),
     wants: new Map(data.wants.map((w) => [w.id, w])),
     addons: new Map(data.addons.map((a) => [a.id, a])),
+    haves: new Map(data.haves.map((h) => [h.id, h])),
   }
   for (const r of rows) {
     const table = tables[r.collection] as Map<string, unknown>
@@ -153,6 +161,7 @@ async function withPending(data: Dataset): Promise<Dataset> {
     plan: [...tables.plan.values()],
     wants: [...tables.wants.values()],
     addons: [...tables.addons.values()],
+    haves: [...tables.haves.values()],
   }
 }
 
@@ -162,9 +171,10 @@ export function enqueuePut(table: 'recipes', item: Recipe): void
 export function enqueuePut(table: 'plan', item: PlanMeal): void
 export function enqueuePut(table: 'wants', item: Want): void
 export function enqueuePut(table: 'addons', item: AddOn): void
+export function enqueuePut(table: 'haves', item: Have): void
 export function enqueuePut(
   table: TableName,
-  item: Recipe | PlanMeal | Want | AddOn,
+  item: Recipe | PlanMeal | Want | AddOn | Have,
 ): void {
   void db[table].put(item as never) // cache immediately
   void db.outbox.add({ collection: table, key: item.id, op: 'put', data: item })
@@ -225,6 +235,7 @@ export async function startSync(onData: (data: Dataset) => void): Promise<void> 
   unsubscribers.push(await pb.collection('plan').subscribe('*', handler))
   unsubscribers.push(await pb.collection('wants').subscribe('*', handler))
   unsubscribers.push(await pb.collection('addons').subscribe('*', handler))
+  unsubscribers.push(await pb.collection('haves').subscribe('*', handler))
 
   window.addEventListener('online', () => void flushOutbox())
 }

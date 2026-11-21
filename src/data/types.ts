@@ -64,10 +64,27 @@ export interface AddOn extends Ingredient {
   position: number
 }
 
+/**
+ * An ingredient on the Ingredients list that the household has (ticked), and
+ * how much of it. Keyed by the line (its name and unit, as lines are grouped
+ * — see haveKey), so it stays with the line as the recipes wanted change.
+ */
+export interface Have {
+  id: string
+  /** How much is on hand (in the line's unit); none for a line without a
+   *  quantity ("salt"). */
+  amount?: number
+}
+
+/** A line's key for its Have: its name and unit, trimmed and lowercased. */
+export const haveKey = (name: string, unit?: string) =>
+  `${name.trim().toLowerCase()}|${(unit ?? '').trim().toLowerCase()}`
+
 /** Shape of the entire persisted dataset (one row per table on hydrate). */
 export interface Dataset {
   recipes: Recipe[]
   plan: PlanMeal[]
   wants: Want[]
   addons: AddOn[]
+  haves: Have[]
 }
