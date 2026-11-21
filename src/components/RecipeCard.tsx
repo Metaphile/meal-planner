@@ -760,7 +760,14 @@ export function RowMark({ kind }: { kind: 'cross' | 'restore' }) {
  */
 /** A section as it's written on the back of a card: its title, its lines
  *  (one spare, empty, at the end to write the next on). */
-type Group = { title: string; rows: Row[] }
+type Group = {
+  title: string
+  rows: Row[]
+  /** Crossed out, to go (on Save) — and with it every line in it, whatever
+   *  each line's own mark (kept: brought back, the section's lines are as
+   *  they were). */
+  struck?: boolean
+}
 
 /** The groups as they should stand after a change: each with its spare line;
  *  and a section after the first that's been emptied — no title, nothing
@@ -771,6 +778,148 @@ const tidyGroups = (gs: Group[]) => {
   const last = out[out.length - 1]
   if (out.length > 1 && last.title === '' && last.rows.every(blank)) out.pop()
   return out
+}
+
+/**
+ * Dragging a whole section by its title's grip: up or down, among the
+ * sections (it can go first: the first is the starter, whichever it is). It
+ * lifts, title and lines together; the others slide aside to show where
+ * it'd go. Let go, it settles there and the move is made (`onDrop`: to just
+ * before the section at `to`, or last). As dragRow: transforms only, and
+ * scrolling near the edges.
+ */
+function dragSection(
+  e: ReactPointerEvent<HTMLElement>,
+  onDrop: (to: number) => void,
+) {
+  if (e.pointerType === 'mouse' && e.button !== 0) return
+  e.preventDefault()
+  e.stopPropagation()
+  const handle = e.currentTarget
+  const table = handle.closest('[role=table]') as HTMLElement
+  const block = handle.closest('[role=rowgroup]') as HTMLElement
+  try {
+    handle.setPointerCapture(e.pointerId)
+  } catch {
+    /* (gone) */
+  }
+  const id = e.pointerId
+  // The sections, then "Add section…" (always after the last).
+  const els = [...table.querySelectorAll<HTMLElement>(':scope > [role=rowgroup]')]
+  const o = els.indexOf(block)
+  const top0 = table.getBoundingClientRect().top
+  const rel = els.map((el) => el.getBoundingClientRect().top - top0)
+  const h = rel[o + 1] - rel[o] // (its height, and the space after it)
+  const spots = els.map((_, k) => k).filter((k) => k !== o)
+  const slot = (k: number) => rel[k] - (k > o ? h : 0)
+  const minTop = Math.min(...spots.map(slot))
+  const maxTop = Math.max(...spots.map(slot))
+  const y0 = e.clientY - top0
+  let lastY = e.clientY
+  let target = o + 1
+  Object.assign(block.style, {
+    zIndex: '10',
+    background: 'var(--color-paper)',
+    boxShadow: '0 8px 18px -8px rgb(60 50 30 / 0.45)',
+    transition: 'none',
+  })
+  els.forEach((el, k) => {
+    if (k !== o) el.style.transition = 'transform 150ms ease'
+  })
+  const follow = (clientY: number) => {
+    lastY = clientY
+    const top = table.getBoundingClientRect().top
+    const want = Math.min(maxTop, Math.max(minTop, rel[o] + (clientY - top - y0)))
+    let bestD = Infinity
+    for (const k of spots) {
+      const d = Math.abs(slot(k) - want)
+      if (d < bestD) {
+        bestD = d
+        target = k
+      }
+    }
+    els.forEach((el, k) => {
+      if (k === o) return
+      const shift =
+        target > o && k > o && k < target
+          ? -h
+          : target < o && k >= target && k < o
+            ? h
+            : 0
+      el.style.transform = shift ? `translateY(${shift}px)` : ''
+    })
+    block.style.transform = `translateY(${want - rel[o]}px)`
+  }
+  const stopScrolling = scrollNearEdges(table, () => lastY, () => follow(lastY))
+  const finish = (drop: boolean) => {
+    stopScrolling()
+    handle.removeEventListener('pointermove', onMove)
+    handle.removeEventListener('pointerup', onUp)
+    handle.removeEventListener('pointercancel', onCancel)
+    const moved = drop && target !== o + 1
+    block.style.transition = 'transform 120ms ease-out'
+    block.style.transform = `translateY(${moved ? slot(target) - rel[o] : 0}px)`
+    if (!moved) els.forEach((el, k) => k !== o && (el.style.transform = ''))
+    setTimeout(() => {
+      if (moved) flushSync(() => onDrop(target))
+      for (const el of els) {
+        el.style.transform = ''
+        el.style.transition = ''
+        el.style.zIndex = ''
+        el.style.background = ''
+        el.style.boxShadow = ''
+      }
+    }, 130)
+  }
+  const onMove = (ev: PointerEvent) => {
+    if (ev.pointerId === id) follow(ev.clientY)
+  }
+  const onUp = (ev: PointerEvent) => {
+    if (ev.pointerId === id) finish(true)
+  }
+  const onCancel = (ev: PointerEvent) => {
+    if (ev.pointerId === id) finish(false)
+  }
+  handle.addEventListener('pointermove', onMove)
+  handle.addEventListener('pointerup', onUp)
+  handle.addEventListener('pointercancel', onCancel)
+}
+
+/** While dragging: near the top or bottom of what `inside` scrolls in, it
+ *  scrolls (faster, nearer the edge), and `moved` is called as it does.
+ *  Returns the stop. */
+function scrollNearEdges(
+  inside: HTMLElement,
+  y: () => number,
+  moved: () => void,
+): () => void {
+  let scroller: HTMLElement | null = inside.parentElement
+  while (scroller) {
+    const oy = getComputedStyle(scroller).overflowY
+    if ((oy === 'auto' || oy === 'scroll') && scroller.scrollHeight > scroller.clientHeight)
+      break
+    scroller = scroller.parentElement
+  }
+  const edge = 56
+  let raf = 0
+  const tick = () => {
+    raf = requestAnimationFrame(tick)
+    if (!scroller) return
+    const r = scroller.getBoundingClientRect()
+    const at = y()
+    const v =
+      at < r.top + edge
+        ? -((r.top + edge - at) / edge) * 10
+        : at > r.bottom - edge
+          ? ((at - (r.bottom - edge)) / edge) * 10
+          : 0
+    if (v) {
+      scroller.scrollTop += v
+      moved()
+    }
+  }
+  raf = requestAnimationFrame(tick)
+  return () => cancelAnimationFrame(raf)
 }
 
 /** What a section made by dragging a line onto "Add section…" is called,
@@ -883,35 +1032,10 @@ function dragRow(
     origin.style.transform = `translateY(${want - rel[o]}px)`
   }
 
-  // Near the top or bottom of what scrolls: it scrolls (faster, nearer).
-  let scroller: HTMLElement | null = table.parentElement
-  while (scroller) {
-    const oy = getComputedStyle(scroller).overflowY
-    if ((oy === 'auto' || oy === 'scroll') && scroller.scrollHeight > scroller.clientHeight)
-      break
-    scroller = scroller.parentElement
-  }
-  let raf = 0
-  const edge = 56
-  const tick = () => {
-    raf = requestAnimationFrame(tick)
-    if (!scroller) return
-    const r = scroller.getBoundingClientRect()
-    const v =
-      lastY < r.top + edge
-        ? -((r.top + edge - lastY) / edge) * 10
-        : lastY > r.bottom - edge
-          ? ((lastY - (r.bottom - edge)) / edge) * 10
-          : 0
-    if (v) {
-      scroller.scrollTop += v
-      follow(lastY)
-    }
-  }
-  raf = requestAnimationFrame(tick)
+  const stopScrolling = scrollNearEdges(table, () => lastY, () => follow(lastY))
 
   const finish = (drop: boolean) => {
-    cancelAnimationFrame(raf)
+    stopScrolling()
     handle.removeEventListener('pointermove', onMove)
     handle.removeEventListener('pointerup', onUp)
     handle.removeEventListener('pointercancel', onCancel)
@@ -1001,9 +1125,28 @@ function IngredientTable({
     gs[to.g].rows.splice(at, 0, row)
     set(gs)
   }
+  const setStruck = (g: number, struck: boolean) =>
+    set(groups.map((x, i) => (i === g ? { ...x, struck } : x)))
+  // (A whole section moved: to just before the section at `to`, or last.)
+  const moveSection = (from: number, to: number) => {
+    const gs = [...groups]
+    const [x] = gs.splice(from, 1)
+    gs.splice(to > from ? to - 1 : to, 0, x)
+    set(gs)
+  }
   // (A grip to drag each line by, then its writing.)
   const cols =
     'grid grid-cols-[1rem_minmax(0,1fr)_3.25rem_4.25rem_1.75rem]'
+  const grip =
+    'grid h-[30px] cursor-grab touch-none select-none place-items-center text-pencil active:cursor-grabbing'
+  const stroke = (
+    // A pen stroke through a line (from its writing to its mark).
+    <span
+      aria-hidden
+      className="pointer-events-none absolute left-[0.875rem] right-8 top-[62%] h-[1.5px] rounded-full bg-pen"
+      style={{ transform: 'rotate(-0.5deg)' }}
+    />
+  )
   const cell =
     // Taller than the card's 22px ruled lines, so each line (and its ✕) is
     // easy to hit with a finger. The writing sits low, on its line.
@@ -1017,10 +1160,12 @@ function IngredientTable({
     value: string,
     onTitle: (t: string) => void,
     placeholder: string,
+    readOnly = false,
   ) => (
     <input
       value={value}
       onChange={(e) => onTitle(e.target.value)}
+      readOnly={readOnly}
       placeholder={placeholder}
       aria-label="Section"
       autoComplete="off"
@@ -1035,33 +1180,58 @@ function IngredientTable({
         group === null ? (
           // "Add section…": a title written here starts a new section (with
           // a line to write its first ingredient on). (Built like a
-          // section's title row, in the next section's place: see
-          // titleField.)
-          <div key={`t${g}`} role="rowgroup" className="mt-3">
+          // section's title row — a cell where the grip goes, then the
+          // field — in the next section's place: see titleField.)
+          <div key={`t${g}`} role="rowgroup" className="relative mt-3">
             <div
               role="row"
               data-new-section={g}
-              className="grid items-end border-b border-line-blue"
+              className="grid grid-cols-[1rem_minmax(0,1fr)] items-end border-b border-line-blue"
             >
-              {titleField(
-                '',
-                (t) => set([...groups, { title: t, rows: [] }]),
-                'Add section…',
-              )}
+              <span />
+              <div className="grid">
+                {titleField(
+                  '',
+                  (t) => set([...groups, { title: t, rows: [] }]),
+                  'Add section…',
+                )}
+              </div>
             </div>
           </div>
         ) : (
-        <div key={`t${g}`} role="rowgroup" className={g > 0 ? 'mt-3' : ''}>
-          {/* The section's title: the first's beside the column headings. */}
+        <div
+          key={`t${g}`}
+          role="rowgroup"
+          className={`relative ${g > 0 ? 'mt-3' : ''}`}
+        >
+          {/* The section's title (the first's beside the column headings):
+              its grip, to drag the whole section by (when there's more than
+              one), and its mark, to cross the whole section out. */}
           <div
             role="row"
-            className={`${g === 0 ? cols : 'grid'} items-end border-b border-line-blue`}
+            className={`${
+              g === 0 ? cols : 'grid grid-cols-[1rem_minmax(0,1fr)_1.75rem]'
+            } relative items-end border-b border-line-blue`}
           >
-            <div className={g === 0 ? 'col-span-2 grid' : 'grid'}>
+            {groups.length > 1 ? (
+              <span
+                role="button"
+                aria-label={`Move ${group.title || 'section'}`}
+                data-drag-handle
+                onPointerDown={(e) => dragSection(e, (to) => moveSection(g, to))}
+                className={`${grip} h-[34px]`}
+              >
+                <GripIcon />
+              </span>
+            ) : (
+              <span />
+            )}
+            <div className="grid">
               {titleField(
                 group.title,
                 (t) => setTitle(g, t),
                 g === 0 ? STARTER_TITLE : 'Section',
+                group.struck,
               )}
             </div>
             {g === 0 && (
@@ -1072,12 +1242,28 @@ function IngredientTable({
                 <span role="columnheader" className={`${headClass} pl-1.5`}>
                   Unit
                 </span>
-                <span />
               </>
             )}
+            <button
+              type="button"
+              onClick={() => setStruck(g, !group.struck)}
+              aria-label={
+                group.struck
+                  ? `Bring back ${group.title || 'section'}`
+                  : `Cross out ${group.title || 'section'}`
+              }
+              className={`${MARK_BUTTON} self-center`}
+            >
+              <RowMark kind={group.struck ? 'restore' : 'cross'} />
+            </button>
+            {group.struck && stroke}
           </div>
           {group.rows.map((row, i) => {
             const spare = i === group.rows.length - 1 && blank(row)
+            // (In a crossed-out section: struck with it, and fixed — though
+            // its own mark is kept for if the section's brought back.)
+            const struck = row.struck || group.struck
+            if (spare && group.struck) return null
             return (
               <div
                 key={i}
@@ -1094,7 +1280,7 @@ function IngredientTable({
                     aria-label={`Move ${row.name || 'ingredient'}`}
                     data-drag-handle
                     onPointerDown={(e) => dragRow(e, (to) => moveRow({ g, i }, to))}
-                    className="grid h-[30px] cursor-grab touch-none select-none place-items-center text-pencil active:cursor-grabbing"
+                    className={grip}
                   >
                     <GripIcon />
                   </span>
@@ -1102,7 +1288,7 @@ function IngredientTable({
                 <input
                   value={row.name}
                   onChange={(e) => update(g, i, { name: e.target.value })}
-                  readOnly={row.struck}
+                  readOnly={struck}
                   placeholder={spare ? 'Add ingredient…' : 'Ingredient'}
                   // (No "name" in the label: Safari would offer to AutoFill a
                   // contact.)
@@ -1114,17 +1300,17 @@ function IngredientTable({
                   value={row.quantity}
                   onChange={(quantity) => update(g, i, { quantity })}
                   placeholder=""
-                  readOnly={row.struck}
+                  readOnly={struck}
                   className={`${cell} ${rule} pr-1 text-right`}
                 />
                 <UnitCell
                   value={row.unit}
                   onChange={(unit) => update(g, i, { unit })}
                   units={units}
-                  disabled={row.struck}
+                  disabled={struck}
                   className={`${cell} ${rule} pl-1.5`}
                 />
-                {spare ? (
+                {spare || group.struck ? (
                   <span />
                 ) : row.struck ? (
                   <button
@@ -1145,14 +1331,7 @@ function IngredientTable({
                     <RowMark kind="cross" />
                   </button>
                 )}
-                {row.struck && (
-                  // A pen stroke through the line.
-                  <span
-                    aria-hidden
-                    className="pointer-events-none absolute -left-0.5 right-8 top-[62%] h-[1.5px] rounded-full bg-pen"
-                    style={{ transform: 'rotate(-0.5deg)' }}
-                  />
-                )}
+                {struck && stroke}
               </div>
             )
           })}
@@ -1261,15 +1440,18 @@ const RecipeCardBack = forwardRef<
       .filter((i) => !i.struck)
       .map(({ struck: _, ...i }) => ({ ...i, name: i.name.trim() }))
       .filter((i) => i.name.length > 0)
-  const starterTitle = groups[0].title.trim()
+  // (A crossed-out section: none of its lines — and it goes, unless it's the
+  // first, which every recipe has: that keeps its default title.)
+  const linesOf = (g: Group) => (g.struck ? [] : lines(g.rows))
+  const starterTitle = groups[0].struck ? '' : groups[0].title.trim()
   const sections = groups
     .slice(1)
-    .map((g) => ({ title: g.title.trim(), ingredients: lines(g.rows) }))
+    .map((g) => ({ title: g.title.trim(), ingredients: linesOf(g) }))
     .filter((s) => s.ingredients.length > 0)
   const draft = (): Recipe => ({
     ...recipe,
     title: title.trim(),
-    ingredients: lines(groups[0].rows),
+    ingredients: linesOf(groups[0]),
     ingredientsTitle:
       starterTitle && starterTitle !== STARTER_TITLE ? starterTitle : undefined,
     sections: sections.length ? sections : undefined,
