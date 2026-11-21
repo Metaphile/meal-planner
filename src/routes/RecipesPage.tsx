@@ -249,18 +249,22 @@ export default function RecipesPage() {
   const [searching, setSearching] = useState(false)
   const [query, setQuery] = useState('')
   const q = query.trim().toLowerCase()
-  const matches = useMemo(
-    () =>
-      q
-        ? recipes.filter(
-            (r) =>
-              r.title.toLowerCase().includes(q) ||
-              r.tags.some((t) => t.toLowerCase().includes(q)) ||
-              r.ingredients.some((i) => i.name.toLowerCase().includes(q)),
-          )
-        : recipes,
-    [recipes, q],
-  )
+  // …and, ticked, to just the wanted recipes.
+  const [wantedOnly, setWantedOnly] = useState(false)
+  const wants = useStore((s) => s.wants)
+  const matches = useMemo(() => {
+    const wanted = new Set(wants.map((w) => w.recipeId))
+    return recipes.filter(
+      (r) =>
+        (!wantedOnly || wanted.has(r.id)) &&
+        (!q ||
+          r.title.toLowerCase().includes(q) ||
+          r.tags.some((t) => t.toLowerCase().includes(q)) ||
+          r.ingredients.some((i) => i.name.toLowerCase().includes(q))),
+    )
+  }, [recipes, q, wantedOnly, wants])
+  // Any narrowing at all: a search (it opens on its first match).
+  const narrowed = !!q || wantedOnly
   // The rolodex layer covers the whole page, header included (so a card
   // being taken out passes over the header rather than behind it); the wheel
   // itself sits below the header, and no resting card ever reaches up into it.
@@ -285,7 +289,10 @@ export default function RecipesPage() {
   const shown = useRef<boolean[]>([])
   const headerRef = useRef<HTMLDivElement>(null)
   const wheel = useMemo(() => fitWheel(stageH), [stageH])
-  const bounds = useMemo(() => boundsOf(wheel, items, !!q), [wheel, items, q])
+  const bounds = useMemo(
+    () => boundsOf(wheel, items, narrowed),
+    [wheel, items, narrowed],
+  )
   // The card in hand, by recipe id (editing it can move it to another
   // letter, or delete it, while it's out).
   const [open, setOpen] = useState<{
@@ -390,7 +397,7 @@ export default function RecipesPage() {
   // facing you) — again for each search, and once the page is measured.
   const positionedFor = useRef<string | null>(null)
   useLayoutEffect(() => {
-    const key = `${q}|${pageH > 0 && headerH > 0}`
+    const key = `${q}|${wantedOnly}|${pageH > 0 && headerH > 0}`
     if (positionedFor.current !== key) {
       positionedFor.current = key
       drumRef.current?.set(bounds.initial * SCALE)
@@ -643,6 +650,7 @@ export default function RecipesPage() {
   const closeSearch = () => {
     setSearching(false)
     setQuery('')
+    setWantedOnly(false)
   }
   const header = (
     // Over the rolodex, casting a shadow onto it (and onto a card sliding
@@ -692,6 +700,38 @@ export default function RecipesPage() {
               </button>
             )}
           </div>
+          {/* Only the wanted recipes: the same box as on the cards. */}
+          <button
+            type="button"
+            role="checkbox"
+            aria-checked={wantedOnly}
+            aria-label="Only wanted recipes"
+            onPointerDown={(e) => e.preventDefault()} // (keeps the keyboard up)
+            onClick={() => setWantedOnly((w) => !w)}
+            className="-mx-1 grid h-9 w-9 shrink-0 place-items-center"
+          >
+            <span
+              className={`grid h-[22px] w-[22px] place-items-center rounded-[5px] border-[1.5px] ${
+                wantedOnly
+                  ? 'border-kraft-edge bg-kraft'
+                  : 'border-[#c9bda4] bg-paper'
+              }`}
+            >
+              {wantedOnly && (
+                <svg
+                  viewBox="0 0 12 12"
+                  className="h-3.5 w-3.5 text-kraft-ink"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M2.5 6.2 5 8.5l4.5-5" />
+                </svg>
+              )}
+            </span>
+          </button>
           <button
             onClick={closeSearch}
             className="paper-serif h-9 shrink-0 text-[15px] font-semibold active:opacity-60"
