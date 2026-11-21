@@ -761,7 +761,7 @@ const pose = (dy: number) => `translate(0px, ${dy}px)`
 // ('arc' predates the Recipes rolodex being drawn scaled down: its flight
 // would need converting to the stage's units before being used there again.)
 const TAKE_OUT: 'arc' | 'lift' = 'lift'
-const LIFT_MS = 348 // the card lifting out of the box
+const LIFT_MS = 409 // the card lifting out of the box
 const DROP_MS = 300 // …and dropping back in
 const FADE_IN_DELAY_MS = 350 // the card in hand (and the shade) start fading in…
 const FADE_IN_MS = 507 // …over this
@@ -787,7 +787,7 @@ function fadingAway(fromY: number, v: number, opacity: number): Keyframe[] {
   return frames
 }
 
-const LIFT_FADE_MS = 2 * LIFT_MS // …fading out as it goes (still fading once out of sight)
+const LIFT_FADE_MS = 696 // …fading out as it goes (still fading once out of sight)
 const LIFT_FADE = 'cubic-bezier(0.11, 0, 0.5, 0)' // ease-in (quad): fading gently at first
 const LIFT_UP = 'cubic-bezier(0.32, 0, 0.67, 0)' // slow to start, gathering speed
 const DROP_IN = 'cubic-bezier(0.33, 1, 0.68, 1)' // the take-out's curve, reversed: fast, then settling
