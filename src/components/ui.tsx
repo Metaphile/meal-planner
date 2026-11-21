@@ -142,36 +142,25 @@ export function ConfirmDialog({
           {title}
         </h2>
         <div className="mt-2 text-sm text-muted">{message}</div>
-        {/* (With a Save: Discard on the far side from it.) */}
-        <div className="mt-5 flex justify-end gap-2">
-          {onSave && (
-            <>
-              <button
-                type="button"
-                onClick={onConfirm}
-                className="whitespace-nowrap rounded-full bg-danger px-4 py-2 text-sm font-semibold text-white transition active:scale-95"
-              >
-                {confirmLabel}
-              </button>
-              <span className="flex-1" />
-            </>
-          )}
+        {/* The confirming (destructive) button always on the far left,
+            apart from the others. */}
+        <div className="mt-5 flex gap-2">
+          <button
+            type="button"
+            onClick={onConfirm}
+            autoFocus={!onSave}
+            className="whitespace-nowrap rounded-full bg-danger px-4 py-2 text-sm font-semibold text-white transition active:scale-95"
+          >
+            {confirmLabel}
+          </button>
+          <span className="flex-1" />
           <GhostButton onClick={onCancel} className="whitespace-nowrap">
             {cancelLabel}
           </GhostButton>
-          {onSave ? (
+          {onSave && (
             <PrimaryButton onClick={onSave} autoFocus className="whitespace-nowrap">
               {saveLabel}
             </PrimaryButton>
-          ) : (
-            <button
-              type="button"
-              onClick={onConfirm}
-              autoFocus
-              className="rounded-full bg-danger px-4 py-2 text-sm font-semibold text-white transition active:scale-95"
-            >
-              {confirmLabel}
-            </button>
           )}
         </div>
       </div>
