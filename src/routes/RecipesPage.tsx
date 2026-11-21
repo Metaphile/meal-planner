@@ -491,6 +491,19 @@ export default function RecipesPage() {
     wrap.dataset.free = ''
   }
 
+  // A card on the wheel is trimmed at its rod, out of sight behind the card
+  // in front. While that card is out (see-through as it fades away), the
+  // card behind it shows down to where the card out of the box was trimmed
+  // — below that, the next card in front hides the trim again.
+  const uncovered = useRef<HTMLDivElement | null>(null)
+  const uncoverBehind = (index: number) => {
+    const behind = index > 0 ? itemEls.current[index - 1] : null
+    if (!behind) return
+    const more = items[index].rod - items[index - 1].rod + 12
+    behind.style.clipPath = `inset(-24px -24px ${-more}px -24px)`
+    uncovered.current = behind
+  }
+
   /** Where the card in hand goes back to — or null if it has no place in
    *  the box (a new card saved while searching for something else). A card
    *  that was never in the box (a new one, just saved) gets its slot
@@ -534,6 +547,7 @@ export default function RecipesPage() {
       busy.current = true
       lifted.current = it.key
       freeSlot(wrap)
+      uncoverBehind(index)
       flushSync(() =>
         setOpen({ key: it.key, recipe: it.recipe, origin: originOf(index) }),
       )
@@ -553,6 +567,10 @@ export default function RecipesPage() {
     if (wrap) {
       wrap.style.clipPath = SLOT_CLIP
       delete wrap.dataset.free
+    }
+    if (uncovered.current) {
+      uncovered.current.style.clipPath = SLOT_CLIP
+      uncovered.current = null
     }
     lifted.current = null
     // Back on the wheel: place it afresh (it wasn't painted while out, and
