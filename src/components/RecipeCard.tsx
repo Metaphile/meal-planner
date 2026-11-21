@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
   type HTMLAttributes,
+  type MutableRefObject,
   type ReactNode,
   type Ref,
 } from 'react'
@@ -203,31 +204,57 @@ const COMMON_UNITS = [
 /**
  * An ingredient's unit, picked rather than typed: tapping it opens a small
  * paper menu of units (no keyboard, so nothing for the phone to autofill).
- * "Other…" writes one in; "None" clears it.
+ * "Other…" writes one in; "None" clears it. The menu opens below its line,
+ * or above it in the lower half of the screen, and stays open while you
+ * scroll; a tap anywhere else closes it (and does nothing else).
  */
 function UnitCell({
   value,
   onChange,
   units,
+  disabled = false,
   className,
 }: {
   value: string | undefined
   onChange: (unit: string | undefined) => void
   units: string[]
+  disabled?: boolean
   className: string
 }) {
-  const [menu, setMenu] = useState(false)
+  const [menu, setMenu] = useState<null | 'above' | 'below'>(null)
   const [typing, setTyping] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
-  // Tapping anywhere else closes the menu.
+  const toggle = () => {
+    if (menu) return setMenu(null)
+    const r = ref.current!.getBoundingClientRect()
+    const vv = window.visualViewport // (the part above the keyboard)
+    const mid = r.top + r.height / 2 - (vv?.offsetTop ?? 0)
+    setMenu(mid > (vv?.height ?? window.innerHeight) / 2 ? 'above' : 'below')
+  }
+
+  // A tap anywhere else only closes the menu. (Scrolling makes no click, so
+  // it leaves the menu open.)
   useEffect(() => {
     if (!menu) return
-    const onDown = (e: PointerEvent) => {
-      if (!ref.current?.contains(e.target as Node)) setMenu(false)
+    const outside = (e: Event) => !ref.current?.contains(e.target as Node)
+    // No focusing a field under the tap…
+    const onMouseDown = (e: MouseEvent) => {
+      if (outside(e)) e.preventDefault()
     }
-    document.addEventListener('pointerdown', onDown, true)
-    return () => document.removeEventListener('pointerdown', onDown, true)
+    // …or acting on it.
+    const onClick = (e: MouseEvent) => {
+      if (!outside(e)) return
+      e.preventDefault()
+      e.stopPropagation()
+      setMenu(null)
+    }
+    document.addEventListener('mousedown', onMouseDown, true)
+    document.addEventListener('click', onClick, true)
+    return () => {
+      document.removeEventListener('mousedown', onMouseDown, true)
+      document.removeEventListener('click', onClick, true)
+    }
   }, [menu])
 
   if (typing) {
@@ -252,9 +279,10 @@ function UnitCell({
     <div ref={ref} className="relative min-w-0">
       <button
         type="button"
-        onClick={() => setMenu((m) => !m)}
+        onClick={toggle}
+        disabled={disabled}
         aria-haspopup="listbox"
-        aria-expanded={menu}
+        aria-expanded={!!menu}
         aria-label={value ? `Unit: ${value}` : 'Choose a unit'}
         className={`${className} block w-full truncate text-left`}
       >
@@ -264,7 +292,9 @@ function UnitCell({
         <div
           role="listbox"
           aria-label="Units"
-          className="paper-card absolute top-full right-0 z-20 mt-1 flex w-[15.5rem] flex-wrap gap-1.5 p-2.5"
+          className={`paper-card absolute right-0 z-20 flex w-[15.5rem] flex-wrap gap-1.5 p-2.5 ${
+            menu === 'above' ? 'bottom-full mb-1' : 'top-full mt-1'
+          }`}
         >
           {units.map((u) => (
             <button
@@ -274,7 +304,7 @@ function UnitCell({
               aria-selected={u === value}
               onClick={() => {
                 onChange(u)
-                setMenu(false)
+                setMenu(null)
               }}
               className={`${chip} ${
                 u === value
@@ -288,7 +318,7 @@ function UnitCell({
           <button
             type="button"
             onClick={() => {
-              setMenu(false)
+              setMenu(null)
               setTyping(true)
             }}
             className={`${chip} border-paper-edge bg-paper text-pencil`}
@@ -300,7 +330,7 @@ function UnitCell({
               type="button"
               onClick={() => {
                 onChange(undefined)
-                setMenu(false)
+                setMenu(null)
               }}
               className={`${chip} border-paper-edge bg-paper text-pencil`}
             >
@@ -313,10 +343,14 @@ function UnitCell({
   )
 }
 
-const blank = (i: Ingredient) =>
-  !i.name.trim() && i.quantity === undefined && !i.unit
+/** An ingredient line on the back of a card; a crossed-out one goes when
+ *  the card is saved. */
+type Row = Ingredient & { struck?: boolean }
+
+const blank = (i: Row) =>
+  !i.struck && !i.name.trim() && i.quantity === undefined && !i.unit
 /** Always exactly one empty line at the end, to write the next one on. */
-const withSpareLine = (rows: Ingredient[]) => {
+const withSpareLine = (rows: Row[]) => {
   const out = [...rows]
   while (
     out.length > 1 &&
@@ -332,15 +366,16 @@ const withSpareLine = (rows: Ingredient[]) => {
  * Ingredients written on the back of a card: a ruled table (name · qty ·
  * unit) with no boxes, like the notes below it. The heading line doubles as
  * the column heads. There's always an empty line at the end; writing on it
- * starts another.
+ * starts another. × crosses a line out (↺ brings it back); it's only gone
+ * once the card is saved.
  */
 function IngredientTable({
   rows,
   onChange,
   headClass,
 }: {
-  rows: Ingredient[]
-  onChange: (rows: Ingredient[]) => void
+  rows: Row[]
+  onChange: (rows: Row[]) => void
   headClass: string
 }) {
   // The common units, then any others your recipes use.
@@ -354,10 +389,9 @@ function IngredientTable({
       if (row.unit && !COMMON_UNITS.includes(row.unit)) extra.add(row.unit)
     return [...COMMON_UNITS, ...[...extra].sort()]
   }, [recipes, rows])
-  const set = (rs: Ingredient[]) => onChange(withSpareLine(rs))
-  const update = (i: number, patch: Partial<Ingredient>) =>
+  const set = (rs: Row[]) => onChange(withSpareLine(rs))
+  const update = (i: number, patch: Partial<Row>) =>
     set(rows.map((r, idx) => (idx === i ? { ...r, ...patch } : r)))
-  const remove = (i: number) => set(rows.filter((_, idx) => idx !== i))
   const cols = 'grid grid-cols-[minmax(0,1fr)_3.25rem_4.25rem_1.75rem]'
   const cell =
     // Taller than the card's 22px ruled lines, so each line (and its ✕) is
@@ -385,11 +419,12 @@ function IngredientTable({
           <div
             key={i}
             role="row"
-            className={`${cols} items-center border-b border-line-blue`}
+            className={`${cols} relative items-center border-b border-line-blue`}
           >
             <input
               value={row.name}
               onChange={(e) => update(i, { name: e.target.value })}
+              readOnly={row.struck}
               placeholder={spare ? 'Add ingredient…' : 'Ingredient'}
               // (No "name" in the label: Safari would offer to AutoFill a
               // contact.)
@@ -401,25 +436,44 @@ function IngredientTable({
               value={row.quantity}
               onChange={(quantity) => update(i, { quantity })}
               placeholder=""
+              readOnly={row.struck}
               className={`${cell} ${rule} pr-1 text-right`}
             />
             <UnitCell
               value={row.unit}
               onChange={(unit) => update(i, { unit })}
               units={units}
+              disabled={row.struck}
               className={`${cell} ${rule} pl-1.5`}
             />
             {spare ? (
               <span />
+            ) : row.struck ? (
+              <button
+                type="button"
+                onClick={() => update(i, { struck: false })}
+                aria-label={`Bring back ${row.name || 'ingredient'}`}
+                className="grid h-[30px] place-items-center pt-[3px] text-[23px] leading-none text-pencil active:text-pen"
+              >
+                ↺
+              </button>
             ) : (
               <button
                 type="button"
-                onClick={() => remove(i)}
-                aria-label={`Remove ${row.name || 'ingredient'}`}
+                onClick={() => update(i, { struck: true })}
+                aria-label={`Cross out ${row.name || 'ingredient'}`}
                 className="grid h-[30px] place-items-center pt-[3px] text-[30px] leading-none text-pencil active:text-pen"
               >
                 ×
               </button>
+            )}
+            {row.struck && (
+              // A pen stroke through the line.
+              <span
+                aria-hidden
+                className="pointer-events-none absolute -left-0.5 right-8 top-[62%] h-[1.5px] rounded-full bg-pen"
+                style={{ transform: 'rotate(-0.5deg)' }}
+              />
             )}
           </div>
         )
@@ -435,6 +489,22 @@ if (typeof document !== 'undefined') void document.fonts?.load('22px Caveat')
 const NOTES_MIN_LINES = 6
 const NOTES_DROP = 3
 
+type RecipeText = Pick<Recipe, 'title' | 'ingredients' | 'notes' | 'tags'>
+/** What a recipe says, ignoring blank lines and stray spaces (to tell
+ *  whether a draft says anything different). */
+const sameText = (a: RecipeText, b: RecipeText) => {
+  const key = (r: RecipeText) =>
+    JSON.stringify([
+      r.title.trim(),
+      r.ingredients
+        .filter((i) => i.name.trim())
+        .map((i) => [i.name.trim(), i.quantity ?? null, i.unit || null]),
+      (r.notes ?? '').trim(),
+      r.tags.map((t) => t.trim()).filter(Boolean),
+    ])
+  return key(a) === key(b)
+}
+
 /**
  * The back of a card: the recipe written out on paper fields to edit. Nothing
  * reaches the store until Save.
@@ -448,6 +518,8 @@ const RecipeCardBack = forwardRef<
     onCancel: () => void
     onSaved: () => void
     onDeleted: () => void
+    /** Kept current: whether the draft differs from the recipe as stored. */
+    changedRef?: MutableRefObject<boolean>
   } & HTMLAttributes<HTMLDivElement>
 >(function RecipeCardBack(
   {
@@ -456,6 +528,7 @@ const RecipeCardBack = forwardRef<
     onCancel,
     onSaved,
     onDeleted,
+    changedRef,
     className = '',
     style,
     ...rest
@@ -465,7 +538,7 @@ const RecipeCardBack = forwardRef<
   const upsertRecipe = useStore((s) => s.upsertRecipe)
   const deleteRecipe = useStore((s) => s.deleteRecipe)
   const [title, setTitle] = useState(recipe.title)
-  const [ingredients, setIngredients] = useState<Ingredient[]>(() =>
+  const [ingredients, setIngredients] = useState<Row[]>(() =>
     withSpareLine(recipe.ingredients),
   )
   const [notes, setNotes] = useState(recipe.notes ?? '')
@@ -486,19 +559,24 @@ const RecipeCardBack = forwardRef<
     el.style.height = `${lines * 22 + NOTES_DROP}px`
   }, [notes])
 
+  // The recipe as drafted (crossed-out and empty lines left off).
+  const draft = (): Recipe => ({
+    ...recipe,
+    title: title.trim(),
+    ingredients: ingredients
+      .filter((i) => !i.struck)
+      .map(({ struck: _, ...i }) => ({ ...i, name: i.name.trim() }))
+      .filter((i) => i.name.length > 0),
+    notes: notes.trim() || undefined,
+    tags: tagsText
+      .split(',')
+      .map((t) => t.trim())
+      .filter(Boolean),
+  })
+  if (changedRef) changedRef.current = !sameText(draft(), recipe)
+
   const save = () => {
-    upsertRecipe({
-      ...recipe,
-      title: title.trim(),
-      ingredients: ingredients
-        .map((i) => ({ ...i, name: i.name.trim() }))
-        .filter((i) => i.name.length > 0),
-      notes: notes.trim() || undefined,
-      tags: tagsText
-        .split(',')
-        .map((t) => t.trim())
-        .filter(Boolean),
-    })
+    upsertRecipe(draft())
     onSaved()
   }
 
@@ -654,8 +732,9 @@ const pose = (dy: number) => `translate(0px, ${dy}px)`
  * renders mid-flight.
  *
  * Edit turns the card over: its back has the recipe on paper fields. Save or
- * Cancel turns it back. While it's turned over it stays in hand (the shade
- * and pulling down don't put it away; Escape cancels).
+ * Cancel turns it back. Turned over, tapping the shade or pulling it down
+ * turns it back and puts it away — once you've confirmed it, if the draft
+ * says anything different from the recipe (as does Cancel, or Escape).
  */
 export function CardDetail({
   recipe,
@@ -700,6 +779,11 @@ export function CardDetail({
   )
   const editingRef = useRef(isNew)
   const unsaved = useRef(isNew) // a new card not yet saved
+  const changed = useRef(false) // its back says something different
+  // Leaving the back, waiting on "Discard changes?".
+  const [discarding, setDiscarding] = useState<null | (() => void)>(null)
+  const discardingRef = useRef(false)
+  discardingRef.current = !!discarding
   const flipping = useRef(false)
   const shadeRef = useRef<HTMLDivElement>(null) // the shadow over the rolodex
   const scrollRef = useRef<HTMLDivElement>(null) // the card scrolls in this
@@ -911,7 +995,7 @@ export function CardDetail({
    * change of height can't be seen. At rest the turned card is drawn flat
    * (no 3D transforms on its fields, so typing in them is ordinary).
    */
-  const flip = (toBack: boolean) => {
+  const flip = (toBack: boolean, then?: () => void) => {
     if (flipping.current || closing.current) return
     if (toBack === editingRef.current) return
     flipping.current = true
@@ -969,6 +1053,7 @@ export function CardDetail({
           flushSync(() => setEditing(false))
         }
         flipping.current = false
+        then?.()
       }
     }
   }
@@ -976,20 +1061,39 @@ export function CardDetail({
   flipRefFn.current = flip
   const edit = () => flipRefFn.current(true)
   const unedit = () => flipRefFn.current(false)
-  // Cancel: turn back over — or, for a new card never saved, let it go.
-  const cancel = () => {
-    if (unsaved.current) {
-      editingRef.current = false
-      dismissRef.current()
-    } else unedit()
+  // A new card never saved just goes (fades away from where it is).
+  const letGo = () => {
+    editingRef.current = false
+    dismissRef.current()
   }
+  // Leaving the back: straight away if the draft is unchanged, else once
+  // you've agreed to lose the changes.
+  const leave = (go: () => void) => {
+    if (changed.current) setDiscarding(() => go)
+    else go()
+  }
+  // Cancel: turn back over (or let a new card go).
+  const cancel = () =>
+    leave(() => (unsaved.current ? letGo() : flipRefFn.current(false)))
+  // Put away from the back: turn it over, then back into its slot (from
+  // `fromY` below its place, if it was pulled down).
+  const putAway = (fromY = 0) =>
+    unsaved.current
+      ? letGo()
+      : flipRefFn.current(false, () => closeRef.current(fromY))
   const cancelRef = useRef(cancel)
   cancelRef.current = cancel
+  const putAwayRef = useRef(putAway)
+  putAwayRef.current = putAway
+  const leaveRef = useRef(leave)
+  leaveRef.current = leave
 
   // Escape puts the card back (or, turned over, cancels the edit).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return
+      // (A dialog over the card handles its own Escape.)
+      if (document.querySelector('[role="alertdialog"]')) return
       if (editingRef.current) cancelRef.current()
       else closeRef.current()
     }
@@ -1017,9 +1121,25 @@ export function CardDetail({
     const atTop = () =>
       !d.fromScroller || (scrollRef.current?.scrollTop ?? 0) <= 0
 
-    const start = (x: number, y: number, target: EventTarget | null) => {
-      if (closing.current || editingRef.current) {
-        // Turned over (or leaving): no pulling it away.
+    const start = (
+      x: number,
+      y: number,
+      target: EventTarget | null,
+      mouse: boolean,
+    ) => {
+      // On the back, a drag in a field is about its text: with a mouse, any
+      // field; by touch, the one you're writing in (e.g. moving the caret).
+      const field = (target as Element | null)?.closest?.('input, textarea')
+      const inText =
+        editingRef.current &&
+        !!field &&
+        (mouse || field === document.activeElement)
+      if (
+        closing.current ||
+        flipping.current ||
+        discardingRef.current ||
+        inText
+      ) {
         d.active = false
         d.decided = true
         return
@@ -1070,10 +1190,17 @@ export function CardDetail({
       d.active = false
       card.style.userSelect = ''
       // Far enough, or a real downward flick (not just a twitch).
-      if (d.dy > 110 || (d.v > 0.5 && d.dy > 40)) {
+      const far = d.dy > 110 || (d.v > 0.5 && d.dy > 40)
+      if (far && !editingRef.current) {
         closeRef.current(d.dy)
         return
       }
+      if (far && !changed.current) {
+        putAwayRef.current(d.dy)
+        return
+      }
+      // (Turned over with changes: it springs back while you decide.)
+      if (far) leaveRef.current(() => putAwayRef.current())
       card.animate(
         [{ transform: card.style.transform }, { transform: pose(0) }],
         { duration: 220, easing: EASE_OUT },
@@ -1087,7 +1214,7 @@ export function CardDetail({
 
     const onTouchStart = (e: TouchEvent) => {
       const t = e.touches[0]
-      start(t.clientX, t.clientY, e.target)
+      start(t.clientX, t.clientY, e.target, false)
     }
     const onTouchMove = (e: TouchEvent) => {
       const t = e.touches[0]
@@ -1095,7 +1222,7 @@ export function CardDetail({
     }
     const onPointerDown = (e: PointerEvent) => {
       if (e.pointerType !== 'mouse' || e.button !== 0) return
-      start(e.clientX, e.clientY, e.target)
+      start(e.clientX, e.clientY, e.target, true)
       const onMove = (ev: PointerEvent) => move(ev.clientX, ev.clientY)
       const onUp = () => {
         window.removeEventListener('pointermove', onMove)
@@ -1135,9 +1262,10 @@ export function CardDetail({
         className="scroll-y no-scrollbar absolute inset-x-0 bottom-0"
         style={{ top: origin.viewTop }}
         onClick={(e) => {
-          // (Turned over, it stays in hand until Save or Cancel.)
-          if (editingRef.current) return
-          if (!cardRef.current?.contains(e.target as Node)) close()
+          if (cardRef.current?.contains(e.target as Node)) return
+          if (closing.current || flipping.current) return
+          if (editingRef.current) leave(() => putAway())
+          else close()
         }}
       >
         <div
@@ -1191,6 +1319,7 @@ export function CardDetail({
                   recipe={shown}
                   isNew={isNew && unsaved.current}
                   onCancel={cancel}
+                  changedRef={changed}
                   onSaved={() => {
                     unsaved.current = false
                     unedit()
@@ -1209,6 +1338,25 @@ export function CardDetail({
           </div>
         </div>
       </div>
+      {discarding && (
+        <ConfirmDialog
+          title={unsaved.current ? 'Discard this recipe?' : 'Discard changes?'}
+          message={
+            unsaved.current ? (
+              <>It hasn’t been saved.</>
+            ) : (
+              <>Your changes to “{shown.title}” haven’t been saved.</>
+            )
+          }
+          confirmLabel="Discard"
+          cancelLabel="Keep editing"
+          onConfirm={() => {
+            setDiscarding(null)
+            discarding()
+          }}
+          onCancel={() => setDiscarding(null)}
+        />
+      )}
     </div>,
     document.body,
   )

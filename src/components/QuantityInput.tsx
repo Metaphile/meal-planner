@@ -23,11 +23,13 @@ export function QuantityInput({
   value,
   onChange,
   placeholder = 'Qty',
+  readOnly,
   className = '',
 }: {
   value: number | undefined
   onChange: (quantity: number | undefined) => void
   placeholder?: string
+  readOnly?: boolean
   className?: string
 }) {
   const [draft, setDraft] = useState(() => fmtQty(value))
@@ -46,6 +48,7 @@ export function QuantityInput({
       }}
       inputMode="decimal"
       placeholder={placeholder}
+      readOnly={readOnly}
       aria-label="Quantity"
       autoComplete="off"
       className={className}

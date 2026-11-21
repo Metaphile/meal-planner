@@ -100,12 +100,14 @@ export function ConfirmDialog({
   title,
   message,
   confirmLabel,
+  cancelLabel = 'Cancel',
   onConfirm,
   onCancel,
 }: {
   title: string
   message: ReactNode
   confirmLabel: string
+  cancelLabel?: string
   onConfirm: () => void
   onCancel: () => void
 }) {
@@ -132,7 +134,7 @@ export function ConfirmDialog({
         </h2>
         <div className="mt-2 text-sm text-muted">{message}</div>
         <div className="mt-5 flex justify-end gap-2">
-          <GhostButton onClick={onCancel}>Cancel</GhostButton>
+          <GhostButton onClick={onCancel}>{cancelLabel}</GhostButton>
           <button
             type="button"
             onClick={onConfirm}
