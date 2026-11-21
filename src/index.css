@@ -211,6 +211,12 @@ body {
   .font-hand {
     font-family: 'Caveat', 'Bradley Hand', 'Noteworthy', cursive;
   }
+  /* (Fields written in by hand take the writing's size — over iOS's 16px
+     zoom-on-focus threshold.) */
+  .font-hand input,
+  .font-hand textarea {
+    font-size: inherit;
+  }
   .handwritten {
     font-family: 'Caveat', 'Bradley Hand', 'Noteworthy', cursive;
     font-size: 22px;

@@ -323,7 +323,7 @@ function WantCount({
 
 /** Units offered for an ingredient, in a fixed order (so they're always where
  *  you left them); any others your recipes use follow. */
-const COMMON_UNITS = [
+export const COMMON_UNITS = [
   'tsp',
   'tbsp',
   'cup',
@@ -349,7 +349,7 @@ const COMMON_UNITS = [
  * or above it in the lower half of the screen, and stays open while you
  * scroll; a tap anywhere else closes it (and does nothing else).
  */
-function UnitCell({
+export function UnitCell({
   value,
   onChange,
   units,
@@ -503,13 +503,13 @@ const withSpareLine = (rows: Row[]) => {
   return out
 }
 
-const MARK_BUTTON =
+export const MARK_BUTTON =
   // (The table's rule blue, at half its lightness.)
   'grid h-[30px] place-items-center text-[#457ca1] active:text-pen'
 
 /** × (cross a line out), drawn so it's centred on the line, and ↺ (bring
  *  it back). */
-function RowMark({ kind }: { kind: 'cross' | 'restore' }) {
+export function RowMark({ kind }: { kind: 'cross' | 'restore' }) {
   if (kind === 'restore')
     // (The character itself, in the system's font: its tip and tail sit
     // well apart, so it reads at a glance.)
