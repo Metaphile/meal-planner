@@ -238,6 +238,14 @@ function boundsOf(w: Wheel, items: Item[], faceFirst: boolean) {
   }
 }
 
+/** The box as it was left (on switching tabs), to come back to. */
+let leftAs: {
+  pos: number
+  searching: boolean
+  query: string
+  wantedOnly: boolean
+} | null = null
+
 export default function RecipesPage() {
   const recipes = useStore((s) => s.recipes)
   const { hasCapability } = useAuth()
@@ -246,11 +254,11 @@ export default function RecipesPage() {
 
   // Search narrows the rolodex to the cards that match (title, tag or
   // ingredient); the dividers stay, so it's still the same box.
-  const [searching, setSearching] = useState(false)
-  const [query, setQuery] = useState('')
+  const [searching, setSearching] = useState(leftAs?.searching ?? false)
+  const [query, setQuery] = useState(leftAs?.query ?? '')
   const q = query.trim().toLowerCase()
   // …and, ticked, to just the wanted recipes.
-  const [wantedOnly, setWantedOnly] = useState(false)
+  const [wantedOnly, setWantedOnly] = useState(leftAs?.wantedOnly ?? false)
   const wants = useStore((s) => s.wants)
   const matches = useMemo(() => {
     const wanted = new Set(wants.filter(isWanted).map((w) => w.recipeId))
@@ -370,6 +378,9 @@ export default function RecipesPage() {
   // The drum turns under our own iOS-style physics (no native scrolling): it
   // tells us when it moves, and we paint.
   const drumRef = useRef<DrumScroll | null>(null)
+  // The search as it is now (remembered with the drum on leaving).
+  const leftStateRef = useRef({ searching, query, wantedOnly })
+  leftStateRef.current = { searching, query, wantedOnly }
   const paintRef = useRef(paint)
   paintRef.current = paint
   useLayoutEffect(() => {
@@ -385,6 +396,8 @@ export default function RecipesPage() {
     })
     drumRef.current = drum
     return () => {
+      // Leaving (another tab): remember where the box was turned to.
+      leftAs = { ...leftStateRef.current, pos: drum.get() }
       drum.destroy()
       drumRef.current = null
     }
@@ -396,11 +409,21 @@ export default function RecipesPage() {
   // Start at the start (A near the top; a short box with its first recipe
   // facing you) — again for each search, and once the page is measured.
   const positionedFor = useRef<string | null>(null)
+  // (Back from another tab: turned where it was left, once it's measured.)
+  const returnTo = useRef(leftAs?.pos)
   useLayoutEffect(() => {
-    const key = `${q}|${wantedOnly}|${pageH > 0 && headerH > 0}`
+    const measured = pageH > 0 && headerH > 0
+    const key = `${q}|${wantedOnly}|${measured}`
     if (positionedFor.current !== key) {
       positionedFor.current = key
-      drumRef.current?.set(bounds.initial * SCALE)
+      if (returnTo.current !== undefined && measured) {
+        drumRef.current?.set(
+          Math.min(Math.max(0, returnTo.current), bounds.max * SCALE),
+        )
+        returnTo.current = undefined
+      } else if (returnTo.current === undefined) {
+        drumRef.current?.set(bounds.initial * SCALE)
+      }
     }
     lastPose.current = []
     lastZ.current = []
