@@ -21,8 +21,9 @@ import {
 } from '../store/selectors'
 import { useAuth } from '../auth/AuthProvider'
 import {
-  STARTER_TITLE,
+  UNTITLED_SECTION,
   allIngredients,
+  sectionLabel,
   sectionsOf,
   type Ingredient,
   type Recipe,
@@ -67,27 +68,19 @@ const PEEK_LINES = 16
 
 function CardBody({ recipe, peek }: { recipe: Recipe; peek: boolean }) {
   // Its sections, empty ones too (a heading with nothing under it yet) —
-  // but not the first while it's just the default "Ingredients" with nothing
-  // in it and others to show: that's no section anyone made. Headed only
-  // when there's more than one, or the first is called something else — else
-  // it's just the lines, as a card always was.
+  // but not an untitled first section with nothing in it while there are
+  // others: that's no section anyone made. Each headed as sectionLabel says:
+  // its title; else "Section", among others; else (the only one) none.
   const all = sectionsOf(recipe)
   const sections = all.filter(
-    (s, i) =>
-      i > 0 ||
-      s.ingredients.length > 0 ||
-      !!recipe.ingredientsTitle ||
-      all.length === 1,
+    (s, i) => s.ingredients.length > 0 || !!s.title || (i === 0 && all.length === 1),
   )
-  const headed =
-    sections.length > 1 ||
-    !!recipe.ingredientsTitle ||
-    sections[0] !== all[0] // (only another section showing: it's headed)
+  const heads = sections.map((s) => sectionLabel(s.title, sections.length))
   // (Peeking: only as many lines as can show, headings included.)
   let room = peek ? PEEK_LINES : Infinity
   return (
     <>
-      {allIngredients(recipe).length === 0 && !headed ? (
+      {allIngredients(recipe).length === 0 && !heads.some(Boolean) ? (
         <ul>
           <li className="text-[#8a8170]">No ingredients yet</li>
         </ul>
@@ -95,13 +88,13 @@ function CardBody({ recipe, peek }: { recipe: Recipe; peek: boolean }) {
         sections.map((s, si) => {
           if (room <= 0) return null
           const gap = si > 0 ? 1 : 0 // (a line left blank before it)
-          const head = headed ? 1 : 0
+          const head = heads[si] ? 1 : 0
           const lines = s.ingredients.slice(0, Math.max(0, room - gap - head))
           room -= gap + head + lines.length
           return (
             <section key={si} className={gap ? 'mt-[22px]' : ''}>
-              {headed && (
-                <div className="font-semibold text-[#8a8170]">{s.title}</div>
+              {heads[si] && (
+                <div className="font-semibold text-[#8a8170]">{heads[si]}</div>
               )}
               <ul>
                 {lines.map((ing, i) => (
@@ -938,10 +931,6 @@ function scrollNearEdges(
   return () => cancelAnimationFrame(raf)
 }
 
-/** What a section made by dragging a line onto "Add section…" is called,
- *  until it's renamed. */
-const NEW_SECTION = 'New Section'
-
 /** Six dots: a line's handle, to drag it up or down by. */
 function GripIcon() {
   return (
@@ -1033,7 +1022,8 @@ function dragRow(
     }
     target = best
     // (Headed for a new section: "Add section…" reads as it'll be named.)
-    if (addField) addField.placeholder = target === add ? NEW_SECTION : addHint
+    if (addField)
+      addField.placeholder = target === add ? UNTITLED_SECTION : addHint
     els.forEach((el, k) => {
       if (k === o) return
       const shift =
@@ -1135,8 +1125,9 @@ function IngredientTable({
   ) => {
     const gs = groups.map((x) => ({ ...x, rows: [...x.rows] }))
     const [row] = gs[from.g].rows.splice(from.i, 1)
-    // (Onto "Add section…": a new section, named for now.)
-    if (to.g >= gs.length) gs.push({ title: NEW_SECTION, rows: [] })
+    // (Onto "Add section…": a new section, untitled — "Section", as it
+    // shows among others.)
+    if (to.g >= gs.length) gs.push({ title: '', rows: [] })
     const at = to.g === from.g && to.i > from.i ? to.i - 1 : to.i
     gs[to.g].rows.splice(at, 0, row)
     set(gs)
@@ -1247,7 +1238,9 @@ function IngredientTable({
               {titleField(
                 group.title,
                 (t) => setTitle(g, t),
-                g === 0 ? STARTER_TITLE : 'Section',
+                // (Untitled: what it'll be called — or, the only one, that a
+                // title's optional.)
+                groups.length > 1 ? UNTITLED_SECTION : 'Title (optional)',
                 group.struck,
               )}
             </div>
@@ -1374,7 +1367,7 @@ const sameText = (a: RecipeText, b: RecipeText) => {
     JSON.stringify([
       r.title.trim(),
       [
-        { title: r.ingredientsTitle || STARTER_TITLE, ingredients: r.ingredients },
+        { title: r.ingredientsTitle ?? '', ingredients: r.ingredients },
         ...(r.sections ?? []),
       ].map((s) => [
         s.title.trim(),
@@ -1460,9 +1453,9 @@ const RecipeCardBack = forwardRef<
       .map(({ struck: _, ...i }) => ({ ...i, name: i.name.trim() }))
       .filter((i) => i.name.length > 0)
   // (A crossed-out section: none of its lines — and it goes, unless it's the
-  // first, which every recipe has: that keeps its default title. A section
-  // with no lines is kept, named: sections stand on their own, empty or not.
-  // Only one with neither name nor lines goes.)
+  // first, which every recipe has: that's left untitled. A section with no
+  // lines is kept, if it's titled: sections stand on their own, empty or
+  // not. Only one with neither title nor lines goes.)
   const linesOf = (g: Group) => (g.struck ? [] : lines(g.rows))
   const starterTitle = groups[0].struck ? '' : groups[0].title.trim()
   const sections = groups
@@ -1474,8 +1467,7 @@ const RecipeCardBack = forwardRef<
     ...recipe,
     title: title.trim(),
     ingredients: linesOf(groups[0]),
-    ingredientsTitle:
-      starterTitle && starterTitle !== STARTER_TITLE ? starterTitle : undefined,
+    ingredientsTitle: starterTitle || undefined,
     sections: sections.length ? sections : undefined,
     notes: notes.trim() || undefined,
     tags: tagsText
