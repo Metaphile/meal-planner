@@ -1,6 +1,7 @@
 import { Suspense, lazy, useEffect, useState } from 'react'
 import { Navigate, Route, Routes, useNavigate } from 'react-router-dom'
-import { PrimaryButton, TextInput } from './components/ui'
+import { GhostButton, PrimaryButton, TextInput } from './components/ui'
+import { inviteCodeOf } from './lib/install'
 import { TabBar } from './components/TabBar'
 import { useStore } from './store/store'
 import { useAuth } from './auth/AuthProvider'
@@ -97,23 +98,45 @@ export default function App() {
 function SignedOut() {
   const navigate = useNavigate()
   const [link, setLink] = useState('')
-  // (The code after the "#"; or the code alone, pasted.)
-  const code = (link.split('#').pop() ?? '').trim()
-  const signIn = () => {
-    if (code) navigate({ pathname: '/invite', hash: code })
+  const [error, setError] = useState<string | null>(null)
+  // (The code in it — a link, or the code alone, or a message with a link.)
+  const code = inviteCodeOf(link)
+  const signInWith = (c: string | null) => {
+    if (c) navigate({ pathname: '/invite', hash: c })
+  }
+  // One tap, from the clipboard (where Account → Add to Home Screen left
+  // it). (Only on HTTPS; iOS asks first, with its own Paste button.)
+  const canPaste = typeof navigator.clipboard?.readText === 'function'
+  const paste = async () => {
+    setError(null)
+    try {
+      const c = inviteCodeOf(await navigator.clipboard.readText())
+      if (c) signInWith(c)
+      else setError('There’s no sign-in link on the clipboard.')
+    } catch {
+      // (Not allowed: paste it in the field instead.)
+    }
   }
   return (
     <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
       <h1 className="paper-serif text-2xl font-semibold">Meals</h1>
       <p className="max-w-xs text-sm text-muted">
         This is a private app. To sign in, paste the invite link someone in
-        your group shared with you.
+        your group shared with you — or your own sign-in link.
       </p>
+      {canPaste && (
+        <div className="flex w-full max-w-xs flex-col gap-1.5">
+          <PrimaryButton onClick={() => void paste()}>
+            Paste sign-in link
+          </PrimaryButton>
+          {error && <p className="text-sm text-danger">{error}</p>}
+        </div>
+      )}
       <form
         className="flex w-full max-w-xs flex-col gap-2"
         onSubmit={(e) => {
           e.preventDefault()
-          signIn()
+          signInWith(code)
         }}
       >
         <TextInput
@@ -126,9 +149,13 @@ function SignedOut() {
           spellCheck={false}
           enterKeyHint="go"
         />
-        <PrimaryButton type="submit" disabled={!code}>
-          Sign in
-        </PrimaryButton>
+        {canPaste ? (
+          <GhostButton onClick={() => signInWith(code)}>Sign in</GhostButton>
+        ) : (
+          <PrimaryButton type="submit" disabled={!code}>
+            Sign in
+          </PrimaryButton>
+        )}
       </form>
     </div>
   )

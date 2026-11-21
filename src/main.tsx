@@ -5,6 +5,10 @@ import { registerSW } from 'virtual:pwa-register'
 import App from './App'
 import { AuthProvider } from './auth/AuthProvider'
 import './index.css'
+import { catchInstallPrompt } from './lib/install'
+
+// (Before the browser offers to install: see Account → Home Screen.)
+catchInstallPrompt()
 
 // Auto-update the service worker in the background; the app stays usable.
 registerSW({ immediate: true })

@@ -18,6 +18,7 @@ import {
   PrimaryButton,
   TextInput,
 } from '../components/ui'
+import { isIOS, isInstalled, useInstallPrompt } from '../lib/install'
 
 const ACCESS_LABEL: Record<Access, string> = {
   writer: 'Writer',
@@ -91,6 +92,8 @@ export default function AccountPage() {
             {canWrite && <InviteSomeone onAdded={refresh} />}
           </div>
         </section>
+
+        <HomeScreen userId={user.id} />
 
         <button
           onClick={signOut}
@@ -523,4 +526,104 @@ async function copyText(text: string): Promise<boolean> {
   } finally {
     field.remove()
   }
+}
+
+/**
+ * Meals on your Home Screen (not shown once it's there). Where the browser
+ * can install it, a button that does. On an iPhone, where only Share → Add
+ * to Home Screen can: the steps — and, as the app there keeps a sign-in of
+ * its own, a sign-in link copied for it, to paste on opening it.
+ */
+function HomeScreen({ userId }: { userId: string }) {
+  const installPrompt = useInstallPrompt()
+  const [open, setOpen] = useState(false)
+  const [copied, setCopied] = useState(false)
+  const [link, setLink] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  if (isInstalled() || (!installPrompt && !isIOS())) return null
+
+  const start = async () => {
+    if (installPrompt) return void installPrompt.prompt()
+    setOpen(true)
+    setError(null)
+    // A sign-in link for you, copied as it's made. (The clipboard is given
+    // the link to come, while the tap still counts: Safari won't take a
+    // copy made after waiting on the server.)
+    const made = createInvite(userId)
+    try {
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          'text/plain': made.then((l) => new Blob([l], { type: 'text/plain' })),
+        }),
+      ])
+      setCopied(true)
+    } catch {
+      // (No clipboard here — or no link: show it, to copy by hand.)
+      try {
+        setLink(await made)
+      } catch (e) {
+        setError(reasonOf(e, 'Couldn’t make a sign-in link.'))
+      }
+    }
+  }
+
+  return (
+    <section className="paper-card space-y-2 px-4 py-3">
+      <h2 className="paper-serif text-[17px] font-semibold">
+        Meals on your Home Screen
+      </h2>
+      <p className="text-sm text-muted">
+        Opens full screen, like an app.
+      </p>
+      {!open ? (
+        <PrimaryButton onClick={() => void start()}>
+          {installPrompt ? 'Install Meals' : 'Add to Home Screen'}
+        </PrimaryButton>
+      ) : (
+        <>
+          <ol className="list-decimal space-y-1.5 pl-5 text-[15px]">
+            <li>
+              Tap Share{' '}
+              <ShareIcon className="inline-block h-[18px] w-[18px] -translate-y-0.5 align-middle text-brand-ink" />{' '}
+              in Safari.
+            </li>
+            <li>
+              Choose <span className="font-semibold">Add to Home Screen</span>.
+            </li>
+            <li>
+              Open Meals from your Home Screen and tap{' '}
+              <span className="font-semibold">Paste sign-in link</span>.
+            </li>
+          </ol>
+          {copied && (
+            <p className="text-sm text-muted">
+              Your sign-in link is copied, ready to paste. (One-time, good for{' '}
+              {INVITE_TTL_DAYS} days.)
+            </p>
+          )}
+          {link && <InviteLink name="" link={link} />}
+          {error && <p className="text-sm text-danger">{error}</p>}
+        </>
+      )}
+    </section>
+  )
+}
+
+/** iOS's Share icon: a box, an arrow up out of it. */
+function ShareIcon({ className = '' }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-label="Share"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.8}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M8 9H6.5A1.5 1.5 0 0 0 5 10.5v9A1.5 1.5 0 0 0 6.5 21h11a1.5 1.5 0 0 0 1.5-1.5v-9A1.5 1.5 0 0 0 17.5 9H16" />
+      <path d="M12 14V3M8.5 6.5 12 3l3.5 3.5" />
+    </svg>
+  )
 }
