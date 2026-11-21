@@ -82,7 +82,7 @@ export default function App() {
 function SignedOut() {
   return (
     <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
-      <h1 className="paper-serif text-2xl font-semibold">Meal Planner</h1>
+      <h1 className="paper-serif text-2xl font-semibold">Meals</h1>
       <p className="max-w-xs text-sm text-muted">
         This is a private app. Open the invite link someone in your group
         shared with you to sign in on this device.
@@ -94,7 +94,7 @@ function SignedOut() {
 function Splash() {
   return (
     <div className="flex h-full items-center justify-center bg-bg text-muted">
-      <div className="animate-pulse text-sm">Meal Planner</div>
+      <div className="animate-pulse text-sm">Meals</div>
     </div>
   )
 }

@@ -420,8 +420,8 @@ function InviteLink({ name, link }: { name: string; link: string }) {
   const share = async () => {
     try {
       await navigator.share({
-        title: 'Meal Planner',
-        text: `${name ? `${name}, here's` : 'Here’s'} your invite to our Meal Planner:`,
+        title: 'Meals',
+        text: `${name ? `${name}, here's` : 'Here’s'} your invite to Meals, our recipe box:`,
         url: link,
       })
     } catch {

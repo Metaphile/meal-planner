@@ -9,11 +9,11 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg'],
+      includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
-        name: 'Meal Planner',
+        name: 'Meals',
         short_name: 'Meals',
-        description: 'Plan family meals and see the ingredients they need.',
+        description: 'Our recipe box, and the ingredients for what we want to make.',
         theme_color: '#dfe8e3',
         background_color: '#dfe8e3',
         display: 'standalone',

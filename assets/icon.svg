@@ -1,0 +1,19 @@
+<!-- The app icon, full-bleed (iOS and Android round the corners themselves;
+     a transparent corner shows black on iOS). The PNGs in public/ are made
+     from it:
+       rsvg-convert -w 180 assets/icon.svg -o public/apple-touch-icon.png
+       rsvg-convert -w 192 assets/icon.svg -o public/pwa-192.png
+       rsvg-convert -w 512 assets/icon.svg -o public/pwa-512.png
+     Lavender (color-kraft) with its ink (color-kraft-ink) — see index.css. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#c3bbd5" />
+  <g fill="none" stroke="#443d54" stroke-width="26" stroke-linecap="round">
+    <!-- fork -->
+    <path d="M150 120 v110 a34 34 0 0 0 68 0 v-110" />
+    <path d="M184 120 v130" />
+    <path d="M184 250 v140" />
+    <!-- spoon -->
+    <ellipse cx="340" cy="170" rx="40" ry="58" />
+    <path d="M340 228 v162" />
+  </g>
+</svg>
