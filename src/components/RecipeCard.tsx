@@ -1143,7 +1143,7 @@ function IngredientTable({
     // A pen stroke through a line (from its writing to its mark).
     <span
       aria-hidden
-      className="pointer-events-none absolute left-[0.875rem] right-8 top-[calc(50%-0.75px)] h-[1.5px] rounded-full bg-pen"
+      className="pointer-events-none absolute left-[0.875rem] right-8 top-[calc(50%-0.5px)] h-px rounded-full bg-pen"
       style={{ transform: 'rotate(-0.5deg)' }}
     />
   )

@@ -157,7 +157,7 @@ function AddOnLine({
         // A pen stroke through the line.
         <span
           aria-hidden
-          className="pointer-events-none absolute -left-0.5 right-8 top-[calc(50%-0.75px)] h-[1.5px] rounded-full bg-ink"
+          className="pointer-events-none absolute -left-0.5 right-8 top-[calc(50%-0.5px)] h-px rounded-full bg-ink"
           style={{ transform: 'rotate(-0.5deg)' }}
         />
       )}
