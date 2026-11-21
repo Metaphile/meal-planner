@@ -52,7 +52,7 @@ const SIDE = 16 // horizontal inset
  *  width, is larger than the cards in the box). Its geometry is worked out
  *  in its own unscaled units; the scroll position is in screen pixels, and
  *  converted, so a drag still moves the cards exactly with the finger. */
-const SCALE = 0.85
+const SCALE = 0.9775
 const TAB_W = 44 // divider tab width
 // The shadow of the item in front: it starts this far above that item's
 // edge (the paper above it unshaded) and deepens to its darkest as far
