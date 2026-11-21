@@ -12,7 +12,11 @@ import {
 } from 'react'
 import { createPortal, flushSync } from 'react-dom'
 import { useStore } from '../store/store'
-import { useIsFavorite, useWantCount } from '../store/selectors'
+import {
+  useFavoritedBy,
+  useIsFavorite,
+  useWantCount,
+} from '../store/selectors'
 import { useAuth } from '../auth/AuthProvider'
 import type { Ingredient, Recipe } from '../data/types'
 import { QuantityInput } from './QuantityInput'
@@ -77,7 +81,24 @@ function CardBody({ recipe, peek }: { recipe: Recipe; peek: boolean }) {
           <p className="whitespace-pre-wrap pb-[22px]">{recipe.notes}</p>
         </>
       )}
+      {!peek && <FavoritedBy recipeId={recipe.id} gap={!recipe.notes} />}
     </>
+  )
+}
+
+/** At the foot of a card: who's favorited it (a star, and their names). A
+ *  line left blank above it — after the notes, they leave one. */
+function FavoritedBy({ recipeId, gap }: { recipeId: string; gap: boolean }) {
+  const names = useFavoritedBy(recipeId)
+  if (!names) return null
+  return (
+    <p
+      className={`flex items-center gap-1.5 text-[#8a8170] ${gap ? 'mt-[22px]' : ''}`}
+    >
+      <span className="sr-only">Favorite of</span>
+      <StarIcon on size={17} />
+      <span className="min-w-0">{names}</span>
+    </p>
   )
 }
 

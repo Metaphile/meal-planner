@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import type {
   AddOn,
   Favorite,
+  Person,
   Have,
   Ingredient,
   MealComponent,
@@ -31,8 +32,10 @@ interface AppState {
   addons: AddOn[]
   /** Ingredients on hand (ticked on the Ingredients tab), by line key. */
   haves: Have[]
-  /** The signed-in person's favorite recipes. */
+  /** Everyone's favorite recipes. */
   favorites: Favorite[]
+  /** The group, by name. */
+  people: Person[]
   hydrated: boolean
 
   init: () => Promise<void>
@@ -97,6 +100,7 @@ export const useStore = create<AppState>((set, get) => ({
   addons: [],
   haves: [],
   favorites: [],
+  people: [],
   hydrated: false,
 
   init: async () => {
@@ -110,6 +114,7 @@ export const useStore = create<AppState>((set, get) => ({
       addons: [...cached.addons].sort(byPos),
       haves: cached.haves,
       favorites: cached.favorites,
+      people: cached.people,
       hydrated: true,
     })
     // 2. Reconcile with PocketBase + subscribe to realtime updates. Keeps the
@@ -123,6 +128,7 @@ export const useStore = create<AppState>((set, get) => ({
           addons: [...data.addons].sort(byPos),
           haves: data.haves,
           favorites: data.favorites,
+          people: data.people,
         })
       })
     } catch {

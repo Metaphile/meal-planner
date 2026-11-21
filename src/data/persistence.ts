@@ -21,15 +21,17 @@ import { pb } from '../auth/pb'
 // ---- local cache (IndexedDB) ----------------------------------------------
 
 export async function hydrate(): Promise<Dataset> {
-  const [recipes, plan, wants, addons, haves, favorites] = await Promise.all([
-    db.recipes.toArray(),
-    db.plan.toArray(),
-    db.wants.toArray(),
-    db.addons.toArray(),
-    db.haves.toArray(),
-    db.favorites.toArray(),
-  ])
-  return { recipes, plan, wants, addons, haves, favorites }
+  const [recipes, plan, wants, addons, haves, favorites, people] =
+    await Promise.all([
+      db.recipes.toArray(),
+      db.plan.toArray(),
+      db.wants.toArray(),
+      db.addons.toArray(),
+      db.haves.toArray(),
+      db.favorites.toArray(),
+      db.people.toArray(),
+    ])
+  return { recipes, plan, wants, addons, haves, favorites, people }
 }
 
 async function cacheReplaceAll(data: Dataset): Promise<void> {
@@ -40,6 +42,7 @@ async function cacheReplaceAll(data: Dataset): Promise<void> {
     db.addons,
     db.haves,
     db.favorites,
+    db.people,
   ]
   await db.transaction('rw', tables, async () => {
     await Promise.all(tables.map((t) => t.clear()))
@@ -50,6 +53,7 @@ async function cacheReplaceAll(data: Dataset): Promise<void> {
       db.addons.bulkPut(data.addons),
       db.haves.bulkPut(data.haves),
       db.favorites.bulkPut(data.favorites),
+      db.people.bulkPut(data.people),
     ])
   })
 }
@@ -61,15 +65,17 @@ const idMap = new Map<string, string>()
 const mapKey = (c: TableName, k: string) => `${c}:${k}`
 
 async function remotePull(): Promise<Dataset> {
-  const [recs, plans, wantRecs, addonRecs, haveRecs, favRecs] =
+  const [recs, plans, wantRecs, addonRecs, haveRecs, favRecs, userRecs] =
     await Promise.all([
     pb.collection('recipes').getFullList({ requestKey: null }),
     pb.collection('plan').getFullList({ requestKey: null }),
     pb.collection('wants').getFullList({ requestKey: null }),
     pb.collection('addons').getFullList({ requestKey: null }),
     pb.collection('haves').getFullList({ requestKey: null }),
-    // (Only the signed-in person's: the rules let nobody see others'.)
     pb.collection('favorites').getFullList({ requestKey: null }),
+    pb
+      .collection('users')
+      .getFullList({ fields: 'id,name', requestKey: null }),
   ])
   idMap.clear()
   const recipes = recs.map((r) => {
@@ -96,7 +102,11 @@ async function remotePull(): Promise<Dataset> {
     idMap.set(mapKey('favorites', f.key), f.id)
     return f.data as Favorite
   })
-  return { recipes, plan, wants, addons, haves, favorites }
+  const people = userRecs.map((u) => ({
+    id: u.id,
+    name: typeof u.name === 'string' ? u.name : '',
+  }))
+  return { recipes, plan, wants, addons, haves, favorites, people }
 }
 
 /** Apply one op to PocketBase. Throws on failure (caller decides to retry). */
@@ -191,6 +201,7 @@ async function withPending(data: Dataset): Promise<Dataset> {
     addons: [...tables.addons.values()],
     haves: [...tables.haves.values()],
     favorites: [...tables.favorites.values()],
+    people: data.people,
   }
 }
 
@@ -267,6 +278,8 @@ export async function startSync(onData: (data: Dataset) => void): Promise<void> 
   unsubscribers.push(await pb.collection('addons').subscribe('*', handler))
   unsubscribers.push(await pb.collection('haves').subscribe('*', handler))
   unsubscribers.push(await pb.collection('favorites').subscribe('*', handler))
+  // (Someone renamed, joined or left.)
+  unsubscribers.push(await pb.collection('users').subscribe('*', handler))
 
   window.addEventListener('online', () => void flushOutbox())
 }

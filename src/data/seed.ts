@@ -247,6 +247,7 @@ export const seedData: Dataset = {
   addons: [],
   haves: [],
   favorites: [],
+  people: [],
   // The plan is a flat list of anonymous meals; each meal groups components
   // (recipe refs and/or simple items). A single recipe can be its own meal.
   plan: [

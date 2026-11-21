@@ -1,7 +1,12 @@
 import { useStore } from './store'
 import { aggregateIngredients, aggregateWanted } from '../data/aggregate'
 import type { AggregatedIngredient } from '../data/aggregate'
-import { favoriteKey, isWanted, type Recipe } from '../data/types'
+import {
+  favoriteKey,
+  favoriteUser,
+  isWanted,
+  type Recipe,
+} from '../data/types'
 
 /**
  * Memoized ingredient aggregate. The store replaces the plan/recipes arrays
@@ -55,6 +60,19 @@ export function useIsFavorite(userId: string | undefined, recipeId: string) {
   return useStore(
     (s) =>
       !!userId && s.favorites.some((f) => f.id === favoriteKey(userId, recipeId)),
+  )
+}
+
+/** Who's favorited a recipe: their names, in order, joined by commas ("" if
+ *  nobody). (One string, so it re-renders only when the names change.) */
+export function useFavoritedBy(recipeId: string): string {
+  return useStore((s) =>
+    s.favorites
+      .filter((f) => f.recipeId === recipeId)
+      .map((f) => s.people.find((p) => p.id === favoriteUser(f))?.name)
+      .filter((n): n is string => !!n)
+      .sort((a, b) => a.localeCompare(b))
+      .join(', '),
   )
 }
 

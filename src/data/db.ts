@@ -1,5 +1,13 @@
 import Dexie, { type EntityTable } from 'dexie'
-import type { AddOn, Favorite, Have, PlanMeal, Recipe, Want } from './types'
+import type {
+  AddOn,
+  Favorite,
+  Have,
+  Person,
+  PlanMeal,
+  Recipe,
+  Want,
+} from './types'
 
 export type TableName =
   | 'recipes'
@@ -30,6 +38,7 @@ export const db = new Dexie('meal-planner') as Dexie & {
   addons: EntityTable<AddOn, 'id'>
   haves: EntityTable<Have, 'id'>
   favorites: EntityTable<Favorite, 'id'>
+  people: EntityTable<Person, 'id'>
   outbox: EntityTable<OutboxRow, 'id'>
 }
 
@@ -103,5 +112,17 @@ db.version(7).stores({
   addons: 'id, position',
   haves: 'id',
   favorites: 'id',
+  outbox: '++id',
+})
+
+// v8: the group's names (for who's favorited a card).
+db.version(8).stores({
+  recipes: 'id, title',
+  plan: 'id, position',
+  wants: 'id',
+  addons: 'id, position',
+  haves: 'id',
+  favorites: 'id',
+  people: 'id',
   outbox: '++id',
 })

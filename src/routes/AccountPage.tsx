@@ -23,6 +23,7 @@ const ACCESS_LABEL: Record<Access, string> = {
   writer: 'Writer',
   reader: 'Reader',
 }
+/** (Shown when inviting someone, under the access picked.) */
 const ACCESS_HINT: Record<Access, string> = {
   writer:
     'Writes recipes, picks what’s wanted, ticks off ingredients and add-ons, and looks after the group.',
@@ -31,9 +32,9 @@ const ACCESS_HINT: Record<Access, string> = {
 }
 
 /**
- * You (your name, which you can change, and your access, which you can't),
- * and the group you're in: who's in it, and — for writers — inviting
- * people, and changing or removing others.
+ * The group you're in: who's in it; your own name, to change (your access
+ * you can't); and — for writers — inviting people, and changing or removing
+ * others.
  */
 export default function AccountPage() {
   const { user, canWrite, signOut } = useAuth()
@@ -60,13 +61,6 @@ export default function AccountPage() {
     <div className="flex h-full flex-col">
       <PageHeader title="Account" />
       <div className="scroll-y flex-1 space-y-6 px-4 pt-3 pb-8">
-        <YouCard
-          id={user.id}
-          name={user.name}
-          access={user.role}
-          onRenamed={refresh}
-        />
-
         <section>
           <GroupTab />
           <div className="kraft-pocket space-y-2 rounded-tl-none p-2">
@@ -76,15 +70,18 @@ export default function AccountPage() {
               </p>
             )}
             <div className="paper-card divide-y divide-line-blue px-4 py-1">
-              {members.map((m) => (
-                <MemberRow
-                  key={m.id}
-                  member={m}
-                  isYou={m.id === user.id}
-                  canManage={canWrite && m.id !== user.id}
-                  onChanged={refresh}
-                />
-              ))}
+              {members.map((m) =>
+                m.id === user.id ? (
+                  <YouRow key={m.id} member={m} onRenamed={refresh} />
+                ) : (
+                  <MemberRow
+                    key={m.id}
+                    member={m}
+                    canManage={canWrite}
+                    onChanged={refresh}
+                  />
+                ),
+              )}
             </div>
             {canWrite && <InviteSomeone onAdded={refresh} />}
           </div>
@@ -112,31 +109,31 @@ function GroupTab() {
   )
 }
 
-/** You, on an index card: your name (change it here) and your access. */
-function YouCard({
-  id,
-  name,
-  access,
+/** Your own row: tapped open to change your name. (Your access is shown,
+ *  not changed: nobody changes their own.) */
+function YouRow({
+  member,
   onRenamed,
 }: {
-  id: string
-  name: string
-  access: Access
+  member: Member
   onRenamed: () => void
 }) {
-  const [editing, setEditing] = useState(false)
-  const [draft, setDraft] = useState(name)
+  const [open, setOpen] = useState(false)
+  const [draft, setDraft] = useState(member.name)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const close = () => {
+    setOpen(false)
+    setError(null)
+  }
   const save = async () => {
     const next = draft.trim()
-    if (!next || next === name) return setEditing(false)
+    if (!next || next === member.name) return close()
     setBusy(true)
     try {
-      await rename(id, next)
-      setEditing(false)
-      setError(null)
+      await rename(member.id, next)
+      close()
       onRenamed()
     } catch (e) {
       setError(reasonOf(e, 'Couldn’t change your name.'))
@@ -146,45 +143,43 @@ function YouCard({
   }
 
   return (
-    <div className="paper-card relative px-5 pt-3.5 pb-4">
-      <div className="paper-frame" />
-      {editing ? (
-        <div className="relative flex items-center gap-2 pb-1">
+    <div>
+      <button
+        type="button"
+        onClick={() => {
+          if (open) return close()
+          setDraft(member.name)
+          setOpen(true)
+        }}
+        aria-expanded={open}
+        className="flex w-full items-baseline justify-between gap-3 py-2.5 text-left"
+      >
+        <span className="paper-serif text-[17px]">
+          {member.name || 'You'}
+          <span className="text-muted"> (you)</span>
+        </span>
+        <span className="text-sm text-muted">{ACCESS_LABEL[member.role]}</span>
+      </button>
+      {open && (
+        <div className="space-y-2 pb-3">
           <TextInput
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && void save()}
             aria-label="Your name"
             autoFocus
+            autoCapitalize="words"
             enterKeyHint="done"
           />
-          <PrimaryButton onClick={() => void save()} disabled={busy}>
-            Save
-          </PrimaryButton>
-        </div>
-      ) : (
-        <div className="paper-rule relative flex items-baseline justify-between gap-3 pb-1.5">
-          <span className="font-hand text-[30px] font-semibold leading-8 text-black">
-            {name || 'You'}
-          </span>
-          <button
-            onClick={() => {
-              setDraft(name)
-              setEditing(true)
-            }}
-            className="shrink-0 text-sm font-medium text-brand-ink active:opacity-60"
-          >
-            Change name
-          </button>
+          {error && <p className="text-sm text-danger">{error}</p>}
+          <div className="flex justify-end gap-2">
+            <GhostButton onClick={close}>Cancel</GhostButton>
+            <PrimaryButton onClick={() => void save()} disabled={busy}>
+              Save
+            </PrimaryButton>
+          </div>
         </div>
       )}
-      {error && <p className="relative pt-1 text-sm text-danger">{error}</p>}
-      <div className="relative pt-2.5">
-        <div className="paper-serif text-[17px] font-semibold">
-          {ACCESS_LABEL[access]}
-        </div>
-        <p className="text-sm text-muted">{ACCESS_HINT[access]}</p>
-      </div>
     </div>
   )
 }
@@ -224,16 +219,14 @@ function AccessPicker({
   )
 }
 
-/** A member of the group; for writers (not on their own row), tapped open
- *  to change their access, send a new invite link, or remove them. */
+/** Someone else in the group; for writers, tapped open to change their
+ *  access, send a new invite link, or remove them. */
 function MemberRow({
   member,
-  isYou,
   canManage,
   onChanged,
 }: {
   member: Member
-  isYou: boolean
   canManage: boolean
   onChanged: () => void
 }) {
@@ -259,7 +252,6 @@ function MemberRow({
     <>
       <span className="paper-serif text-[17px]">
         {member.name || 'Someone'}
-        {isYou && <span className="text-muted"> (you)</span>}
       </span>
       <span className="text-sm text-muted">{ACCESS_LABEL[member.role]}</span>
     </>
