@@ -316,7 +316,7 @@ function FavoriteStar({ recipeId }: { recipeId: string }) {
               aria-hidden
               className="pointer-events-none absolute inset-0 block"
               style={{
-                transform: `translate(${s.x}px, ${s.y}px) rotate(${s.turn}deg) scale(${s.scale})`,
+                transform: `translate(${s.x}px, ${s.y}px) scale(${s.scale})`,
                 opacity: s.opacity,
               }}
             >
@@ -334,15 +334,14 @@ function FavoriteStar({ recipeId }: { recipeId: string }) {
 
 /** Where others' stars sit under yours, by depth (first: just under it):
  *  a spiral — each deeper one further round (anticlockwise: up, then left,
- *  away from the title) and further out, turned a little more,
- *  smaller and fainter. Fixed — nothing per recipe or person. */
+ *  away from the title) and further out, smaller and fainter. (Upright, as
+ *  stars are.) Fixed — nothing per recipe or person. */
 const STACKED = [1, 2].map((depth) => {
   const angle = ((-20 - 85 * depth) * Math.PI) / 180 // (screen: y down)
   const out = [5, 7.5][depth - 1] // px (the last clear of the card's frame)
   return {
     x: out * Math.cos(angle),
     y: out * Math.sin(angle),
-    turn: -24 * depth,
     scale: 1 - 0.06 * depth,
     opacity: [0.55, 0.32][depth - 1],
   }
