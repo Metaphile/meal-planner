@@ -116,8 +116,8 @@ function IngredientLine({
               ? formatAmount(ing.quantity, ing.unit)
               : // (Nothing calls for it: no quantity needed, in its unit.)
                 ing.unit
-                ? `– ${ing.unit}`
-                : '–'}
+                ? `— ${ing.unit}`
+                : '—'}
           </span>
         </div>
         {(ing.sources.length > 0 || !needed) && (
