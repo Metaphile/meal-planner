@@ -136,7 +136,6 @@ export const RecipeCard = forwardRef<HTMLDivElement, CardProps>(
                 between the frame and the rule.) */}
             <div className="paper-rule flex items-center gap-2 pb-1.5">
               <FavoriteStar recipeId={recipe.id} />
-              <CountBalance recipeId={recipe.id} />
               <div
                 className={`font-hand min-w-0 flex-1 text-center font-semibold text-black ${
                   large ? 'text-[29px] leading-[26px]' : 'text-[28px] leading-[25px]'
@@ -231,36 +230,52 @@ function TickerTitle({ text }: { text: string }) {
   // is from the start (px; + to the right of it).
   const stillAt = useRef<number | null>(null)
   const [lead, setLead] = useState(0)
-  useLayoutEffect(() => {
-    // (Against the title's own column: the box reaches out past it.)
+  // A still title is centred on its row, not its column: the column can be
+  // off-centre (a Want count beside the box narrows it on the right), so a
+  // still title is moved by `shift` px. It must fit centred so; a running
+  // title has the whole column.
+  const [shift, setShift] = useState(0)
+  const runsRef = useRef(runs)
+  const shiftRef = useRef(shift)
+  const measure = () => {
     const column = boxRef.current!.parentElement!
-    const measure = () => {
-      const t = textRef.current!
-      const fits = t.offsetWidth <= column.clientWidth + 1
-      // (Still, and staying still: where it's about to be drawn.)
-      if (fits && !runsRef.current) stillAt.current = xOf(t)
-      return !fits
-    }
-    setRuns(measure())
+    const row = column.parentElement!
+    const off =
+      column.offsetLeft +
+      column.offsetWidth / 2 -
+      (row.offsetLeft + row.offsetWidth / 2)
+    const fits =
+      textRef.current!.offsetWidth <= column.clientWidth - 2 * Math.abs(off) + 1
+    return { runs: !fits, shift: fits ? -off : 0 }
+  }
+  useLayoutEffect(() => {
+    const m = measure()
+    setRuns(m.runs)
+    setShift(m.shift)
     // (Resized: settled at once, before it's drawn — else a frame is drawn
     // of the title overflowing, still.)
     const ro = new ResizeObserver(() => {
-      const r = measure()
-      if (r !== runsRef.current) flushSync(() => setRuns(r))
+      const m = measure()
+      if (m.runs !== runsRef.current || m.shift !== shiftRef.current)
+        flushSync(() => {
+          setRuns(m.runs)
+          setShift(m.shift)
+        })
     })
-    ro.observe(column)
+    ro.observe(boxRef.current!.parentElement!)
     return () => ro.disconnect()
   }, [text])
-  const runsRef = useRef(runs)
+  // Still, where it's drawn. (Unless it's about to run: on its first
+  // measure, a title too long is never drawn still.)
   useLayoutEffect(() => {
     runsRef.current = runs
+    shiftRef.current = shift
+    if (!runs && !measure().runs) stillAt.current = xOf(textRef.current!)
+  })
+  useLayoutEffect(() => {
     const t = textRef.current!
     if (!runs) {
       setLead(0)
-      // (Still where it's drawn: unless it's about to run, on its first
-      // measure, never drawn still.)
-      if (t.offsetWidth <= boxRef.current!.parentElement!.clientWidth + 1)
-        stillAt.current = xOf(t)
       return
     }
     const track = trackRef.current!
@@ -290,9 +305,11 @@ function TickerTitle({ text }: { text: string }) {
     >
       <span
         ref={trackRef}
-        className={runs ? 'ticker' : 'whitespace-nowrap'}
+        className={runs ? 'ticker' : 'relative whitespace-nowrap'}
         style={
-          runs && loop
+          !runs
+            ? { left: shift }
+            : loop
             ? {
                 animationDuration: `${loop / TICKER_SPEED}s`,
                 animationDelay: `${lead / TICKER_SPEED}s`,
@@ -492,25 +509,6 @@ function WantBox({
         )}
       </span>
     </button>
-  )
-}
-
-/**
- * The Want box's ×n, unseen, on the star's side: so when a count appears
- * beside the box, the title's column narrows on both sides alike, and a
- * centred title stays where it was. (As wide as the ×n and the gap after it,
- * less the row's own gap, which comes with it.)
- */
-function CountBalance({ recipeId }: { recipeId: string }) {
-  const count = useWantCount(recipeId)
-  if (count <= 1) return null
-  return (
-    <span
-      aria-hidden
-      className="font-hand invisible -ml-0.5 shrink-0 text-[21px] font-semibold leading-[18px]"
-    >
-      ×{count}
-    </span>
   )
 }
 
