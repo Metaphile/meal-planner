@@ -134,7 +134,7 @@ export const RecipeCard = forwardRef<HTMLDivElement, CardProps>(
           <div className="px-5 pt-3.5">
             <div className="paper-rule flex items-start gap-2 pb-1.5">
               {/* (Level with the title's first line.) */}
-              <FavoriteStar recipeId={recipe.id} className="pt-[8px]" />
+              <FavoriteStar recipeId={recipe.id} className="pt-[3px]" />
               <div
                 className={`font-hand min-w-0 flex-1 text-center font-semibold text-black ${
                   large ? 'text-[29px] leading-[26px]' : 'text-[28px] leading-[25px]'
@@ -321,7 +321,7 @@ function FavoriteStar({
       className={`-my-2 -ml-2 flex shrink-0 items-start p-2 pr-0 ${className}`}
     >
       <span ref={starRef} className="block">
-        <StarIcon on={on} size={24} />
+        <StarIcon on={on} size={28} />
       </span>
     </button>
   )
@@ -950,7 +950,7 @@ const RecipeCardBack = forwardRef<
           {/* The favorite star, as on the front — kept at once. (Not on a
               new card until it's saved: there's no recipe yet.) */}
           {!isNew && (
-            <FavoriteStar recipeId={recipe.id} className="pt-[14px]" />
+            <FavoriteStar recipeId={recipe.id} className="pt-[12px]" />
           )}
           <input
             value={title}
@@ -979,7 +979,7 @@ const RecipeCardBack = forwardRef<
             className="min-w-0 flex-1 text-ellipsis bg-transparent text-center text-[30px] font-semibold leading-[30px] focus:outline-none"
           />
           {/* (Balancing the star, so the title sits centred.) */}
-          {!isNew && <span aria-hidden className="w-6 shrink-0" />}
+          {!isNew && <span aria-hidden className="w-7 shrink-0" />}
         </div>
         <div className="mx-5 mt-3.5 mb-4 flex flex-col gap-4">
           <IngredientTable
