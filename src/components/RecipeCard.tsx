@@ -753,12 +753,13 @@ const pose = (dy: number) => `translate(0px, ${dy}px)`
  *  - 'arc': it slides up out of its slot and hands over, mid-flight, to the
  *    card in hand, on one continuous arc.
  *  - 'lift': it lifts straight up out of its slot and off the screen, and
- *    then the card in hand fades in where it rests (putting it back, the
+ *    after a pause the card in hand fades in where it rests (putting it back, the
  *    card in hand fades out as the other drops back into its slot). */
 const TAKE_OUT: 'arc' | 'lift' = 'lift'
-const LIFT_MS = 200 // the card lifting out of the box
+const LIFT_MS = 400 // the card lifting out of the box
 const DROP_MS = 300 // …and dropping back in
-const FADE_IN_MS = 325 // the card in hand fading in
+const FADE_IN_DELAY_MS = 500 // the card in hand starts fading in…
+const FADE_IN_MS = 325 // …over this
 const FADE_MS = 225 // …and fading out
 /** Let go of while moving, a card coasts on, slowing as it goes. */
 const COAST_TAU = 500 // ms; the same slowing as scrolling (0.998 per ms)
@@ -780,7 +781,7 @@ function fadingAway(fromY: number, v: number, opacity: number): Keyframe[] {
   return frames
 }
 
-const LIFT_UP = 'cubic-bezier(0.45, 0, 0.85, 0.5)' // gathering speed
+const LIFT_UP = 'cubic-bezier(0.32, 0, 0.67, 0)' // slow to start, gathering speed
 const DROP_IN = 'cubic-bezier(0.15, 0.5, 0.55, 1)' // settling into the slot
 
 /**
@@ -1038,8 +1039,8 @@ export function CardDetail({
               { opacity: 0, transform: pose(0) },
               { opacity: 1, transform: pose(0) },
             ],
-            // Not until the card coming out of the box is off the screen.
-            { ...fade, delay: LIFT_MS, easing: 'ease-out' },
+            // After a fixed pause (wherever the card coming out has got to).
+            { ...fade, delay: FADE_IN_DELAY_MS, easing: 'ease-out' },
           ),
           shade.animate([{ opacity: 0 }, { opacity: 1 }], {
             ...fade,
