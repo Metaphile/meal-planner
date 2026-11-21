@@ -7,6 +7,7 @@ import {
   useState,
   type HTMLAttributes,
   type MutableRefObject,
+  type PointerEvent as ReactPointerEvent,
   type ReactNode,
   type Ref,
 } from 'react'
@@ -772,6 +773,163 @@ const tidyGroups = (gs: Group[]) => {
   return out
 }
 
+/** Six dots: a line's handle, to drag it up or down by. */
+function GripIcon() {
+  return (
+    <svg viewBox="0 0 8 14" width={8} height={14} aria-hidden fill="currentColor">
+      {[2, 7, 12].map((y) =>
+        [2, 6].map((x) => <circle key={`${x}${y}`} cx={x} cy={y} r={1.25} />),
+      )}
+    </svg>
+  )
+}
+
+/**
+ * Dragging an ingredient line by its grip: up or down only, into any
+ * section. It lifts and follows the finger; the lines it passes slide aside,
+ * opening a gap where it would land (anywhere a line is, or before a
+ * section's "Add ingredient…"). Let go, it settles into the gap and the move
+ * is made (`onDrop`: to just before the line at `to`). Near the top or
+ * bottom of what scrolls, it scrolls. All by transforms on the lines, laid
+ * out once at the start: no re-rendering mid-drag.
+ */
+function dragRow(
+  e: ReactPointerEvent<HTMLElement>,
+  onDrop: (to: { g: number; i: number }) => void,
+) {
+  if (e.pointerType === 'mouse' && e.button !== 0) return
+  e.preventDefault() // (not focusing, not selecting)
+  e.stopPropagation()
+  const handle = e.currentTarget
+  const origin = handle.closest('[role=row]') as HTMLElement
+  const table = handle.closest('[role=table]') as HTMLElement
+  try {
+    handle.setPointerCapture(e.pointerId)
+  } catch {
+    /* (gone) */
+  }
+  const id = e.pointerId
+  const els = [...table.querySelectorAll<HTMLElement>('[role=row]')]
+  const o = els.indexOf(origin)
+  const h = origin.offsetHeight
+  const top0 = table.getBoundingClientRect().top
+  const rel = els.map((el) => el.getBoundingClientRect().top - top0)
+  // Where it could go: before any other ingredient line (spare ones too).
+  const spots = els
+    .map((_, k) => k)
+    .filter((k) => k !== o && els[k].dataset.g !== undefined)
+  // Its top, put there (the lines below where it was having closed up).
+  const slot = (k: number) => rel[k] - (k > o ? h : 0)
+  const minTop = Math.min(...spots.map(slot))
+  const maxTop = Math.max(...spots.map(slot))
+  const y0 = e.clientY - top0
+  let lastY = e.clientY
+  let target = o + 1 // (just where it is: before the next line)
+
+  // Lifted.
+  Object.assign(origin.style, {
+    zIndex: '10',
+    background: 'var(--color-paper)',
+    boxShadow: '0 6px 14px -6px rgb(60 50 30 / 0.45)',
+    transition: 'none',
+  })
+  els.forEach((el, k) => {
+    if (k !== o) el.style.transition = 'transform 150ms ease'
+  })
+
+  const follow = (clientY: number) => {
+    lastY = clientY
+    const top = table.getBoundingClientRect().top
+    const want = Math.min(maxTop, Math.max(minTop, rel[o] + (clientY - top - y0)))
+    let best = target
+    let bestD = Infinity
+    for (const k of spots) {
+      const d = Math.abs(slot(k) - want)
+      if (d < bestD) {
+        bestD = d
+        best = k
+      }
+    }
+    target = best
+    els.forEach((el, k) => {
+      if (k === o) return
+      const shift =
+        target > o && k > o && k < target
+          ? -h
+          : target < o && k >= target && k < o
+            ? h
+            : 0
+      el.style.transform = shift ? `translateY(${shift}px)` : ''
+    })
+    origin.style.transform = `translateY(${want - rel[o]}px)`
+  }
+
+  // Near the top or bottom of what scrolls: it scrolls (faster, nearer).
+  let scroller: HTMLElement | null = table.parentElement
+  while (scroller) {
+    const oy = getComputedStyle(scroller).overflowY
+    if ((oy === 'auto' || oy === 'scroll') && scroller.scrollHeight > scroller.clientHeight)
+      break
+    scroller = scroller.parentElement
+  }
+  let raf = 0
+  const edge = 56
+  const tick = () => {
+    raf = requestAnimationFrame(tick)
+    if (!scroller) return
+    const r = scroller.getBoundingClientRect()
+    const v =
+      lastY < r.top + edge
+        ? -((r.top + edge - lastY) / edge) * 10
+        : lastY > r.bottom - edge
+          ? ((lastY - (r.bottom - edge)) / edge) * 10
+          : 0
+    if (v) {
+      scroller.scrollTop += v
+      follow(lastY)
+    }
+  }
+  raf = requestAnimationFrame(tick)
+
+  const finish = (drop: boolean) => {
+    cancelAnimationFrame(raf)
+    handle.removeEventListener('pointermove', onMove)
+    handle.removeEventListener('pointerup', onUp)
+    handle.removeEventListener('pointercancel', onCancel)
+    const moved = drop && target !== o + 1
+    const to = moved
+      ? { g: Number(els[target].dataset.g), i: Number(els[target].dataset.i) }
+      : null
+    // It settles into its place (or back where it was), then the move is
+    // made and everything stands where it now is, in the same frame.
+    origin.style.transition = 'transform 120ms ease-out'
+    origin.style.transform = `translateY(${moved ? slot(target) - rel[o] : 0}px)`
+    if (!moved) els.forEach((el, k) => k !== o && (el.style.transform = ''))
+    setTimeout(() => {
+      if (to) flushSync(() => onDrop(to))
+      for (const el of els) {
+        el.style.transform = ''
+        el.style.transition = ''
+        el.style.zIndex = ''
+        el.style.background = ''
+        el.style.boxShadow = ''
+      }
+    }, 130)
+  }
+  const onMove = (ev: PointerEvent) => {
+    if (ev.pointerId === id) follow(ev.clientY)
+  }
+  const onUp = (ev: PointerEvent) => {
+    if (ev.pointerId === id) finish(true)
+  }
+  const onCancel = (ev: PointerEvent) => {
+    if (ev.pointerId === id) finish(false)
+  }
+  handle.addEventListener('pointermove', onMove)
+  handle.addEventListener('pointerup', onUp)
+  handle.addEventListener('pointercancel', onCancel)
+}
+
 function IngredientTable({
   groups,
   onChange,
@@ -807,7 +965,21 @@ function IngredientTable({
           : x,
       ),
     )
-  const cols = 'grid grid-cols-[minmax(0,1fr)_3.25rem_4.25rem_1.75rem]'
+  // (Moving a line: from where it was to just before another — see dragRow.
+  // Only into the draft: nothing's kept until Save.)
+  const moveRow = (
+    from: { g: number; i: number },
+    to: { g: number; i: number },
+  ) => {
+    const gs = groups.map((x) => ({ ...x, rows: [...x.rows] }))
+    const [row] = gs[from.g].rows.splice(from.i, 1)
+    const at = to.g === from.g && to.i > from.i ? to.i - 1 : to.i
+    gs[to.g].rows.splice(at, 0, row)
+    set(gs)
+  }
+  // (A grip to drag each line by, then its writing.)
+  const cols =
+    'grid grid-cols-[1rem_minmax(0,1fr)_3.25rem_4.25rem_1.75rem]'
   const cell =
     // Taller than the card's 22px ruled lines, so each line (and its ✕) is
     // easy to hit with a finger. The writing sits low, on its line.
@@ -857,11 +1029,13 @@ function IngredientTable({
             role="row"
             className={`${g === 0 ? cols : 'grid'} items-end border-b border-line-blue`}
           >
-            {titleField(
-              group.title,
-              (t) => setTitle(g, t),
-              g === 0 ? STARTER_TITLE : 'Section',
-            )}
+            <div className={g === 0 ? 'col-span-2 grid' : 'grid'}>
+              {titleField(
+                group.title,
+                (t) => setTitle(g, t),
+                g === 0 ? STARTER_TITLE : 'Section',
+              )}
+            </div>
             {g === 0 && (
               <>
                 <span role="columnheader" className={`${headClass} pr-1 text-right`}>
@@ -880,8 +1054,23 @@ function IngredientTable({
               <div
                 key={i}
                 role="row"
+                data-g={g}
+                data-i={i}
                 className={`${cols} relative items-center border-b border-line-blue`}
               >
+                {spare ? (
+                  <span />
+                ) : (
+                  <span
+                    role="button"
+                    aria-label={`Move ${row.name || 'ingredient'}`}
+                    data-drag-handle
+                    onPointerDown={(e) => dragRow(e, (to) => moveRow({ g, i }, to))}
+                    className="grid h-[30px] cursor-grab touch-none select-none place-items-center text-pencil active:cursor-grabbing"
+                  >
+                    <GripIcon />
+                  </span>
+                )}
                 <input
                   value={row.name}
                   onChange={(e) => update(g, i, { name: e.target.value })}
@@ -1889,9 +2078,11 @@ export function CardDetail({
       // field; by touch, the one you're writing in (e.g. moving the caret).
       const field = (target as Element | null)?.closest?.('input, textarea')
       const inText =
-        editingRef.current &&
-        !!field &&
-        (mouse || field === document.activeElement)
+        (editingRef.current &&
+          !!field &&
+          (mouse || field === document.activeElement)) ||
+        // (A line's grip: dragging the line, not the card.)
+        !!(target as Element | null)?.closest?.('[data-drag-handle]')
       if (
         closing.current ||
         flipping.current ||
