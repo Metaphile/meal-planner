@@ -94,8 +94,6 @@ export default function AccountPage() {
         </section>
 
         <HomeScreen userId={user.id} />
-        {/* (Temporary: what iOS says about the screen, from the Home Screen.) */}
-        {isInstalled() && <ScreenReport />}
 
         <button
           onClick={signOut}
@@ -627,47 +625,5 @@ function ShareIcon({ className = '' }: { className?: string }) {
       <path d="M8 9H6.5A1.5 1.5 0 0 0 5 10.5v9A1.5 1.5 0 0 0 6.5 21h11a1.5 1.5 0 0 0 1.5-1.5v-9A1.5 1.5 0 0 0 17.5 9H16" />
       <path d="M12 14V3M8.5 6.5 12 3l3.5 3.5" />
     </svg>
-  )
-}
-
-/**
- * TEMPORARY — what the installed app is told about the screen, to find why
- * it doesn't fill it (a gap at the bottom; a blur under the status bar).
- * Each CSS length is measured on a probe element.
- */
-function ScreenReport() {
-  const [lines, setLines] = useState<string[]>([])
-  useEffect(() => {
-    const probe = (css: string) => {
-      const d = document.createElement('div')
-      d.style.cssText = `position:fixed;left:0;top:0;width:1px;visibility:hidden;${css}`
-      document.body.appendChild(d)
-      const r = d.getBoundingClientRect()
-      d.remove()
-      return Math.round(r.height * 10) / 10
-    }
-    const measure = () => {
-      const vv = window.visualViewport
-      const root = document.getElementById('root')!.getBoundingClientRect()
-      setLines([
-        `screen ${screen.width}×${screen.height} @${devicePixelRatio}x`,
-        `inner ${innerWidth}×${innerHeight}  client ${document.documentElement.clientHeight}`,
-        `visual ${vv ? `${Math.round(vv.width)}×${Math.round(vv.height)} top ${Math.round(vv.offsetTop)}` : '—'}`,
-        `#root top ${Math.round(root.top)} h ${Math.round(root.height)}`,
-        `100% ${probe('height:100%')}  vh ${probe('height:100vh')}`,
-        `dvh ${probe('height:100dvh')}  lvh ${probe('height:100lvh')}  svh ${probe('height:100svh')}`,
-        `safe top ${probe('height:env(safe-area-inset-top)')}  bottom ${probe('height:env(safe-area-inset-bottom)')}`,
-        `status bar: ${document.querySelector('meta[name=apple-mobile-web-app-status-bar-style]')?.getAttribute('content')}`,
-        navigator.userAgent.match(/OS [\d_]+/)?.[0] ?? navigator.userAgent,
-      ])
-    }
-    measure()
-    addEventListener('resize', measure)
-    return () => removeEventListener('resize', measure)
-  }, [])
-  return (
-    <pre className="selectable overflow-x-auto rounded-lg bg-paper p-3 text-[11px] leading-4 text-ink-soft">
-      {lines.join('\n')}
-    </pre>
   )
 }
