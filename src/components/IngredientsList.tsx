@@ -96,6 +96,9 @@ function IngredientLine({
   // Have some but not enough: short.
   const short =
     !!have && need !== undefined && round(have.amount ?? 0) < need
+  // Ticked, with an amount to count (needed, or on hand by itself).
+  const counted =
+    !!have && (needed ? need !== undefined : have.amount !== undefined)
   return (
     <li className="paper-serif flex gap-2.5 border-b border-line-blue pt-1.5 pb-1 last:border-b-0">
       {checkable && (
@@ -109,32 +112,34 @@ function IngredientLine({
         />
       )}
       <div className="min-w-0 flex-1">
-        <div className="flex items-baseline justify-between gap-3">
+        {/* Ticked (with an amount to count), the counter takes the place of
+            the quantity: "− [have] of need unit +", or without a recipe
+            calling for it, "− [have] unit +". */}
+        <div
+          className={`flex justify-between gap-3 ${
+            counted ? '-my-0.5 items-center' : 'items-baseline'
+          }`}
+        >
           <span className="text-[17px]">{ing.name}</span>
-          <span className="shrink-0 text-base text-ink-soft">
-            {needed
-              ? formatAmount(ing.quantity, ing.unit)
-              : // (Nothing calls for it: no quantity needed, in its unit —
-                // nothing at all without one.)
-                ing.unit
-                ? `— ${ing.unit}`
-                : ''}
-          </span>
+          {counted ? (
+            <HaveCounter
+              haveKey={key}
+              amount={have.amount ?? 0}
+              need={needed ? need : undefined}
+              unit={ing.unit}
+              canEdit={canEdit}
+            />
+          ) : (
+            <span className="shrink-0 text-base text-ink-soft">
+              {needed ? formatAmount(ing.quantity, ing.unit) : (ing.unit ?? '')}
+            </span>
+          )}
         </div>
         {(ing.sources.length > 0 || !needed) && (
           <div className="text-xs italic leading-[18px] text-ink-faint">
             {/* (Ticked, but no wanted recipe calls for it.) */}
             {needed ? ing.sources.join(', ') : '[no recipe]'}
           </div>
-        )}
-        {have && (needed ? need !== undefined : have.amount !== undefined) && (
-          <HaveCounter
-            haveKey={key}
-            amount={have.amount ?? 0}
-            need={needed ? need : undefined}
-            unit={ing.unit}
-            canEdit={canEdit}
-          />
         )}
       </div>
     </li>
@@ -197,7 +202,8 @@ function Tickbox({
 }
 
 /**
- * How much is on hand: − [have] + (what's needed is right above it). The
+ * How much is on hand: − [have] of need unit + (or, nothing calling for it,
+ * − [have] unit +), in place of the line's quantity. The
  * number can be typed (a plain decimal; cleared, it's 0, and shows 0 once
  * you leave it); − and + go a whole unit at a time (not below 0). Short of
  * what's needed, it shows in red.
@@ -224,70 +230,69 @@ function HaveCounter({
   const step =
     'grid h-7 w-8 place-items-center text-lg leading-none active:opacity-60 disabled:opacity-35'
   return (
-    <div className="flex justify-end pt-1 pb-0.5">
-      <div className="flex items-center rounded-full border border-kraft-edge bg-brand text-[15px] text-on-brand">
-        <button
-          type="button"
-          aria-label={`Less ${unitName(unit)}`}
-          disabled={!canEdit || amount <= 0}
-          onClick={() => setHaveAmount(key, Math.max(0, amount - 1))}
-          className={step}
-        >
-          −
-        </button>
-        <input
-          // (What's typed while it's this amount; otherwise the amount, as
-          // after − or +, or a change from elsewhere.)
-          value={
-            draft !== null && parseAmount(draft) === round(amount)
-              ? draft
-              : String(round(amount))
-          }
-          onChange={(e) => {
-            setDraft(e.target.value)
-            const n = parseAmount(e.target.value)
-            if (n !== undefined) setHaveAmount(key, n)
-          }}
-          // Tapping in selects the whole number, to type over. (After the
-          // tap settles: iOS places the caret after focus, undoing an
-          // earlier selection; and the click that follows a focus mustn't
-          // put the caret back.)
-          onFocus={(e) => {
-            const field = e.currentTarget
-            justFocused.current = true
-            setTimeout(() => field.setSelectionRange(0, field.value.length))
-          }}
-          onMouseUp={(e) => {
-            if (justFocused.current) e.preventDefault()
-            justFocused.current = false
-          }}
-          onBlur={() => setDraft(null)}
-          onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
-          readOnly={!canEdit}
-          inputMode="decimal"
-          enterKeyHint="done"
-          autoComplete="off"
-          aria-label="How much you have"
-          // (16px: no zooming in on iOS.)
-          // (Short of what's needed: a faint red field, to draw the eye — as
-          // light as the usual one.)
-          className={`h-7 w-12 rounded-md px-1.5 text-right text-[16px] font-semibold focus:outline-none ${
-            short ? 'bg-[#f6e3e1] text-danger' : 'bg-paper/70'
-          }`}
-        />
-        {/* (No unit: it's right above.) */}
-        {/* (No "of need": it's right above.) */}
-        <span className="w-1" />
-        <button
-          type="button"
-          aria-label={`More ${unitName(unit)}`}
-          disabled={!canEdit}
-          onClick={() => setHaveAmount(key, amount + 1)}
-          className={step}
-        >
-          +
-        </button>
-      </div>
+    <div className="flex shrink-0 items-center rounded-full border border-kraft-edge bg-brand text-[15px] text-on-brand">
+      <button
+        type="button"
+        aria-label={`Less ${unitName(unit)}`}
+        disabled={!canEdit || amount <= 0}
+        onClick={() => setHaveAmount(key, Math.max(0, amount - 1))}
+        className={step}
+      >
+        −
+      </button>
+      <input
+        // (What's typed while it's this amount; otherwise the amount, as
+        // after − or +, or a change from elsewhere.)
+        value={
+          draft !== null && parseAmount(draft) === round(amount)
+            ? draft
+            : String(round(amount))
+        }
+        onChange={(e) => {
+          setDraft(e.target.value)
+          const n = parseAmount(e.target.value)
+          if (n !== undefined) setHaveAmount(key, n)
+        }}
+        // Tapping in selects the whole number, to type over. (After the
+        // tap settles: iOS places the caret after focus, undoing an
+        // earlier selection; and the click that follows a focus mustn't
+        // put the caret back.)
+        onFocus={(e) => {
+          const field = e.currentTarget
+          justFocused.current = true
+          setTimeout(() => field.setSelectionRange(0, field.value.length))
+        }}
+        onMouseUp={(e) => {
+          if (justFocused.current) e.preventDefault()
+          justFocused.current = false
+        }}
+        onBlur={() => setDraft(null)}
+        onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+        readOnly={!canEdit}
+        inputMode="decimal"
+        enterKeyHint="done"
+        autoComplete="off"
+        aria-label="How much you have"
+        // (16px: no zooming in on iOS.)
+        // (Short of what's needed: a faint red field, to draw the eye — as
+        // light as the usual one.)
+        className={`h-7 w-12 rounded-md px-1.5 text-right text-[16px] font-semibold focus:outline-none ${
+          short ? 'bg-[#f6e3e1] text-danger' : 'bg-paper/70'
+        }`}
+      />
+      <span className="pr-0.5 pl-1.5 whitespace-nowrap">
+        {need !== undefined ? `of ${round(need)}` : ''}
+        {unit ? `${need !== undefined ? ' ' : ''}${unit}` : ''}
+      </span>
+      <button
+        type="button"
+        aria-label={`More ${unitName(unit)}`}
+        disabled={!canEdit}
+        onClick={() => setHaveAmount(key, amount + 1)}
+        className={step}
+      >
+        +
+      </button>
     </div>
   )
 }
