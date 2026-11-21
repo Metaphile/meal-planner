@@ -137,6 +137,8 @@ export const RecipeCard = forwardRef<HTMLDivElement, CardProps>(
           <div className="paper-frame" />
           <div className="px-5 pt-3.5">
             <div className="paper-rule flex items-start gap-3 pb-1.5">
+              {/* (Level with the title's first line.) */}
+              <FavoriteStar recipeId={recipe.id} className="pt-[10px]" />
               <div
                 className={`font-hand min-w-0 flex-1 font-semibold text-black ${
                   large ? 'text-[29px] leading-[26px]' : 'text-[28px] leading-[25px]'
@@ -146,7 +148,6 @@ export const RecipeCard = forwardRef<HTMLDivElement, CardProps>(
               >
                 {recipe.title}
               </div>
-              <FavoriteStar recipeId={recipe.id} />
               <WantBox recipeId={recipe.id} canEditPlan={canEditPlan} />
             </div>
           </div>
@@ -213,10 +214,18 @@ export function EditButton({ onEdit }: { onEdit: () => void }) {
 }
 
 /**
- * A favorite: a star beside the Want box, everyone's own (readers too).
- * Like the box, it's marked right there in the box.
+ * A favorite: a star before the title, everyone's own (readers too). Like
+ * the Want box, it's marked right there in the box — and on a card's back
+ * too, where (unlike the rest of the back) it's kept at once, not on Save.
  */
-function FavoriteStar({ recipeId }: { recipeId: string }) {
+function FavoriteStar({
+  recipeId,
+  className = '',
+}: {
+  recipeId: string
+  /** (Placing the star: its padding, around a generous target.) */
+  className?: string
+}) {
   const { user } = useAuth()
   const on = useIsFavorite(user?.id, recipeId)
   const setFavorite = useStore((s) => s.setFavorite)
@@ -231,7 +240,7 @@ function FavoriteStar({ recipeId }: { recipeId: string }) {
         if (user) setFavorite(user.id, recipeId, !on)
       }}
       // A generous target around the small star.
-      className="-my-2 flex shrink-0 items-center p-2 pr-0.5"
+      className={`-my-2 -ml-2 flex shrink-0 items-start p-2 pr-0 ${className}`}
     >
       <StarIcon on={on} />
     </button>
@@ -831,7 +840,13 @@ const RecipeCardBack = forwardRef<
     >
       {/* Written by hand: a draft, before it's typed up on the front. */}
       <div className="handwritten relative flex flex-1 flex-col">
-        <div className="px-5 pt-3.5">
+        {/* (Underlined in the same pen as the writing.) */}
+        <div className="mx-5 mt-3.5 flex items-start gap-2 border-b-[1.5px] border-pen pb-0.5">
+          {/* The favorite star, as on the front — kept at once. (Not on a
+              new card until it's saved: there's no recipe yet.) */}
+          {!isNew && (
+            <FavoriteStar recipeId={recipe.id} className="pt-[16px]" />
+          )}
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -840,8 +855,7 @@ const RecipeCardBack = forwardRef<
             placeholder="Recipe"
             aria-label="Recipe"
             autoComplete="off"
-            // (Underlined in the same pen as the writing.)
-            className="w-full border-b-[1.5px] border-pen bg-transparent pb-0.5 text-[30px] font-semibold leading-[30px] focus:outline-none"
+            className="min-w-0 flex-1 bg-transparent text-[30px] font-semibold leading-[30px] focus:outline-none"
           />
         </div>
         <div className="mx-5 mt-3.5 mb-4 flex flex-col gap-4">
