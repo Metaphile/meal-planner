@@ -230,6 +230,12 @@ function HaveCounter({
   const [draft, setDraft] = useState<string | null>(null)
   const justFocused = useRef(false)
   const short = need !== undefined && amount < need
+  // What's typed while it's this amount; otherwise the amount (as after −
+  // or +, or a change from elsewhere).
+  const shown =
+    draft !== null && parseAmount(draft) === round(amount)
+      ? draft
+      : String(round(amount))
   const step =
     'grid h-7 w-8 place-items-center text-lg leading-none active:opacity-60 disabled:opacity-35'
   return (
@@ -244,13 +250,10 @@ function HaveCounter({
         −
       </button>
       <input
-        // (What's typed while it's this amount; otherwise the amount, as
-        // after − or +, or a change from elsewhere.)
-        value={
-          draft !== null && parseAmount(draft) === round(amount)
-            ? draft
-            : String(round(amount))
-        }
+        value={shown}
+        // As wide as what's in it: digits a ch each (at least one), the
+        // point narrower.
+        style={{ width: `calc(${fieldWidth(shown)}ch + 12px)` }}
         onChange={(e) => {
           setDraft(e.target.value)
           const n = parseAmount(e.target.value)
@@ -279,7 +282,7 @@ function HaveCounter({
         // (16px: no zooming in on iOS.)
         // (Short of what's needed: a faint red field, to draw the eye — as
         // light as the usual one.)
-        className={`h-7 w-12 rounded-md px-1.5 text-right text-[16px] font-semibold focus:outline-none ${
+        className={`h-7 rounded-md px-1.5 text-right text-[16px] font-semibold tabular-nums focus:outline-none ${
           short ? 'bg-[#f6e3e1] text-danger' : 'bg-paper/70'
         }`}
       />
@@ -301,6 +304,12 @@ function HaveCounter({
 }
 
 const unitName = (unit?: string) => unit || 'of it'
+
+/** The have field's width for its text, in ch. */
+const fieldWidth = (text: string) => {
+  const points = (text.match(/\./g) ?? []).length
+  return Math.max(1, text.length - points) + points * 0.65
+}
 
 /** A ticked line by itself: as written when ticked, or (older rows) from
  *  its key, capitalized. */
