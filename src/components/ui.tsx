@@ -41,12 +41,14 @@ export function PrimaryButton({
   onClick,
   type = 'button',
   disabled,
+  autoFocus,
   className = '',
 }: {
   children: ReactNode
   onClick?: () => void
   type?: 'button' | 'submit'
   disabled?: boolean
+  autoFocus?: boolean
   className?: string
 }) {
   return (
@@ -54,6 +56,7 @@ export function PrimaryButton({
       type={type}
       onClick={onClick}
       disabled={disabled}
+      autoFocus={autoFocus}
       className={`rounded-full border border-kraft-edge bg-brand px-4 py-2 text-sm font-semibold text-on-brand transition active:scale-95 disabled:opacity-40 ${className}`}
     >
       {children}
@@ -103,6 +106,8 @@ export function ConfirmDialog({
   cancelLabel = 'Cancel',
   onConfirm,
   onCancel,
+  saveLabel,
+  onSave,
 }: {
   title: string
   message: ReactNode
@@ -110,6 +115,10 @@ export function ConfirmDialog({
   cancelLabel?: string
   onConfirm: () => void
   onCancel: () => void
+  /** A third way out, the one to take by default (e.g. Save, beside
+   *  Discard). */
+  saveLabel?: string
+  onSave?: () => void
 }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onCancel()
@@ -138,11 +147,16 @@ export function ConfirmDialog({
           <button
             type="button"
             onClick={onConfirm}
-            autoFocus
+            autoFocus={!onSave}
             className="rounded-full bg-danger px-4 py-2 text-sm font-semibold text-white transition active:scale-95"
           >
             {confirmLabel}
           </button>
+          {onSave && (
+            <PrimaryButton onClick={onSave} autoFocus>
+              {saveLabel}
+            </PrimaryButton>
+          )}
         </div>
       </div>
     </div>

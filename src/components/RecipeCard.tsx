@@ -1403,6 +1403,10 @@ const RecipeCardBack = forwardRef<
     onDeleted: () => void
     /** Kept current: whether the draft differs from the recipe as stored. */
     changedRef?: MutableRefObject<boolean>
+    /** Kept current: keeps the draft (as Save does, but nothing more —
+     *  where the card goes next is the caller's); none while it can't be
+     *  saved (no title). */
+    saveDraftRef?: MutableRefObject<(() => void) | null>
   } & HTMLAttributes<HTMLDivElement>
 >(function RecipeCardBack(
   {
@@ -1412,6 +1416,7 @@ const RecipeCardBack = forwardRef<
     onSaved,
     onDeleted,
     changedRef,
+    saveDraftRef,
     className = '',
     style,
     ...rest
@@ -1488,6 +1493,8 @@ const RecipeCardBack = forwardRef<
     upsertRecipe(draft())
     onSaved()
   }
+  if (saveDraftRef)
+    saveDraftRef.current = title.trim() ? () => upsertRecipe(draft()) : null
 
   const label = 'block text-[22px] font-semibold leading-[26px]'
 
@@ -1806,6 +1813,7 @@ export function CardDetail({
   const changed = useRef(false) // its back says something different
   // Leaving the back, waiting on "Discard changes?".
   const [discarding, setDiscarding] = useState<null | (() => void)>(null)
+  const saveDraft = useRef<(() => void) | null>(null)
   const discardingRef = useRef(false)
   discardingRef.current = !!discarding
   const flipping = useRef(false)
@@ -2548,6 +2556,7 @@ export function CardDetail({
                   isNew={isNew && unsaved.current}
                   onCancel={cancel}
                   changedRef={changed}
+                  saveDraftRef={saveDraft}
                   onSaved={() => {
                     unsaved.current = false
                     unedit()
@@ -2583,6 +2592,20 @@ export function CardDetail({
             discarding()
           }}
           onCancel={() => setDiscarding(null)}
+          // Or keep the changes, then go on as you were going (turned back
+          // over, or put back in the box). (Not without a title to save.)
+          saveLabel="Save"
+          onSave={
+            saveDraft.current
+              ? () => {
+                  saveDraft.current?.()
+                  unsaved.current = false
+                  changed.current = false
+                  setDiscarding(null)
+                  discarding()
+                }
+              : undefined
+          }
         />
       )}
     </div>,
