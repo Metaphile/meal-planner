@@ -135,6 +135,7 @@ export const RecipeCard = forwardRef<HTMLDivElement, CardProps>(
             <div className="paper-rule flex items-start gap-2 pb-1.5">
               {/* (Centred, like the box, between the frame and the rule.) */}
               <FavoriteStar recipeId={recipe.id} className="pt-[7px]" />
+              <CountBalance recipeId={recipe.id} />
               <div
                 className={`font-hand min-w-0 flex-1 text-center font-semibold text-black ${
                   large ? 'text-[29px] leading-[26px]' : 'text-[28px] leading-[25px]'
@@ -428,6 +429,25 @@ function WantBox({
         )}
       </span>
     </button>
+  )
+}
+
+/**
+ * The Want box's ×n, unseen, on the star's side: so when a count appears
+ * beside the box, the title's column narrows on both sides alike, and a
+ * centred title stays where it was. (As wide as the ×n and the gap after it,
+ * less the row's own gap, which comes with it.)
+ */
+function CountBalance({ recipeId }: { recipeId: string }) {
+  const count = useWantCount(recipeId)
+  if (count <= 1) return null
+  return (
+    <span
+      aria-hidden
+      className="font-hand invisible -ml-0.5 shrink-0 text-[21px] font-semibold leading-[18px]"
+    >
+      ×{count}
+    </span>
   )
 }
 
