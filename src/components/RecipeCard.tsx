@@ -66,18 +66,28 @@ function IngredientLine({ ing }: { ing: Ingredient }) {
 const PEEK_LINES = 16
 
 function CardBody({ recipe, peek }: { recipe: Recipe; peek: boolean }) {
-  // Its sections (the first, and any others with lines). Headed only when
-  // there's more than one, or the first is called something else — else
+  // Its sections, empty ones too (a heading with nothing under it yet) —
+  // but not the first while it's just the default "Ingredients" with nothing
+  // in it and others to show: that's no section anyone made. Headed only
+  // when there's more than one, or the first is called something else — else
   // it's just the lines, as a card always was.
-  const sections = sectionsOf(recipe).filter(
-    (s, i) => i === 0 || s.ingredients.length > 0,
+  const all = sectionsOf(recipe)
+  const sections = all.filter(
+    (s, i) =>
+      i > 0 ||
+      s.ingredients.length > 0 ||
+      !!recipe.ingredientsTitle ||
+      all.length === 1,
   )
-  const headed = sections.length > 1 || !!recipe.ingredientsTitle
+  const headed =
+    sections.length > 1 ||
+    !!recipe.ingredientsTitle ||
+    sections[0] !== all[0] // (only another section showing: it's headed)
   // (Peeking: only as many lines as can show, headings included.)
   let room = peek ? PEEK_LINES : Infinity
   return (
     <>
-      {allIngredients(recipe).length === 0 ? (
+      {allIngredients(recipe).length === 0 && !headed ? (
         <ul>
           <li className="text-[#8a8170]">No ingredients yet</li>
         </ul>
@@ -1445,13 +1455,16 @@ const RecipeCardBack = forwardRef<
       .map(({ struck: _, ...i }) => ({ ...i, name: i.name.trim() }))
       .filter((i) => i.name.length > 0)
   // (A crossed-out section: none of its lines — and it goes, unless it's the
-  // first, which every recipe has: that keeps its default title.)
+  // first, which every recipe has: that keeps its default title. A section
+  // with no lines is kept, named: sections stand on their own, empty or not.
+  // Only one with neither name nor lines goes.)
   const linesOf = (g: Group) => (g.struck ? [] : lines(g.rows))
   const starterTitle = groups[0].struck ? '' : groups[0].title.trim()
   const sections = groups
     .slice(1)
+    .filter((g) => !g.struck)
     .map((g) => ({ title: g.title.trim(), ingredients: linesOf(g) }))
-    .filter((s) => s.ingredients.length > 0)
+    .filter((s) => s.title || s.ingredients.length > 0)
   const draft = (): Recipe => ({
     ...recipe,
     title: title.trim(),

@@ -21,7 +21,8 @@ export interface Recipe {
   notes?: string
 }
 
-/** A titled group of a recipe's ingredient lines ("Sauce", "Topping"). */
+/** A titled group of a recipe's ingredient lines ("Sauce", "Topping") —
+ *  possibly none yet: a section stands on its own. */
 export interface IngredientSection {
   title: string
   ingredients: Ingredient[]
