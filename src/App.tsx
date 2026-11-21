@@ -76,6 +76,14 @@ export default function App() {
         )}
       </main>
       {user && <TabBar />}
+      {/* Behind the status bar (on a phone, from the Home Screen): the
+          counter, solid, over everything — a card lifting out of the box
+          mustn't show behind the clock. */}
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-x-0 top-0 z-50 bg-backdrop"
+        style={{ height: 'var(--safe-top)' }}
+      />
     </div>
   )
 }

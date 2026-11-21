@@ -13,7 +13,13 @@
          manifest. The icon is full-bleed; iOS rounds its corners.) -->
     <meta name="apple-mobile-web-app-title" content="Meals" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <!-- (The page draws behind the status bar itself — the counter's colour,
+         see App — rather than iOS drawing a bar over it, whose edge recent
+         iOS blurs. iOS picks the status bar's text colour to suit.) -->
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
     <title>Meals</title>
   </head>
   <body>
