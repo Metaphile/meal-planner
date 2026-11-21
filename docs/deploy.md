@@ -111,7 +111,7 @@ docker compose exec pocketbase ./pocketbase superuser upsert you@example.com '<a
 docker compose restart pocketbase      # so the running server picks it up
 ```
 
-## 6. Bootstrap the first family admin
+## 6. Bootstrap the first writer
 
 Run on the Pi via Compose — it reaches PocketBase over the internal Docker
 network (don't point it at the public URL from home; NAT loopback blocks that):
@@ -124,8 +124,13 @@ docker compose --profile seed run --rm seed-admin
 ```
 
 It prints a one-time invite link. Open it once on your phone → you're the first
-admin (and the starter recipes/plan are seeded). Then **Account → Manage family**
-to add your wife (set her role to Admin) and the kids; share each their link.
+writer (and the starter recipes are seeded). Then, on the **Account** tab,
+**Invite someone** for each person (Writer or Reader) and share their link.
+
+Invite links are made from the address the app is open at, so make them from
+`https://silermeals.duckdns.org` (not a LAN or dev address) for them to work
+from anywhere. Each is one-time and good for 7 days; a fresh one can be made
+from the person's row in the group.
 
 ## 7. Verify
 
@@ -156,6 +161,9 @@ cd ~/projects/meal-planner && git pull && docker compose up -d --build
 ```
 
 Schema changes ship as PocketBase migrations in the image and apply on startup.
+Take a backup first (above). If `git pull` complains about local changes to
+`package-lock.json` (npm on the Pi rewrites it), discard them:
+`git checkout -- package-lock.json`.
 
 ## Troubleshooting
 

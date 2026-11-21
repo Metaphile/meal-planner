@@ -84,8 +84,8 @@ function SignedOut() {
     <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
       <h1 className="paper-serif text-2xl font-semibold">Meal Planner</h1>
       <p className="max-w-xs text-sm text-muted">
-        This is a private family app. Open the invite link a family admin shared
-        with you to sign in on this device.
+        This is a private app. Open the invite link someone in your group
+        shared with you to sign in on this device.
       </p>
     </div>
   )

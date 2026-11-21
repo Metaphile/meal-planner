@@ -46,7 +46,7 @@ export default function InvitePage() {
         <>
           <p className="text-base font-medium">{error}</p>
           <p className="max-w-xs text-sm text-muted">
-            Ask a family admin to send you a fresh invite link.
+            Ask a writer in your group to send you a fresh invite link.
           </p>
           <Link
             to="/"

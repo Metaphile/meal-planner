@@ -236,7 +236,7 @@ function isWriter(): boolean {
 
 async function seedRemoteIfEmpty(data: Dataset): Promise<boolean> {
   if (data.recipes.length > 0 || data.plan.length > 0 || !isWriter()) return false
-  // First admin on a fresh household: seed the starter dataset into PocketBase.
+  // The first writer in a fresh group: seed the starter dataset into PocketBase.
   for (const r of seedData.recipes) {
     await pb.collection('recipes').create({ key: r.id, data: r }, { requestKey: null })
   }
