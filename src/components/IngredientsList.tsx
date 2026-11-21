@@ -3,7 +3,7 @@ import type { AggregatedIngredient } from '../data/aggregate'
 import { haveKey, type Have } from '../data/types'
 import { useStore } from '../store/store'
 import { Amount, Unit } from './Unit'
-import { Ticker } from './Ticker'
+import { OneLine } from './OneLine'
 
 /**
  * Read-only aggregated ingredients, with each line tagged by its sources —
@@ -123,11 +123,12 @@ function IngredientLine({
           }`}
         >
           {/* (Short of what's needed: the name in red too. Too long to fit
-              beside its amount: it runs past, like a card's title.) */}
+              beside its amount: cut off and feathered, swiped to read, like
+              a card's title.) */}
           <span
             className={`min-w-0 flex-1 text-[17px] ${short ? 'text-danger' : ''}`}
           >
-            <Ticker text={ing.name} centred={false} />
+            <OneLine text={ing.name} centred={false} />
           </span>
           {counted && !canEdit ? (
             // (A reader: how much there is, written — no counter to use.)

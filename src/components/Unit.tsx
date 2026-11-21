@@ -1,6 +1,6 @@
 /**
  * A unit as it's shown everywhere but the unit picker: cut short with "…"
- * when it's long ("heaping tbsp"), so it doesn't crowd the line. (In ems,
+ * when it's long ("tbsp heaping"), so it doesn't crowd the line. (In ems,
  * so it's the same few letters in any writing; "bunch" and "pinch" fit.)
  * The whole unit is kept for screen readers and on hover.
  */

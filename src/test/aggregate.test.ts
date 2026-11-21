@@ -190,7 +190,7 @@ describe('aggregateWanted', () => {
           title: 'Topping',
           ingredients: [
             { name: 'Flour', quantity: 1, unit: 'cup' },
-            { name: 'Brown sugar', quantity: 2, unit: 'heaping tbsp' },
+            { name: 'Brown sugar', quantity: 2, unit: 'tbsp heaping' },
           ],
         },
       ],
@@ -201,7 +201,7 @@ describe('aggregateWanted', () => {
     )
     expect(out.map((l) => [l.name, l.quantity, l.unit])).toEqual([
       ['Apples', 8, undefined],
-      ['Brown sugar', 4, 'heaping tbsp'],
+      ['Brown sugar', 4, 'tbsp heaping'],
       ['Flour', 2, 'cup'],
     ])
   })

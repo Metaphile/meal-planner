@@ -253,66 +253,35 @@ body {
     color: var(--color-pencil);
     opacity: 1;
   }
-  /* A one-line title too long for its card runs past like a ticker (see
-     TickerTitle). Two copies, each with its dot, sliding by half: a seamless
-     loop. The box reaches out past the title's column, by --outset either
-     side and by --slack above and below (room for descenders, which the clip
-     would otherwise cut). A running title fades over --feather at either
-     end, and rests (where it starts) just past the fade. */
-  .ticker-box {
+  /* A title (or name) on one line (see OneLine). Its box reaches out past
+     its column, by --outset either side, and by --slack above and below
+     (room for descenders, which the clip would otherwise cut). Cut off, it
+     scrolls sideways, its hidden ends feathered (--fade-l, --fade-r). */
+  .one-line {
     --slack: 0.3em;
     overflow: hidden;
+    white-space: nowrap;
     padding: var(--slack) var(--outset);
     margin: calc(-1 * var(--slack)) calc(-1 * var(--outset));
   }
-  .ticker-runs {
-    padding-left: var(--feather);
+  .one-line-cut {
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
     -webkit-mask-image: linear-gradient(
       to right,
       transparent,
-      #000 var(--feather),
-      #000 calc(100% - var(--feather)),
+      #000 var(--fade-l, 0px),
+      #000 calc(100% - var(--fade-r, 20px)),
       transparent
     );
     mask-image: linear-gradient(
       to right,
       transparent,
-      #000 var(--feather),
-      #000 calc(100% - var(--feather)),
+      #000 var(--fade-l, 0px),
+      #000 calc(100% - var(--fade-r, 20px)),
       transparent
     );
-  }
-  .ticker {
-    --gap: 0.4em;
-    display: inline-flex;
-    gap: var(--gap);
-    padding-right: var(--gap);
-    will-change: transform;
-    animation: ticker linear infinite;
-  }
-  @keyframes ticker {
-    to {
-      transform: translateX(-50%);
-    }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .ticker-runs {
-      padding-left: var(--outset);
-      -webkit-mask-image: none;
-      mask-image: none;
-    }
-    .ticker {
-      animation: none;
-      display: block;
-      overflow: hidden;
-      white-space: nowrap;
-      text-overflow: ellipsis;
-      padding: var(--slack) 0;
-      margin: calc(-1 * var(--slack)) 0;
-    }
-    .ticker > :not(:first-child) {
-      display: none;
-    }
   }
   .paper-serif {
     font-family:

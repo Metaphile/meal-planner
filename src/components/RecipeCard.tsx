@@ -27,7 +27,7 @@ import {
 } from '../data/types'
 import { QuantityInput } from './QuantityInput'
 import { Amount } from './Unit'
-import { Ticker } from './Ticker'
+import { OneLine } from './OneLine'
 import { ConfirmDialog } from './ui'
 import { arcThrough, sampleTimes, type Arc } from '../lib/arc'
 
@@ -192,7 +192,8 @@ export const RecipeCard = forwardRef<HTMLDivElement, CardProps>(
                   large ? 'text-[29px] leading-[26px]' : 'text-[28px] leading-[25px]'
                 }`}
               >
-                <Ticker text={recipe.title} />
+                {/* (In the box, a vertical drag on it turns the drum.) */}
+                <OneLine text={recipe.title} panY={large} />
               </div>
               <WantBox recipeId={recipe.id} canEditPlan={canEditPlan} />
             </div>
@@ -479,8 +480,9 @@ function WantCount({
  *  you left them); any others your recipes use follow. */
 export const COMMON_UNITS = [
   'tsp',
+  'tsp heaping',
   'tbsp',
-  'heaping tbsp',
+  'tbsp heaping',
   'cup',
   'oz',
   'lb',
