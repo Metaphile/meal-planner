@@ -46,7 +46,6 @@ routerAdd('POST', '/api/invite/accept', (e) => {
       collectionName: 'users',
       name: user.get('name'),
       role: user.get('role'),
-      capabilities: user.get('capabilities') || [],
       email: user.get('email'),
     },
   })
