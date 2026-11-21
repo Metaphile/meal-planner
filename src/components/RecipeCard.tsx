@@ -1026,14 +1026,15 @@ export function CardDetail({
     }
     const anims = opening
       ? [
+          // It fades out as it goes (steadily, while the slide gathers speed).
           rdxCard.animate(
             [
-              { transform: home, opacity: 1 },
-              { offset: 0.999, transform: gone, opacity: 1 },
-              { transform: gone, opacity: 0 },
+              { transform: home, easing: LIFT_UP },
+              { transform: gone },
             ],
-            { ...lift, easing: LIFT_UP },
+            lift,
           ),
+          rdxCard.animate([{ opacity: 1 }, { opacity: 0 }], lift),
           card.animate(
             [
               { opacity: 0, transform: pose(0) },
@@ -1074,7 +1075,7 @@ export function CardDetail({
     for (const a of anims) if (a) a.startTime = now
     // Opening: the fade (only it is on this card, so its fill is what's
     // dropped once it ends). Closing: whichever ends last.
-    if (opening) return anims[1]
+    if (opening) return anims[2]
     return FADE_MS > DROP_MS ? anims[1] : anims[0]
   }
 
