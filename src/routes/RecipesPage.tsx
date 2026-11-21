@@ -607,6 +607,7 @@ export default function RecipesPage() {
     itemEls.current[i] = el
   }, [])
 
+  const searchRef = useRef<HTMLInputElement>(null)
   const closeSearch = () => {
     setSearching(false)
     setQuery('')
@@ -615,18 +616,44 @@ export default function RecipesPage() {
     <div ref={headerRef} className="absolute inset-x-0 top-0 z-0">
       {searching ? (
         <header className="flex items-center gap-3 bg-backdrop px-4 pt-2.5 pb-2 text-ink">
-          <input
-            autoFocus
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => e.key === 'Escape' && closeSearch()}
-            inputMode="search"
-            enterKeyHint="search"
-            placeholder="Recipe, tag or ingredient"
-            autoComplete="off"
-            aria-label="Search recipes"
-            className="h-9 min-w-0 flex-1 rounded-lg border border-paper-edge bg-paper px-3 placeholder:text-ink-faint focus:border-kraft-edge focus:outline-none"
-          />
+          <div className="relative min-w-0 flex-1">
+            <input
+              ref={searchRef}
+              autoFocus
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => e.key === 'Escape' && closeSearch()}
+              inputMode="search"
+              enterKeyHint="search"
+              placeholder="Recipe, tag or ingredient"
+              autoComplete="off"
+              aria-label="Search recipes"
+              className="h-9 w-full rounded-lg border border-paper-edge bg-paper pr-9 pl-3 placeholder:text-ink-faint focus:border-kraft-edge focus:outline-none"
+            />
+            {query && (
+              <button
+                type="button"
+                aria-label="Clear search"
+                // (Keeps the keyboard up: the field doesn't lose focus.)
+                onPointerDown={(e) => e.preventDefault()}
+                onClick={() => {
+                  setQuery('')
+                  searchRef.current?.focus()
+                }}
+                className="absolute inset-y-0 right-0 grid w-9 place-items-center text-ink-faint active:text-ink-soft"
+              >
+                <svg viewBox="0 0 20 20" className="h-[18px] w-[18px]">
+                  <circle cx="10" cy="10" r="9" fill="currentColor" />
+                  <path
+                    d="m7 7 6 6m0-6-6 6"
+                    stroke="var(--color-paper)"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              </button>
+            )}
+          </div>
           <button
             onClick={closeSearch}
             className="paper-serif h-9 shrink-0 text-[15px] font-semibold active:opacity-60"
@@ -668,7 +695,7 @@ export default function RecipesPage() {
       <>
         {/* The rolodex's backdrop, below the header. */}
         <div
-          className="absolute inset-x-0 bottom-0 bg-[#dfe8e3]"
+          className="absolute inset-x-0 bottom-0 bg-[#c6d4cc]"
           style={{
             top: headerH,
             boxShadow: 'inset 0 10px 14px -10px rgb(0 0 0 / 0.25)',
