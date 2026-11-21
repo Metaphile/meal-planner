@@ -941,6 +941,7 @@ const SINK = 'cubic-bezier(0.25, 0.6, 0.4, 1)' // easing into the bottom
 const DROP_MS = 300 // …and dropping back in
 const FADE_IN_DELAY_MS = 400 // the card in hand (and the shade) start fading in…
 const FADE_IN_MS = 375 // …over this
+const HAND_FROM = 0.93 // …growing from this size to its own
 const FADE_IN_EASE = 'linear' // steady, start to finish
 const FADE_MS = 225 // …and fading out
 /** Let go of while moving, a card coasts on, slowing as it goes. */
@@ -1238,10 +1239,11 @@ export function CardDetail({
             duration: fadesWithSlide ? LIFT_MS : LIFT_FADE_MS,
             easing: LIFT_FADE,
           }),
+          // (Growing to full size as it comes, as if raised to you.)
           card.animate(
             [
-              { opacity: 0, transform: pose(0) },
-              { opacity: 1, transform: pose(0) },
+              { opacity: 0, transform: `${pose(0)} scale(${HAND_FROM})` },
+              { opacity: 1, transform: `${pose(0)} scale(1)` },
             ],
             // After a fixed pause (wherever the card coming out has got to).
             { ...fade, delay: FADE_IN_DELAY_MS, easing: FADE_IN_EASE },
