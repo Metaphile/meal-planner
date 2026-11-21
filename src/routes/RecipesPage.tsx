@@ -356,9 +356,18 @@ export default function RecipesPage() {
     const st = drum.get()
     for (let i = 0; i < items.length; i++) {
       const el = itemEls.current[i]
-      if (!el || items[i].key === lifted.current) continue
+      if (!el) continue
       const v = rimPos(i, st)
       const on = v >= -wheel.overTop && v <= wheel.visible + wheel.underBottom
+      // The card that's out isn't moved (its flight drives it) — but whether
+      // its slot is on screen is kept up to date: putting it back drops it
+      // into its slot only if it is. (Repainting afresh after any change —
+      // a sync, or its want changed in hand — used to forget that, and it
+      // would reappear in place, unanimated.)
+      if (items[i].key === lifted.current) {
+        shown.current[i] = on
+        continue
+      }
       if (on !== shown.current[i]) {
         shown.current[i] = on
         el.style.visibility = on ? '' : 'hidden'
