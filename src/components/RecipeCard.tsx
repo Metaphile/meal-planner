@@ -12,6 +12,7 @@ import {
 } from 'react'
 import { createPortal, flushSync } from 'react-dom'
 import { useStore } from '../store/store'
+import { useWantCount } from '../store/selectors'
 import type { Ingredient, Recipe } from '../data/types'
 import { QuantityInput } from './QuantityInput'
 import { ConfirmDialog } from './ui'
@@ -82,6 +83,9 @@ type CardProps = {
   canEditRecipes: boolean
   /** Lets the body scroll (when the card is capped to the screen). */
   scrollable?: boolean
+  /** Its title on one line (in the box, so each card shows the same lines
+   *  above the next; in hand it's written out in full). */
+  oneLineTitle?: boolean
   /** Replaces the usual actions (Add to Meal · Edit) below the border. */
   actions?: ReactNode
   bodyRef?: Ref<HTMLDivElement>
@@ -100,6 +104,7 @@ export const RecipeCard = forwardRef<HTMLDivElement, CardProps>(
       canEditPlan,
       canEditRecipes,
       scrollable = false,
+      oneLineTitle = false,
       actions,
       bodyRef,
       className = '',
@@ -119,8 +124,15 @@ export const RecipeCard = forwardRef<HTMLDivElement, CardProps>(
         <div className="relative flex min-h-0 flex-1 flex-col">
           <div className="paper-frame" />
           <div className="px-5 pt-3.5">
-            <div className="paper-rule paper-serif pb-1.5 text-[19px] font-semibold leading-[25px]">
-              {recipe.title}
+            <div className="paper-rule flex items-start gap-3 pb-1.5">
+              <div
+                className={`paper-serif min-w-0 flex-1 text-[19px] font-semibold leading-[25px] ${
+                  oneLineTitle ? 'truncate' : ''
+                }`}
+              >
+                {recipe.title}
+              </div>
+              <WantBox recipeId={recipe.id} canEditPlan={canEditPlan} />
             </div>
           </div>
           <div
@@ -141,8 +153,9 @@ export const RecipeCard = forwardRef<HTMLDivElement, CardProps>(
           >
             {actions ?? (
               <>
-                {canEditPlan && <AddToMealButton recipeId={recipe.id} />}
                 {canEditRecipes && <EditLabel />}
+                <span className="flex-1" />
+                <WantCount recipeId={recipe.id} interactive={false} />
               </>
             )}
           </div>
@@ -177,6 +190,110 @@ export function EditButton({ onEdit }: { onEdit: () => void }) {
     <button type="button" onClick={onEdit} className={EDIT_CLASS}>
       Edit
     </button>
+  )
+}
+
+/**
+ * Want, a box to tick in a card's top right corner: a recipe the household
+ * wants to make (its ingredients go on the Ingredients list). Ticked or not
+ * right there in the box — it doesn't take the card out.
+ */
+function WantBox({
+  recipeId,
+  canEditPlan,
+}: {
+  recipeId: string
+  canEditPlan: boolean
+}) {
+  const on = useWantCount(recipeId) > 0
+  const setWanted = useStore((s) => s.setWanted)
+  return (
+    <button
+      type="button"
+      role="checkbox"
+      aria-checked={on}
+      aria-label="Want"
+      disabled={!canEditPlan}
+      onClick={(e) => {
+        e.stopPropagation() // (not taking the card out)
+        setWanted(recipeId, !on)
+      }}
+      // A generous target around the small box. (No label: a box to tick
+      // speaks for itself.)
+      className="-my-2 -mr-2 flex shrink-0 items-center p-2 disabled:cursor-default"
+    >
+      <span
+        className={`grid h-[18px] w-[18px] place-items-center rounded-[4px] border-[1.5px] ${
+          on ? 'border-kraft-edge bg-kraft' : 'border-[#c9bda4] bg-paper'
+        }`}
+      >
+        {on && (
+          <svg
+            viewBox="0 0 12 12"
+            className="h-3 w-3 text-kraft-ink"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M2.5 6.2 5 8.5l4.5-5" />
+          </svg>
+        )}
+      </span>
+    </button>
+  )
+}
+
+/**
+ * How many times a wanted recipe is wanted, in the card's footer: − n +
+ * (at least 1). Only on a wanted card, and only usable on a card in hand
+ * (in the box it's just its look).
+ */
+function WantCount({
+  recipeId,
+  interactive,
+}: {
+  recipeId: string
+  interactive: boolean
+}) {
+  const count = useWantCount(recipeId)
+  const setWantCount = useStore((s) => s.setWantCount)
+  if (count === 0) return null
+  const step =
+    'grid h-8 w-9 place-items-center text-lg leading-none active:opacity-60 disabled:opacity-35'
+  return (
+    <div
+      aria-hidden={!interactive || undefined}
+      className="flex items-center rounded-full border border-kraft-edge bg-brand text-on-brand"
+    >
+      <button
+        type="button"
+        tabIndex={interactive ? undefined : -1}
+        aria-label="Want fewer"
+        disabled={interactive && count <= 1}
+        onClick={interactive ? () => setWantCount(recipeId, count - 1) : undefined}
+        className={step}
+      >
+        −
+      </button>
+      <span
+        aria-live={interactive ? 'polite' : undefined}
+        aria-label={interactive ? `Wanted ${count} times` : undefined}
+        className="paper-serif min-w-[1.25rem] text-center text-[15px] font-semibold"
+      >
+        ×{count}
+      </span>
+      <button
+        type="button"
+        tabIndex={interactive ? undefined : -1}
+        aria-label="Want more"
+        onClick={interactive ? () => setWantCount(recipeId, count + 1) : undefined}
+        className={step}
+      >
+        +
+      </button>
+    </div>
   )
 }
 
@@ -1525,8 +1642,9 @@ export function CardDetail({
                     renderActions({ dismiss: () => dismiss(), edit })
                   ) : (
                     <>
-                      {canEditPlan && <AddToMealButton recipeId={shown.id} />}
                       {canEditRecipes && <EditButton onEdit={edit} />}
+                      <span className="flex-1" />
+                      <WantCount recipeId={shown.id} interactive={canEditPlan} />
                     </>
                   )
                 }
@@ -1582,30 +1700,5 @@ export function CardDetail({
       )}
     </div>,
     document.body,
-  )
-}
-
-function AddToMealButton({ recipeId }: { recipeId: string }) {
-  const addRecipeToPlan = useStore((s) => s.addRecipeToPlan)
-  const [added, setAdded] = useState(false)
-  const timer = useRef<ReturnType<typeof setTimeout>>()
-  useEffect(() => () => clearTimeout(timer.current), [])
-
-  return (
-    <button
-      onClick={() => {
-        addRecipeToPlan(recipeId)
-        setAdded(true)
-        clearTimeout(timer.current)
-        timer.current = setTimeout(() => setAdded(false), 1400)
-      }}
-      className={`rounded-full px-4 py-1.5 text-sm font-semibold leading-5 transition active:scale-95 ${
-        added
-          ? 'border border-kraft-edge bg-surface-2 text-brand-ink'
-          : 'border border-kraft-edge bg-brand text-on-brand'
-      }`}
-    >
-      {added ? 'Added ✓' : 'Add to Meal'}
-    </button>
   )
 }
