@@ -120,7 +120,10 @@ function IngredientLine({
             counted ? '-my-0.5 items-center' : 'items-baseline'
           }`}
         >
-          <span className="text-[17px]">{ing.name}</span>
+          {/* (Short of what's needed: the name in red too.) */}
+          <span className={`text-[17px] ${short ? 'text-danger' : ''}`}>
+            {ing.name}
+          </span>
           {counted ? (
             <HaveCounter
               haveKey={key}
