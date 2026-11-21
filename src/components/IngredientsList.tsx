@@ -170,9 +170,9 @@ function Tickbox({
 
 /**
  * How much is on hand, against what's needed: − [have] of need +. The
- * number can be typed (decimals, or fractions like 1/2 or 1 1/2); − and +
- * go a whole unit at a time (not below 0). Short of what's needed, it shows
- * in red.
+ * number can be typed (a plain decimal; cleared, it's 0, and shows 0 once
+ * you leave it); − and + go a whole unit at a time (not below 0). Short of
+ * what's needed, it shows in red.
  */
 function HaveCounter({
   haveKey: key,
@@ -188,7 +188,7 @@ function HaveCounter({
   canEdit: boolean
 }) {
   const setHaveAmount = useStore((s) => s.setHaveAmount)
-  // The text being typed (so "1." or "1 1/" survive until it's a number).
+  // The text being typed (so "1." or an empty field survive while typing).
   const [draft, setDraft] = useState<string | null>(null)
   const short = amount < need
   const step =
@@ -226,9 +226,10 @@ function HaveCounter({
           autoComplete="off"
           aria-label="How much you have"
           // (16px: no zooming in on iOS.)
-          // (Short of what's needed: a faint red field, to draw the eye.)
+          // (Short of what's needed: a faint red field, to draw the eye — as
+          // light as the usual one.)
           className={`h-7 w-12 rounded-md px-1.5 text-right text-[16px] font-semibold focus:outline-none ${
-            short ? 'bg-danger/15 text-danger' : 'bg-paper/70'
+            short ? 'bg-[#f6e3e1] text-danger' : 'bg-paper/70'
           }`}
         />
         {/* (No unit: it's right above.) */}
@@ -251,25 +252,16 @@ const unitName = (unit?: string) => unit || 'of it'
 
 const round = (n: number) => Math.round(n * 100) / 100
 
-const FRACTIONS: Record<string, string> = {
-  '½': ' 1/2',
-  '⅓': ' 1/3',
-  '⅔': ' 2/3',
-  '¼': ' 1/4',
-  '¾': ' 3/4',
-  '⅛': ' 1/8',
-}
-
-/** "1.5", "1/2", "1 1/2", "1½" → a number (undefined if it isn't one yet). */
+/**
+ * What's typed in the have field, as an amount: a plain decimal, not
+ * negative ("2", "1.5", ".25", "3."). Empty is 0 (everything deleted).
+ * Anything else isn't an amount (undefined), and isn't taken.
+ */
 export function parseAmount(text: string): number | undefined {
-  const t = text.replace(/[½⅓⅔¼¾⅛]/g, (c) => FRACTIONS[c]).trim()
-  const m = /^(\d*\.?\d*)?\s*(?:(\d+)\s*\/\s*(\d+))?$/.exec(t)
-  if (!t || !m) return undefined
-  const whole = m[1] ? Number(m[1]) : 0
-  if (Number.isNaN(whole)) return undefined
-  if (m[2] === undefined) return m[1] ? whole : undefined
-  const den = Number(m[3])
-  return den ? whole + Number(m[2]) / den : undefined
+  const t = text.trim()
+  if (t === '') return 0
+  if (!/^\d*\.?\d*$/.test(t) || t === '.') return undefined
+  return Number(t)
 }
 
 function formatAmount(quantity?: number, unit?: string): string {
