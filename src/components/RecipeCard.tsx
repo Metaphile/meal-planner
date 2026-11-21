@@ -136,11 +136,11 @@ export const RecipeCard = forwardRef<HTMLDivElement, CardProps>(
         <div className="relative flex min-h-0 flex-1 flex-col">
           <div className="paper-frame" />
           <div className="px-5 pt-3.5">
-            <div className="paper-rule flex items-start gap-3 pb-1.5">
+            <div className="paper-rule flex items-start gap-2 pb-1.5">
               {/* (Level with the title's first line.) */}
-              <FavoriteStar recipeId={recipe.id} className="pt-[10px]" />
+              <FavoriteStar recipeId={recipe.id} className="pt-[8px]" />
               <div
-                className={`font-hand min-w-0 flex-1 font-semibold text-black ${
+                className={`font-hand min-w-0 flex-1 text-center font-semibold text-black ${
                   large ? 'text-[29px] leading-[26px]' : 'text-[28px] leading-[25px]'
                 } ${
                   oneLineTitle ? 'truncate' : ''
@@ -242,7 +242,7 @@ function FavoriteStar({
       // A generous target around the small star.
       className={`-my-2 -ml-2 flex shrink-0 items-start p-2 pr-0 ${className}`}
     >
-      <StarIcon on={on} />
+      <StarIcon on={on} size={24} />
     </button>
   )
 }
@@ -845,7 +845,7 @@ const RecipeCardBack = forwardRef<
           {/* The favorite star, as on the front — kept at once. (Not on a
               new card until it's saved: there's no recipe yet.) */}
           {!isNew && (
-            <FavoriteStar recipeId={recipe.id} className="pt-[16px]" />
+            <FavoriteStar recipeId={recipe.id} className="pt-[14px]" />
           )}
           <input
             value={title}
@@ -855,8 +855,10 @@ const RecipeCardBack = forwardRef<
             placeholder="Recipe"
             aria-label="Recipe"
             autoComplete="off"
-            className="min-w-0 flex-1 bg-transparent text-[30px] font-semibold leading-[30px] focus:outline-none"
+            className="min-w-0 flex-1 bg-transparent text-center text-[30px] font-semibold leading-[30px] focus:outline-none"
           />
+          {/* (Balancing the star, so the title sits centred.) */}
+          {!isNew && <span aria-hidden className="w-6 shrink-0" />}
         </div>
         <div className="mx-5 mt-3.5 mb-4 flex flex-col gap-4">
           <IngredientTable
