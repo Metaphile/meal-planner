@@ -354,12 +354,15 @@ export function UnitCell({
   onChange,
   units,
   disabled = false,
+  placeholder,
   className,
 }: {
   value: string | undefined
   onChange: (unit: string | undefined) => void
   units: string[]
   disabled?: boolean
+  /** A faint hint while there's no unit. */
+  placeholder?: string
   className: string
 }) {
   const [menu, setMenu] = useState<null | 'above' | 'below'>(null)
@@ -427,7 +430,7 @@ export function UnitCell({
         aria-label={value ? `Unit: ${value}` : 'Choose a unit'}
         className={`${className} block w-full truncate text-left`}
       >
-        {value ?? ''}
+        {value ?? (placeholder && <span className="text-pencil">{placeholder}</span>)}
       </button>
       {menu && (
         <div

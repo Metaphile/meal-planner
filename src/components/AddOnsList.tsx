@@ -126,13 +126,14 @@ function SpareLine({ units }: { units: string[] }) {
       <QuantityInput
         value={draft.quantity}
         onChange={(quantity) => setDraft((d) => ({ ...d, quantity }))}
-        placeholder=""
-        className={`${CELL} ${RULE} pr-1 text-right`}
+        placeholder="Qty"
+        className={`${CELL} ${RULE} pr-1 text-right placeholder:text-pencil`}
       />
       <UnitCell
         value={draft.unit}
         onChange={(unit) => setDraft((d) => ({ ...d, unit }))}
         units={units}
+        placeholder="Unit"
         className={`${CELL} ${RULE} pl-1.5`}
       />
       <span />
