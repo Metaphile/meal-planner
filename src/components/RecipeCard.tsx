@@ -192,8 +192,10 @@ export const RecipeCard = forwardRef<HTMLDivElement, CardProps>(
                   large ? 'text-[29px] leading-[26px]' : 'text-[28px] leading-[25px]'
                 }`}
               >
-                {/* (In the box, a vertical drag on it turns the drum.) */}
-                <OneLine text={recipe.title} panY={large} />
+                {/* (Only swiped sideways, in the box or in hand: a vertical
+                    drag on it is the drum's to turn, or the card's to pull
+                    down and put back.) */}
+                <OneLine text={recipe.title} panY={false} />
               </div>
               <WantBox recipeId={recipe.id} canEditPlan={canEditPlan} />
             </div>
@@ -1785,6 +1787,8 @@ export function CardDetail({
       active: false,
       decided: false,
       fromScroller: false,
+      // Started on a cut-off title (or name), swiped sideways to read.
+      onLine: false,
       x0: 0,
       y0: 0,
       dy: 0,
@@ -1821,6 +1825,7 @@ export function CardDetail({
       d.active = false
       d.decided = false
       d.fromScroller = !!scrollRef.current?.contains(target as Node)
+      d.onLine = !!(target as Element | null)?.closest?.('.one-line-cut')
       d.x0 = x
       d.y0 = y
       d.dy = 0
@@ -1846,7 +1851,11 @@ export function CardDetail({
           return false
         } else {
           // Undecided jitter at the top — hold it so the scroller can't bounce.
-          return dy >= 0 && atTop()
+          // (Not on a cut-off title: iOS settles on the first moves whether
+          // a swipe scrolls, so holding them would stop it being swiped
+          // sideways. It takes only sideways swipes itself, so there's no
+          // bounce to stop.)
+          return !d.onLine && dy >= 0 && atTop()
         }
       }
       if (!d.active) return false
