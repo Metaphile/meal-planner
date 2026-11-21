@@ -69,6 +69,11 @@ body,
   height: 100%;
 }
 
+/* No bouncing the whole page (iOS takes this from the root, not body). */
+html {
+  overscroll-behavior: none;
+}
+
 body {
   margin: 0;
   background: var(--color-bg);

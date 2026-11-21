@@ -850,6 +850,7 @@ export function CardDetail({
   const flipping = useRef(false)
   const shadeRef = useRef<HTMLDivElement>(null) // the shadow over the rolodex
   const scrollRef = useRef<HTMLDivElement>(null) // the card scrolls in this
+  const rootRef = useRef<HTMLDivElement>(null)
   const restTop = useRef(0)
   const closing = useRef(false)
   const onClosedRef = useRef(onClosed)
@@ -1446,8 +1447,27 @@ export function CardDetail({
     }
   }, [])
 
+  // A drag on the shade with nothing to scroll (a card shorter than the
+  // screen, or the strip above the card's layer) would otherwise reach the
+  // page under it, which iOS then drags about. Only the card's own layer
+  // scrolls, and only when there's more card than screen.
+  useEffect(() => {
+    const root = rootRef.current!
+    const onTouchMove = (e: TouchEvent) => {
+      const sc = scrollRef.current
+      const target = e.target as Element
+      if (sc?.contains(target) && sc.scrollHeight > sc.clientHeight + 1)
+        return
+      // (Leave a field's own touches alone: selecting, moving the caret.)
+      if (target.closest?.('input, textarea')) return
+      if (e.cancelable) e.preventDefault()
+    }
+    root.addEventListener('touchmove', onTouchMove, { passive: false })
+    return () => root.removeEventListener('touchmove', onTouchMove)
+  }, [])
+
   return createPortal(
-    <div className="fixed inset-0 z-50">
+    <div ref={rootRef} className="fixed inset-0 z-50">
       <div
         ref={shadeRef}
         className="absolute inset-0 bg-[rgb(20_24_22/0.55)]"
