@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { AggregatedIngredient } from '../data/aggregate'
 
 /**
@@ -11,7 +12,7 @@ export function IngredientsList({
 }: {
   ingredients: AggregatedIngredient[]
   /** What it says with nothing on it. */
-  empty: string
+  empty: ReactNode
 }) {
   return (
     // A notepad sheet: each ingredient on a ruled line, where it's from below.
