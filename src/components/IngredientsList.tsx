@@ -114,8 +114,10 @@ function IngredientLine({
           <span className="shrink-0 text-base text-ink-soft">
             {needed
               ? formatAmount(ing.quantity, ing.unit)
-              : // (Nothing calls for it: no quantity needed.)
-                '—'}
+              : // (Nothing calls for it: no quantity needed, in its unit.)
+                ing.unit
+                ? `– ${ing.unit}`
+                : '–'}
           </span>
         </div>
         {(ing.sources.length > 0 || !needed) && (
@@ -194,7 +196,7 @@ function Tickbox({
 }
 
 /**
- * How much is on hand, against what's needed: − [have] of need +. The
+ * How much is on hand: − [have] + (what's needed is right above it). The
  * number can be typed (a plain decimal; cleared, it's 0, and shows 0 once
  * you leave it); − and + go a whole unit at a time (not below 0). Short of
  * what's needed, it shows in red.
@@ -273,11 +275,8 @@ function HaveCounter({
           }`}
         />
         {/* (No unit: it's right above.) */}
-        {need !== undefined ? (
-          <span className="pr-1 pl-1.5 whitespace-nowrap">of {round(need)}</span>
-        ) : (
-          <span className="w-1" />
-        )}
+        {/* (No "of need": it's right above.) */}
+        <span className="w-1" />
         <button
           type="button"
           aria-label={`More ${unitName(unit)}`}
