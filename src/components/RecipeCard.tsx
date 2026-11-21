@@ -640,6 +640,16 @@ const RecipeCardBack = forwardRef<
             headClass={label}
           />
           <label className="block">
+            <span className={label}>Tags</span>
+            <input
+              value={tagsText}
+              onChange={(e) => setTagsText(e.target.value)}
+              placeholder="dinner, kid-friendly"
+              autoComplete="off"
+              className="block h-[25px] w-full border-b border-line-blue bg-transparent pt-[3px] leading-[21px] focus:bg-kraft/15 focus:outline-none"
+            />
+          </label>
+          <label className="block">
             <span className={label}>Notes</span>
             <textarea
               ref={notesRef}
@@ -649,16 +659,6 @@ const RecipeCardBack = forwardRef<
               placeholder="Prep tips, substitutions…"
               autoComplete="off"
               className="paper-lines block w-full resize-none overflow-hidden bg-transparent pt-[3px] leading-[22px] focus:outline-none"
-            />
-          </label>
-          <label className="block">
-            <span className={label}>Tags</span>
-            <input
-              value={tagsText}
-              onChange={(e) => setTagsText(e.target.value)}
-              placeholder="dinner, kid-friendly"
-              autoComplete="off"
-              className="block h-[25px] w-full border-b border-line-blue bg-transparent pt-[3px] leading-[21px] focus:bg-kraft/15 focus:outline-none"
             />
           </label>
         </div>
@@ -748,6 +748,18 @@ const EASE_OUT = 'cubic-bezier(0.2, 0.9, 0.25, 1)'
 const STAND = 'cubic-bezier(0.4, 0, 0.2, 1)' // standing up off / back onto the wheel
 
 const pose = (dy: number) => `translate(0px, ${dy}px)`
+
+/** How a card comes out of the rolodex (or a pocket) into your hand:
+ *  - 'arc': it slides up out of its slot and hands over, mid-flight, to the
+ *    card in hand, on one continuous arc.
+ *  - 'lift': at once, it lifts straight up out of its slot and off the
+ *    screen while the card in hand fades in where it rests (and the reverse
+ *    to put it back). */
+const TAKE_OUT: 'arc' | 'lift' = 'lift'
+const LIFT_MS = 440 // the card lifting out of the box (or dropping back)
+const FADE_MS = 300 // the card in hand fading in (or out)
+const LIFT_UP = 'cubic-bezier(0.45, 0, 0.85, 0.5)' // gathering speed
+const DROP_IN = 'cubic-bezier(0.15, 0.5, 0.55, 1)' // settling into the slot
 
 /**
  * The lifted card. One continuous motion takes the card from wherever it
@@ -934,6 +946,117 @@ export function CardDetail({
     return anims[0]!
   }
 
+  /**
+   * 'lift' (see TAKE_OUT): the card in the rolodex lifts straight up out of
+   * its slot and off the top of the screen (standing up off the wheel as it
+   * goes) while this card fades in where it rests — or, putting it back,
+   * fades out where it is (`fromY` below its place) while the other drops
+   * back into its slot. Returns the animation that ends last.
+   */
+  const liftFade = (
+    o: CardOrigin,
+    rdxCard: HTMLElement,
+    opening: boolean,
+    fromY = 0,
+  ) => {
+    const card = cardRef.current!
+    const shade = shadeRef.current!
+    const rdxWrap = rdxCard.parentElement ?? undefined
+    const rdxDim =
+      rdxCard.querySelector<HTMLElement>('.rolodex-dim') ?? undefined
+    // Clear of the top of the page, shadow and all.
+    const gone = `translateY(${o.viewTop - o.height - 40 - o.slotTop}px)`
+    const home = 'translateY(0px)'
+    // Standing up off the wheel (or lying back onto it) takes the first
+    // (last) part of the lift.
+    const s = 0.4
+    for (const el of [card, rdxCard, rdxWrap, rdxDim])
+      el?.getAnimations().forEach((a) => a.cancel())
+    const lift = { duration: LIFT_MS, fill: 'both' as const }
+    const fade = { duration: FADE_MS, fill: 'both' as const }
+    const anims = opening
+      ? [
+          rdxCard.animate(
+            [
+              { transform: home, opacity: 1 },
+              { offset: 0.999, transform: gone, opacity: 1 },
+              { transform: gone, opacity: 0 },
+            ],
+            { ...lift, easing: LIFT_UP },
+          ),
+          rdxWrap?.animate(
+            [
+              { offset: 0, transform: o.wheelPose, easing: STAND },
+              { offset: s, transform: o.flatPose },
+              { offset: 1, transform: o.flatPose },
+            ],
+            lift,
+          ),
+          rdxDim?.animate(
+            [
+              { offset: 0, opacity: o.shade, easing: STAND },
+              { offset: s, opacity: 0 },
+              { offset: 1, opacity: 0 },
+            ],
+            lift,
+          ),
+          card.animate(
+            [
+              { opacity: 0, transform: pose(0) },
+              { opacity: 1, transform: pose(0) },
+            ],
+            { ...fade, easing: 'ease-out' },
+          ),
+          shade.animate([{ opacity: 0 }, { opacity: 1 }], {
+            ...fade,
+            easing: 'ease-out',
+          }),
+        ]
+      : [
+          rdxCard.animate(
+            [
+              { transform: gone, opacity: 1 },
+              { transform: home, opacity: 1 },
+            ],
+            { ...lift, easing: DROP_IN },
+          ),
+          rdxWrap?.animate(
+            [
+              { offset: 0, transform: o.flatPose },
+              { offset: 1 - s, transform: o.flatPose, easing: STAND },
+              { offset: 1, transform: o.wheelPose },
+            ],
+            lift,
+          ),
+          rdxDim?.animate(
+            [
+              { offset: 0, opacity: 0 },
+              { offset: 1 - s, opacity: 0, easing: STAND },
+              { offset: 1, opacity: o.shade },
+            ],
+            lift,
+          ),
+          card.animate(
+            [
+              { opacity: 1, transform: pose(fromY) },
+              { opacity: 0, transform: pose(fromY) },
+            ],
+            { ...fade, easing: 'ease-in' },
+          ),
+          shade.animate(
+            [
+              { opacity: Number(getComputedStyle(shade).opacity) },
+              { opacity: 0 },
+            ],
+            { ...fade, easing: 'ease-in' },
+          ),
+        ]
+    // Same clock, to the frame.
+    const now = document.timeline.currentTime
+    for (const a of anims) if (a) a.startTime = now
+    return (opening ? anims[3] : anims[0])!
+  }
+
   // Fly out of the rolodex into place.
   useLayoutEffect(() => {
     const card = cardRef.current!
@@ -943,12 +1066,16 @@ export function CardDetail({
     // this effect in dev while the first one is already in flight).
     card.getAnimations().forEach((x) => x.cancel())
     restTop.current = card.getBoundingClientRect().top
-    const anim = fly(
-      arcThrough(origin.slotTop, origin.clearTop, restTop.current),
-      origin,
-      true,
-      restTop.current,
-    )
+    const rdxCard = TAKE_OUT === 'lift' ? getRolodexCard() : undefined
+    // (Fading in is the only part on this card, and the first to finish.)
+    const anim = rdxCard
+      ? liftFade(origin, rdxCard, true)
+      : fly(
+          arcThrough(origin.slotTop, origin.clearTop, restTop.current),
+          origin,
+          true,
+          restTop.current,
+        )
     // Once settled, drop the fill so the card is plain CSS again.
     anim.onfinish = () => {
       if (!closing.current) anim.cancel()
@@ -976,12 +1103,10 @@ export function CardDetail({
       dismiss()
       return
     }
-    const anim = fly(
-      arcThrough(base + fromY, o.clearTop, o.slotTop),
-      o,
-      false,
-      base,
-    )
+    const rdxCard = TAKE_OUT === 'lift' ? getRolodexCard() : undefined
+    const anim = rdxCard
+      ? liftFade(o, rdxCard, false, fromY)
+      : fly(arcThrough(base + fromY, o.clearTop, o.slotTop), o, false, base)
     anim.onfinish = () => onClosedRef.current()
   }
   const closeRef = useRef(close)
