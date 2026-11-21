@@ -57,7 +57,7 @@ const TAB_W = 44 // divider tab width
 // The shadow of the item in front: it starts this far above that item's
 // edge (the paper above it unshaded) and deepens to its darkest as far
 // below the edge, out of sight — so at the edge it's about halfway.
-const CAST = 0.145
+const CAST = 0.116
 const CAST_FADE = 28
 
 // The visible part of the wheel, as angles from the front line (where a card
@@ -337,7 +337,7 @@ export default function RecipesPage() {
         const deg = phi / DEG
         const shade =
           Math.round(
-            0.595 * Math.min(1, Math.max(0, (Math.abs(deg) - 12) / 55)) * 100,
+            0.476 * Math.min(1, Math.max(0, (Math.abs(deg) - 12) / 55)) * 100,
           ) / 100
         if (lastShade.current[i] !== shade) {
           lastShade.current[i] = shade
@@ -758,6 +758,10 @@ export default function RecipesPage() {
               transformOrigin: '50% 0',
               perspective: `${PERSPECTIVE}px`,
               perspectiveOrigin: `50% ${headerU + wheel.front}px`,
+              // The box in a lighter light: paper and kraft 20% toward white
+              // (ink and edges as they are).
+              ['--color-paper' as string]: '#fdfaf4',
+              ['--color-kraft' as string]: '#e8d5a5',
             }}
           >
             {items.map((item, i) => (
