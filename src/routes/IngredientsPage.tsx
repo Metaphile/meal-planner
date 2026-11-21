@@ -24,7 +24,7 @@ function WantBoxPicture() {
 
 export default function IngredientsPage() {
   const ingredients = useWantedIngredients()
-  const { hasCapability } = useAuth()
+  const { canWrite } = useAuth()
   return (
     <div className="flex h-full flex-col">
       <PageHeader title="Ingredients" />
@@ -32,7 +32,7 @@ export default function IngredientsPage() {
         <IngredientsList
           ingredients={ingredients}
           checkable
-          canEdit={hasCapability('edit_plan')}
+          canEdit={canWrite}
           empty={
             <>
               Tick <WantBoxPicture /> to include that recipe’s ingredients.
@@ -48,7 +48,7 @@ export default function IngredientsPage() {
           </span>
         </div>
         <div className="kraft-pocket rounded-tl-none p-2">
-          <AddOnsList canEdit={hasCapability('edit_plan')} />
+          <AddOnsList canEdit={canWrite} />
         </div>
       </div>
     </div>

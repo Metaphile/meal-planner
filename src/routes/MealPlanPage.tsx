@@ -45,9 +45,9 @@ export default function MealPlanPage() {
   const planIngredients = useAggregatedIngredients()
   const addEmptyMeal = useStore((s) => s.addEmptyMeal)
   const reorderPlan = useStore((s) => s.reorderPlan)
-  const { hasCapability } = useAuth()
-  const canEdit = hasCapability('edit_plan')
-  const canEditRecipes = hasCapability('edit_recipes')
+  const { canWrite } = useAuth()
+  const canEdit = canWrite
+  const canEditRecipes = canWrite
 
   const ordered = useMemo(
     () => [...plan].sort((a, b) => a.position - b.position),

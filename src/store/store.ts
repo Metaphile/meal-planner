@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type {
   AddOn,
+  Favorite,
   Have,
   Ingredient,
   MealComponent,
@@ -8,7 +9,7 @@ import type {
   Recipe,
   Want,
 } from '../data/types'
-import { isWanted } from '../data/types'
+import { favoriteKey, isWanted } from '../data/types'
 import {
   enqueueDelete,
   enqueuePut,
@@ -30,6 +31,8 @@ interface AppState {
   addons: AddOn[]
   /** Ingredients on hand (ticked on the Ingredients tab), by line key. */
   haves: Have[]
+  /** The signed-in person's favorite recipes. */
+  favorites: Favorite[]
   hydrated: boolean
 
   init: () => Promise<void>
@@ -61,6 +64,9 @@ interface AppState {
   /** How much of a ticked line is on hand (at least 0). */
   setHaveAmount: (key: string, amount: number) => void
 
+  // Favorites (the signed-in person's)
+  setFavorite: (userId: string, recipeId: string, on: boolean) => void
+
   // Plan meals (anonymous groups that live only on the plan)
   addRecipeToPlan: (recipeId: string) => void
   addEmptyMeal: () => void
@@ -90,6 +96,7 @@ export const useStore = create<AppState>((set, get) => ({
   wants: [],
   addons: [],
   haves: [],
+  favorites: [],
   hydrated: false,
 
   init: async () => {
@@ -102,6 +109,7 @@ export const useStore = create<AppState>((set, get) => ({
       wants: cached.wants,
       addons: [...cached.addons].sort(byPos),
       haves: cached.haves,
+      favorites: cached.favorites,
       hydrated: true,
     })
     // 2. Reconcile with PocketBase + subscribe to realtime updates. Keeps the
@@ -114,6 +122,7 @@ export const useStore = create<AppState>((set, get) => ({
           wants: data.wants,
           addons: [...data.addons].sort(byPos),
           haves: data.haves,
+          favorites: data.favorites,
         })
       })
     } catch {
@@ -225,6 +234,20 @@ export const useStore = create<AppState>((set, get) => ({
       }),
     }))
     if (updated) enqueuePut('haves', updated)
+  },
+
+  setFavorite: (userId, recipeId, on) => {
+    const id = favoriteKey(userId, recipeId)
+    const has = get().favorites.some((f) => f.id === id)
+    if (on === has) return
+    if (on) {
+      const fav: Favorite = { id, recipeId }
+      set((s) => ({ favorites: [...s.favorites, fav] }))
+      enqueuePut('favorites', fav)
+    } else {
+      set((s) => ({ favorites: s.favorites.filter((f) => f.id !== id) }))
+      enqueueDelete('favorites', id)
+    }
   },
 
   addRecipeToPlan: (recipeId) => {

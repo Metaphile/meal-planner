@@ -1,7 +1,13 @@
 import Dexie, { type EntityTable } from 'dexie'
-import type { AddOn, Have, PlanMeal, Recipe, Want } from './types'
+import type { AddOn, Favorite, Have, PlanMeal, Recipe, Want } from './types'
 
-export type TableName = 'recipes' | 'plan' | 'wants' | 'addons' | 'haves'
+export type TableName =
+  | 'recipes'
+  | 'plan'
+  | 'wants'
+  | 'addons'
+  | 'haves'
+  | 'favorites'
 
 /** A pending remote write, persisted so offline edits survive a reload. */
 export interface OutboxRow {
@@ -9,7 +15,7 @@ export interface OutboxRow {
   collection: TableName
   key: string
   op: 'put' | 'delete'
-  data?: Recipe | PlanMeal | Want | AddOn | Have
+  data?: Recipe | PlanMeal | Want | AddOn | Have | Favorite
 }
 
 /**
@@ -23,6 +29,7 @@ export const db = new Dexie('meal-planner') as Dexie & {
   wants: EntityTable<Want, 'id'>
   addons: EntityTable<AddOn, 'id'>
   haves: EntityTable<Have, 'id'>
+  favorites: EntityTable<Favorite, 'id'>
   outbox: EntityTable<OutboxRow, 'id'>
 }
 
@@ -85,5 +92,16 @@ db.version(6).stores({
   wants: 'id',
   addons: 'id, position',
   haves: 'id',
+  outbox: '++id',
+})
+
+// v7: favorites (each person's own).
+db.version(7).stores({
+  recipes: 'id, title',
+  plan: 'id, position',
+  wants: 'id',
+  addons: 'id, position',
+  haves: 'id',
+  favorites: 'id',
   outbox: '++id',
 })

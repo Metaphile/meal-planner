@@ -10,11 +10,10 @@ const RecipesPage = lazy(() => import('./routes/RecipesPage'))
 const MealPlanPage = lazy(() => import('./routes/MealPlanPage'))
 const IngredientsPage = lazy(() => import('./routes/IngredientsPage'))
 const AccountPage = lazy(() => import('./routes/AccountPage'))
-const AdminPage = lazy(() => import('./routes/AdminPage'))
 const InvitePage = lazy(() => import('./routes/InvitePage'))
 
 export default function App() {
-  const { ready, user, isAdmin } = useAuth()
+  const { ready, user } = useAuth()
   const hydrated = useStore((s) => s.hydrated)
   const init = useStore((s) => s.init)
 
@@ -53,24 +52,14 @@ export default function App() {
                   <Route path="/plan" element={<MealPlanPage />} />
                   <Route path="/ingredients" element={<IngredientsPage />} />
                   <Route path="/account" element={<AccountPage />} />
+                  {/* Old paths. (The group is managed on Account now.) */}
                   <Route
                     path="/admin"
-                    element={
-                      isAdmin ? (
-                        <AdminPage />
-                      ) : (
-                        <Navigate to="/account" replace />
-                      )
-                    }
+                    element={<Navigate to="/account" replace />}
                   />
-                  {/* Old paths. */}
                   <Route
                     path="/recipes-v2"
                     element={<Navigate to="/recipes" replace />}
-                  />
-                  <Route
-                    path="/ingredients"
-                    element={<Navigate to="/plan" replace />}
                   />
                   <Route
                     path="/meals/*"

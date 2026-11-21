@@ -1,5 +1,13 @@
 import { db, type OutboxRow, type TableName } from './db'
-import type { AddOn, Dataset, Have, PlanMeal, Recipe, Want } from './types'
+import type {
+  AddOn,
+  Dataset,
+  Favorite,
+  Have,
+  PlanMeal,
+  Recipe,
+  Want,
+} from './types'
 import { seedData } from './seed'
 import { pb } from '../auth/pb'
 
@@ -13,18 +21,26 @@ import { pb } from '../auth/pb'
 // ---- local cache (IndexedDB) ----------------------------------------------
 
 export async function hydrate(): Promise<Dataset> {
-  const [recipes, plan, wants, addons, haves] = await Promise.all([
+  const [recipes, plan, wants, addons, haves, favorites] = await Promise.all([
     db.recipes.toArray(),
     db.plan.toArray(),
     db.wants.toArray(),
     db.addons.toArray(),
     db.haves.toArray(),
+    db.favorites.toArray(),
   ])
-  return { recipes, plan, wants, addons, haves }
+  return { recipes, plan, wants, addons, haves, favorites }
 }
 
 async function cacheReplaceAll(data: Dataset): Promise<void> {
-  const tables = [db.recipes, db.plan, db.wants, db.addons, db.haves]
+  const tables = [
+    db.recipes,
+    db.plan,
+    db.wants,
+    db.addons,
+    db.haves,
+    db.favorites,
+  ]
   await db.transaction('rw', tables, async () => {
     await Promise.all(tables.map((t) => t.clear()))
     await Promise.all([
@@ -33,6 +49,7 @@ async function cacheReplaceAll(data: Dataset): Promise<void> {
       db.wants.bulkPut(data.wants),
       db.addons.bulkPut(data.addons),
       db.haves.bulkPut(data.haves),
+      db.favorites.bulkPut(data.favorites),
     ])
   })
 }
@@ -44,12 +61,15 @@ const idMap = new Map<string, string>()
 const mapKey = (c: TableName, k: string) => `${c}:${k}`
 
 async function remotePull(): Promise<Dataset> {
-  const [recs, plans, wantRecs, addonRecs, haveRecs] = await Promise.all([
+  const [recs, plans, wantRecs, addonRecs, haveRecs, favRecs] =
+    await Promise.all([
     pb.collection('recipes').getFullList({ requestKey: null }),
     pb.collection('plan').getFullList({ requestKey: null }),
     pb.collection('wants').getFullList({ requestKey: null }),
     pb.collection('addons').getFullList({ requestKey: null }),
     pb.collection('haves').getFullList({ requestKey: null }),
+    // (Only the signed-in person's: the rules let nobody see others'.)
+    pb.collection('favorites').getFullList({ requestKey: null }),
   ])
   idMap.clear()
   const recipes = recs.map((r) => {
@@ -72,7 +92,11 @@ async function remotePull(): Promise<Dataset> {
     idMap.set(mapKey('haves', h.key), h.id)
     return h.data as Have
   })
-  return { recipes, plan, wants, addons, haves }
+  const favorites = favRecs.map((f) => {
+    idMap.set(mapKey('favorites', f.key), f.id)
+    return f.data as Favorite
+  })
+  return { recipes, plan, wants, addons, haves, favorites }
 }
 
 /** Apply one op to PocketBase. Throws on failure (caller decides to retry). */
@@ -90,9 +114,12 @@ async function applyRemote(op: OutboxRow): Promise<void> {
       .collection(op.collection)
       .update(id, { key: op.key, data: op.data }, { requestKey: null })
   } else {
+    // (A favorite is created as the signed-in person's own.)
+    const owner =
+      op.collection === 'favorites' ? { user: pb.authStore.record?.id } : {}
     const rec = await pb
       .collection(op.collection)
-      .create({ key: op.key, data: op.data }, { requestKey: null })
+      .create({ key: op.key, data: op.data, ...owner }, { requestKey: null })
     idMap.set(mapKey(op.collection, op.key), rec.id)
   }
 }
@@ -150,6 +177,7 @@ async function withPending(data: Dataset): Promise<Dataset> {
     wants: new Map(data.wants.map((w) => [w.id, w])),
     addons: new Map(data.addons.map((a) => [a.id, a])),
     haves: new Map(data.haves.map((h) => [h.id, h])),
+    favorites: new Map(data.favorites.map((f) => [f.id, f])),
   }
   for (const r of rows) {
     const table = tables[r.collection] as Map<string, unknown>
@@ -162,6 +190,7 @@ async function withPending(data: Dataset): Promise<Dataset> {
     wants: [...tables.wants.values()],
     addons: [...tables.addons.values()],
     haves: [...tables.haves.values()],
+    favorites: [...tables.favorites.values()],
   }
 }
 
@@ -172,9 +201,10 @@ export function enqueuePut(table: 'plan', item: PlanMeal): void
 export function enqueuePut(table: 'wants', item: Want): void
 export function enqueuePut(table: 'addons', item: AddOn): void
 export function enqueuePut(table: 'haves', item: Have): void
+export function enqueuePut(table: 'favorites', item: Favorite): void
 export function enqueuePut(
   table: TableName,
-  item: Recipe | PlanMeal | Want | AddOn | Have,
+  item: Recipe | PlanMeal | Want | AddOn | Have | Favorite,
 ): void {
   void db[table].put(item as never) // cache immediately
   void db.outbox.add({ collection: table, key: item.id, op: 'put', data: item })
@@ -189,12 +219,12 @@ export function enqueueDelete(table: TableName, id: string): void {
 
 // ---- startup sync ----------------------------------------------------------
 
-function isAdmin(): boolean {
-  return pb.authStore.record?.role === 'admin'
+function isWriter(): boolean {
+  return pb.authStore.record?.role === 'writer'
 }
 
 async function seedRemoteIfEmpty(data: Dataset): Promise<boolean> {
-  if (data.recipes.length > 0 || data.plan.length > 0 || !isAdmin()) return false
+  if (data.recipes.length > 0 || data.plan.length > 0 || !isWriter()) return false
   // First admin on a fresh household: seed the starter dataset into PocketBase.
   for (const r of seedData.recipes) {
     await pb.collection('recipes').create({ key: r.id, data: r }, { requestKey: null })
@@ -236,6 +266,7 @@ export async function startSync(onData: (data: Dataset) => void): Promise<void> 
   unsubscribers.push(await pb.collection('wants').subscribe('*', handler))
   unsubscribers.push(await pb.collection('addons').subscribe('*', handler))
   unsubscribers.push(await pb.collection('haves').subscribe('*', handler))
+  unsubscribers.push(await pb.collection('favorites').subscribe('*', handler))
 
   window.addEventListener('online', () => void flushOutbox())
 }

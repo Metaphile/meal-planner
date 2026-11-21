@@ -6,13 +6,16 @@ import {
   type ReactNode,
 } from 'react'
 import { pb } from './pb'
-import type { Capability } from './capabilities'
+
+/** A group member's access: a writer changes things (recipes, what's
+ *  wanted, the ingredients on hand, add-ons) and manages the group; a reader
+ *  looks (and keeps favorites, and their own name). */
+export type Access = 'writer' | 'reader'
 
 export interface AuthUser {
   id: string
   name: string
-  role: 'admin' | 'member'
-  capabilities: string[]
+  role: Access
   email?: string
 }
 
@@ -20,8 +23,9 @@ interface AuthContextValue {
   user: AuthUser | null
   /** True once the initial session check has completed. */
   ready: boolean
-  isAdmin: boolean
-  hasCapability: (cap: Capability) => boolean
+  /** May change things (and manage the group). Mirrors the server's rules,
+   *  which are what really decide. */
+  canWrite: boolean
   signOut: () => void
 }
 
@@ -34,10 +38,7 @@ function toUser(record: unknown): AuthUser | null {
   return {
     id: String(r.id),
     name: typeof r.name === 'string' ? r.name : '',
-    role: r.role === 'admin' ? 'admin' : 'member',
-    capabilities: Array.isArray(r.capabilities)
-      ? (r.capabilities as string[])
-      : [],
+    role: r.role === 'writer' ? 'writer' : 'reader',
     email: typeof r.email === 'string' ? r.email : undefined,
   }
 }
@@ -76,10 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value: AuthContextValue = {
     user,
     ready,
-    isAdmin: user?.role === 'admin',
-    // Admins implicitly hold every capability (mirrors the server rules).
-    hasCapability: (cap) =>
-      !!user && (user.role === 'admin' || user.capabilities.includes(cap)),
+    canWrite: user?.role === 'writer',
     signOut: () => pb.authStore.clear(),
   }
 

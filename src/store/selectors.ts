@@ -1,7 +1,7 @@
 import { useStore } from './store'
 import { aggregateIngredients, aggregateWanted } from '../data/aggregate'
 import type { AggregatedIngredient } from '../data/aggregate'
-import { isWanted, type Recipe } from '../data/types'
+import { favoriteKey, isWanted, type Recipe } from '../data/types'
 
 /**
  * Memoized ingredient aggregate. The store replaces the plan/recipes arrays
@@ -47,6 +47,15 @@ export function useWantedIngredients(): AggregatedIngredient[] {
     wantedCache = { wants: s.wants, recipes: s.recipes, result }
     return result
   })
+}
+
+/** Whether the signed-in person (`userId`) has marked a recipe a favorite.
+ *  (By key, so another person's left in this device's cache never shows.) */
+export function useIsFavorite(userId: string | undefined, recipeId: string) {
+  return useStore(
+    (s) =>
+      !!userId && s.favorites.some((f) => f.id === favoriteKey(userId, recipeId)),
+  )
 }
 
 /** How many times a recipe is wanted (0: not wanted). */

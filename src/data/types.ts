@@ -84,6 +84,16 @@ export interface Have {
 export const haveKey = (name: string, unit?: string) =>
   `${name.trim().toLowerCase()}|${(unit ?? '').trim().toLowerCase()}`
 
+/** A recipe someone marked a favorite — their own, nobody else's. Its id
+ *  is theirs and the recipe's (see favoriteKey). */
+export interface Favorite {
+  id: string
+  recipeId: string
+}
+
+export const favoriteKey = (userId: string, recipeId: string) =>
+  `${userId}:${recipeId}`
+
 /** Shape of the entire persisted dataset (one row per table on hydrate). */
 export interface Dataset {
   recipes: Recipe[]
@@ -91,4 +101,6 @@ export interface Dataset {
   wants: Want[]
   addons: AddOn[]
   haves: Have[]
+  /** (The signed-in person's.) */
+  favorites: Favorite[]
 }

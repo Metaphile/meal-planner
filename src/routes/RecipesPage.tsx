@@ -18,9 +18,10 @@ import {
   CardDetail,
   RecipeCard,
   PERSPECTIVE,
+  StarIcon,
   type CardOrigin,
 } from '../components/RecipeCard'
-import { isWanted, type Recipe } from '../data/types'
+import { favoriteKey, isWanted, type Recipe } from '../data/types'
 
 /*
  * Recipes — a rolodex of paper cards on a wheel.
@@ -257,14 +258,16 @@ let leftAs: {
   searching: boolean
   query: string
   wantedOnly: boolean
+  favoritesOnly: boolean
+  keptFavorites: ReadonlySet<string>
   kept: ReadonlySet<string>
 } | null = null
 
 export default function RecipesPage() {
   const recipes = useStore((s) => s.recipes)
-  const { hasCapability } = useAuth()
-  const canEditRecipes = hasCapability('edit_recipes')
-  const canEditPlan = hasCapability('edit_plan')
+  const { canWrite } = useAuth()
+  const canEditRecipes = canWrite
+  const canEditPlan = canWrite
 
   // Search narrows the rolodex to the cards that match (title, tag or
   // ingredient); the dividers stay, so it's still the same box.
@@ -285,19 +288,53 @@ export default function RecipesPage() {
       setKept(new Set(wants.filter(isWanted).map((w) => w.recipeId)))
     setWantedOnly(!wantedOnly)
   }
+  // …and, starred, to just your favorites (the same way: unstarring one
+  // there doesn't whisk it away).
+  const { user } = useAuth()
+  const favorites = useStore((s) => s.favorites)
+  const myFavorites = useMemo(() => {
+    const prefix = user ? favoriteKey(user.id, '') : null
+    return new Set(
+      favorites
+        .filter((f) => prefix !== null && f.id.startsWith(prefix))
+        .map((f) => f.recipeId),
+    )
+  }, [favorites, user])
+  const [favoritesOnly, setFavoritesOnly] = useState(
+    leftAs?.favoritesOnly ?? false,
+  )
+  const [keptFavorites, setKeptFavorites] = useState<ReadonlySet<string>>(
+    () => leftAs?.keptFavorites ?? new Set(),
+  )
+  const toggleFavoritesOnly = () => {
+    if (!favoritesOnly) setKeptFavorites(new Set(myFavorites))
+    setFavoritesOnly(!favoritesOnly)
+  }
   const matches = useMemo(() => {
     const wanted = new Set(wants.filter(isWanted).map((w) => w.recipeId))
     return recipes.filter(
       (r) =>
         (!wantedOnly || wanted.has(r.id) || kept.has(r.id)) &&
+        (!favoritesOnly ||
+          myFavorites.has(r.id) ||
+          keptFavorites.has(r.id)) &&
         (!q ||
           r.title.toLowerCase().includes(q) ||
           r.tags.some((t) => t.toLowerCase().includes(q)) ||
           r.ingredients.some((i) => i.name.toLowerCase().includes(q))),
     )
-  }, [recipes, q, wantedOnly, wants, kept])
+  }, [
+    recipes,
+    q,
+    wantedOnly,
+    wants,
+    kept,
+    favoritesOnly,
+    myFavorites,
+    keptFavorites,
+  ])
   // Any narrowing at all: a search (it opens on its first match).
-  const narrowed = !!q || wantedOnly
+  const narrowed = !!q || wantedOnly || favoritesOnly
   // The rolodex layer covers the whole page, header included (so a card
   // being taken out passes over the header rather than behind it); the wheel
   // itself sits below the header, and no resting card ever reaches up into it.
@@ -416,8 +453,22 @@ export default function RecipesPage() {
   // tells us when it moves, and we paint.
   const drumRef = useRef<DrumScroll | null>(null)
   // The search as it is now (remembered with the drum on leaving).
-  const leftStateRef = useRef({ searching, query, wantedOnly, kept })
-  leftStateRef.current = { searching, query, wantedOnly, kept }
+  const leftStateRef = useRef({
+    searching,
+    query,
+    wantedOnly,
+    kept,
+    favoritesOnly,
+    keptFavorites,
+  })
+  leftStateRef.current = {
+    searching,
+    query,
+    wantedOnly,
+    kept,
+    favoritesOnly,
+    keptFavorites,
+  }
   const paintRef = useRef(paint)
   paintRef.current = paint
   useLayoutEffect(() => {
@@ -459,7 +510,7 @@ export default function RecipesPage() {
   useLayoutEffect(() => {
     const drum = drumRef.current
     const measured = pageH > 0 && headerH > 0
-    const key = `${q}|${wantedOnly}|${measured}`
+    const key = `${q}|${wantedOnly}|${favoritesOnly}|${measured}`
     const within = (p: number) => Math.min(Math.max(0, p), bounds.max * SCALE)
     if (positionedFor.current !== key) {
       positionedFor.current = key
@@ -481,7 +532,7 @@ export default function RecipesPage() {
     lastShade.current = []
     shown.current = []
     paint()
-  }, [paint, q, wantedOnly, narrowed, pageH, headerH, bounds])
+  }, [paint, q, wantedOnly, favoritesOnly, narrowed, pageH, headerH, bounds])
 
   useLayoutEffect(() => {
     const scroller = scrollRef.current
@@ -764,6 +815,24 @@ export default function RecipesPage() {
       </span>
     </button>
   )
+  // Only your favorites: the cards' star, beside it.
+  const favoritesOnlyStar = (
+    <button
+      type="button"
+      aria-pressed={favoritesOnly}
+      aria-label="Only favorites"
+      // (As the box: the search field keeps focus.)
+      onPointerDown={(e) => e.preventDefault()}
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={() => {
+        toggleFavoritesOnly()
+        if (searching) searchRef.current?.focus()
+      }}
+      className="-mx-1 grid h-9 w-9 shrink-0 place-items-center"
+    >
+      <StarIcon on={favoritesOnly} size={25} />
+    </button>
+  )
   const closeSearch = () => {
     setSearching(false)
     setQuery('')
@@ -817,7 +886,8 @@ export default function RecipesPage() {
               </button>
             )}
           </div>
-          {/* (Still here while searching: it narrows the search too.) */}
+          {/* (Still here while searching: they narrow the search too.) */}
+          {favoritesOnlyStar}
           {wantedOnlyBox}
           <button
             onClick={closeSearch}
@@ -832,6 +902,7 @@ export default function RecipesPage() {
           // (New recipes start on the blank card at the back of the box.)
           action={
             <div className="flex items-center gap-1">
+              {favoritesOnlyStar}
               {wantedOnlyBox}
               <button
                 onClick={() => setSearching(true)}

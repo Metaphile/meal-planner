@@ -12,7 +12,8 @@ import {
 } from 'react'
 import { createPortal, flushSync } from 'react-dom'
 import { useStore } from '../store/store'
-import { useWantCount } from '../store/selectors'
+import { useIsFavorite, useWantCount } from '../store/selectors'
+import { useAuth } from '../auth/AuthProvider'
 import type { Ingredient, Recipe } from '../data/types'
 import { QuantityInput } from './QuantityInput'
 import { ConfirmDialog } from './ui'
@@ -145,6 +146,7 @@ export const RecipeCard = forwardRef<HTMLDivElement, CardProps>(
               >
                 {recipe.title}
               </div>
+              <FavoriteStar recipeId={recipe.id} />
               <WantBox recipeId={recipe.id} canEditPlan={canEditPlan} />
             </div>
           </div>
@@ -207,6 +209,53 @@ export function EditButton({ onEdit }: { onEdit: () => void }) {
     <button type="button" onClick={onEdit} className={EDIT_CLASS}>
       Edit
     </button>
+  )
+}
+
+/**
+ * A favorite: a star beside the Want box, everyone's own (readers too).
+ * Like the box, it's marked right there in the box.
+ */
+function FavoriteStar({ recipeId }: { recipeId: string }) {
+  const { user } = useAuth()
+  const on = useIsFavorite(user?.id, recipeId)
+  const setFavorite = useStore((s) => s.setFavorite)
+  return (
+    <button
+      type="button"
+      aria-pressed={on}
+      aria-label="Favorite"
+      disabled={!user}
+      onClick={(e) => {
+        e.stopPropagation() // (not taking the card out)
+        if (user) setFavorite(user.id, recipeId, !on)
+      }}
+      // A generous target around the small star.
+      className="-my-2 flex shrink-0 items-center p-2 pr-0.5"
+    >
+      <StarIcon on={on} />
+    </button>
+  )
+}
+
+/** A five-pointed star, filled (lavender, inked) when on. */
+export function StarIcon({ on, size = 20 }: { on: boolean; size?: number }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width={size}
+      height={size}
+      aria-hidden
+      className={on ? 'text-kraft-edge' : 'text-[#c9bda4]'}
+    >
+      <path
+        d="M12 3.2l2.62 5.31 5.86.85-4.24 4.13 1 5.84L12 16.58l-5.24 2.75 1-5.84-4.24-4.13 5.86-.85z"
+        fill={on ? 'var(--color-kraft)' : 'var(--color-paper)'}
+        stroke="currentColor"
+        strokeWidth={1.6}
+        strokeLinejoin="round"
+      />
+    </svg>
   )
 }
 
