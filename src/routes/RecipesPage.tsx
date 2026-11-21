@@ -54,8 +54,11 @@ const SIDE = 16 // horizontal inset
  *  converted, so a drag still moves the cards exactly with the finger. */
 const SCALE = 0.85
 const TAB_W = 44 // divider tab width
-const CAST = 0.2 // how dark the shadow of the item in front gets
-const CAST_FADE = 28 // …over this much paper just above it (the rest is unshaded)
+// The shadow of the item in front: it starts this far above that item's
+// edge (the paper above it unshaded) and deepens to its darkest as far
+// below the edge, out of sight — so at the edge it's about halfway.
+const CAST = 0.3
+const CAST_FADE = 28
 
 // The visible part of the wheel, as angles from the front line (where a card
 // faces you): the top of the screen is far round, the bottom a little past.
@@ -843,7 +846,7 @@ const RolodexItem = memo(function RolodexItem({
         style={{
           top: paperTop,
           borderRadius: '14px 14px 0 0',
-          background: `linear-gradient(to bottom, rgb(40 30 15 / 0) ${shadowEnd - CAST_FADE}px, rgb(40 30 15 / ${CAST}) ${shadowEnd}px)`,
+          background: `linear-gradient(to bottom, rgb(40 30 15 / 0) ${shadowEnd - CAST_FADE}px, rgb(40 30 15 / ${CAST}) ${shadowEnd + CAST_FADE}px)`,
         }}
       />
     ) : null
