@@ -47,12 +47,12 @@ function IngredientLine({ ing }: { ing: Ingredient }) {
   )
 }
 
-function CardBody({ recipe, large }: { recipe: Recipe; large: boolean }) {
+function CardBody({ recipe }: { recipe: Recipe }) {
   return (
     <>
       <ul>
         {recipe.ingredients.length === 0 ? (
-          <li className="italic text-[#8a8170]">No ingredients yet</li>
+          <li className="text-[#8a8170]">No ingredients yet</li>
         ) : (
           recipe.ingredients.map((ing, i) => (
             <IngredientLine key={i} ing={ing} />
@@ -60,20 +60,14 @@ function CardBody({ recipe, large }: { recipe: Recipe; large: boolean }) {
         )}
       </ul>
       {recipe.tags.length > 0 && (
-        <p className="paper-serif mt-[22px] italic text-[#8a8170]">
+        <p className="mt-[22px] text-[#8a8170]">
           {recipe.tags.join(' · ')}
         </p>
       )}
       {recipe.notes && (
         <>
           <div className="h-[22px]" />
-          <div
-            className={`paper-serif font-semibold uppercase tracking-wider text-[#8a8170] ${
-              large ? 'text-[14px]' : 'text-[13px]'
-            }`}
-          >
-            Notes
-          </div>
+          <div className="font-semibold text-[#8a8170]">Notes</div>
           <p className="whitespace-pre-wrap pb-[22px]">{recipe.notes}</p>
         </>
       )}
@@ -133,8 +127,8 @@ export const RecipeCard = forwardRef<HTMLDivElement, CardProps>(
           <div className="px-5 pt-3.5">
             <div className="paper-rule flex items-start gap-3 pb-1.5">
               <div
-                className={`paper-serif min-w-0 flex-1 font-semibold ${
-                  large ? 'text-[20px] leading-[26px]' : 'text-[19px] leading-[25px]'
+                className={`font-hand min-w-0 flex-1 font-semibold ${
+                  large ? 'text-[29px] leading-[26px]' : 'text-[28px] leading-[25px]'
                 } ${
                   oneLineTitle ? 'truncate' : ''
                 }`}
@@ -146,13 +140,14 @@ export const RecipeCard = forwardRef<HTMLDivElement, CardProps>(
           </div>
           <div
             ref={bodyRef}
-            className={`paper-lines mx-5 mb-2 min-h-0 flex-1 ${
-              large ? 'text-[16px]' : 'text-[15px]'
+            // Written by hand, sitting on the rules (3px down to meet them).
+            className={`paper-lines font-hand mx-5 mb-2 min-h-0 flex-1 pt-[3px] ${
+              large ? 'text-[22px]' : 'text-[21px]'
             } ${
               scrollable ? 'scroll-y no-scrollbar' : 'overflow-hidden'
             }`}
           >
-            <CardBody recipe={recipe} large={large} />
+            <CardBody recipe={recipe} />
           </div>
         </div>
 
@@ -236,7 +231,7 @@ function WantBox({
     >
       {/* Wanted more than once: how many times, beside the box. */}
       {count > 1 && (
-        <span className="paper-serif text-[15px] font-semibold leading-[18px] text-brand-ink">
+        <span className="font-hand text-[21px] font-semibold leading-[18px] text-brand-ink">
           ×{count}
         </span>
       )}

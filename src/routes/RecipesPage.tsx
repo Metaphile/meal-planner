@@ -1024,7 +1024,7 @@ const RolodexItem = memo(function RolodexItem({
         >
           <div className="paper-frame" />
           <div className="px-5 pt-3.5">
-            <div className="paper-rule paper-serif pb-1.5 text-[19px] italic leading-[25px] text-ink-faint">
+            <div className="paper-rule font-hand pb-1.5 text-[28px] leading-[25px] text-ink-faint">
               New recipe…
             </div>
           </div>

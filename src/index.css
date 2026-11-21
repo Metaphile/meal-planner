@@ -205,6 +205,10 @@ body {
   /* Handwritten in ballpoint (the back of a card, being drafted). Inputs
      inherit it; 22px suits the card's 22px rules (and is over iOS's 16px
      zoom-on-focus threshold). */
+  /* The handwriting alone (the front of a card keeps its own ink). */
+  .font-hand {
+    font-family: 'Caveat', 'Bradley Hand', 'Noteworthy', cursive;
+  }
   .handwritten {
     font-family: 'Caveat', 'Bradley Hand', 'Noteworthy', cursive;
     font-size: 22px;
