@@ -253,9 +253,9 @@ function WantBox({
 }
 
 /**
- * How many times a wanted recipe is wanted, in the card's footer: − n +
- * (at least 1). Only on a wanted card, and only usable on a card in hand
- * (in the box it's just its look).
+ * How many times a recipe is wanted, in the card's footer: − ×n +. Always
+ * there; ×0 is not wanted (+ from there wants it, − to there doesn't). Only
+ * usable on a card in hand (in the box it's just its look).
  */
 function WantCount({
   recipeId,
@@ -266,7 +266,12 @@ function WantCount({
 }) {
   const count = useWantCount(recipeId)
   const setWantCount = useStore((s) => s.setWantCount)
-  if (count === 0) return null
+  const setWanted = useStore((s) => s.setWanted)
+  const set = (n: number) => {
+    if (n <= 0) setWanted(recipeId, false)
+    else if (count === 0) setWanted(recipeId, true)
+    else setWantCount(recipeId, n)
+  }
   const step =
     'grid h-8 w-9 place-items-center text-lg leading-none active:opacity-60 disabled:opacity-35'
   return (
@@ -278,15 +283,21 @@ function WantCount({
         type="button"
         tabIndex={interactive ? undefined : -1}
         aria-label="Want fewer"
-        disabled={interactive && count <= 1}
-        onClick={interactive ? () => setWantCount(recipeId, count - 1) : undefined}
+        disabled={interactive && count === 0}
+        onClick={interactive ? () => set(count - 1) : undefined}
         className={step}
       >
         −
       </button>
       <span
         aria-live={interactive ? 'polite' : undefined}
-        aria-label={interactive ? `Wanted ${count} times` : undefined}
+        aria-label={
+          interactive
+            ? count === 0
+              ? 'Not wanted'
+              : `Wanted ${count} times`
+            : undefined
+        }
         className="paper-serif min-w-[1.25rem] text-center text-[15px] font-semibold"
       >
         ×{count}
@@ -295,7 +306,7 @@ function WantCount({
         type="button"
         tabIndex={interactive ? undefined : -1}
         aria-label="Want more"
-        onClick={interactive ? () => setWantCount(recipeId, count + 1) : undefined}
+        onClick={interactive ? () => set(count + 1) : undefined}
         className={step}
       >
         +
