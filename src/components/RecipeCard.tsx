@@ -174,7 +174,7 @@ export const RecipeCard = forwardRef<HTMLDivElement, CardProps>(
   },
 )
 
-const EDIT_CLASS =
+export const EDIT_CLASS =
   'rounded-full border border-[#d8cdb6] px-4 py-1.5 text-sm font-medium leading-5 active:scale-95'
 
 /** Edit, on a card that isn't in hand (in the rolodex or a pocket): just
