@@ -762,7 +762,7 @@ export default function RecipesPage() {
               // dividers' kraft too, then 10% darker and 10% more saturated
               // (ink and edges as they are).
               ['--color-paper' as string]: '#fdfaf4',
-              ['--color-kraft' as string]: '#d4c192',
+              ['--color-kraft' as string]: '#d9c18d',
             }}
           >
             {items.map((item, i) => (
