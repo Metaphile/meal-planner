@@ -48,6 +48,12 @@ const DIVIDER_STRIP = TAB_H + 12 // tab + a sliver of the divider's edge
 // they still don't collide — you just see a staircase of tabs.
 const EMPTY_DIVIDER_STRIP = 13
 const SIDE = 16 // horizontal inset
+/** The most of a card in the box that can ever show: down to its rod, and
+ *  down to the next one's when the card in front is out (see
+ *  uncoverBehind), with room to spare. Cards are drawn this far at most. */
+const PEEK_H = CARD_H + 2 * STRIP
+/** Cards shaded as they tilt away from you (see paint). */
+const TILT_SHADE = false
 /** The cards in the box are a touch narrower than that column: NARROWER of
  *  its width, taken off evenly either side. (The card in hand keeps the
  *  column.) */
@@ -366,13 +372,16 @@ export default function RecipesPage() {
         lastPose.current[i] = pose
         el.style.transform = pose
         // Shade as it tilts away from facing you, whether tipping back at the
-        // top or leaning in at the bottom. (Only when it visibly changes —
-        // most cards' shade doesn't.)
+        // top or leaning in at the bottom. (Only when it visibly changes.)
+        // Off for now (TILT_SHADE): changing a card's shade re-draws the
+        // whole card, which, for nearly every card, every frame, made
+        // turning the drum choppy on the phone.
         const deg = phi / DEG
-        const shade =
-          Math.round(
-            0.376 * Math.min(1, Math.max(0, (Math.abs(deg) - 12) / 55)) * 100,
-          ) / 100
+        const shade = !TILT_SHADE
+          ? 0
+          : Math.round(
+              0.376 * Math.min(1, Math.max(0, (Math.abs(deg) - 12) / 55)) * 100,
+            ) / 100
         if (lastShade.current[i] !== shade) {
           lastShade.current[i] = shade
           let ds = dims.current.get(el)
@@ -881,6 +890,8 @@ export default function RecipesPage() {
                 key={item.key}
                 item={item}
                 index={i}
+                // (Drawn whole only while it's coming out or going back.)
+                full={open?.key === item.key}
                 coveredFrom={
                   i + 1 < items.length
                     ? items[i + 1].rod -
@@ -927,6 +938,7 @@ export default function RecipesPage() {
 const RolodexItem = memo(function RolodexItem({
   item,
   index,
+  full,
   coveredFrom,
   setEl,
   canEditPlan,
@@ -937,6 +949,8 @@ const RolodexItem = memo(function RolodexItem({
 }: {
   item: Item
   index: number
+  /** Drawn whole (taken out); else only as far down as can show. */
+  full: boolean
   /** How far down it the item in front of it starts (none for the last). */
   coveredFrom?: number
   setEl: (i: number, el: HTMLDivElement | null) => void
@@ -1058,6 +1072,7 @@ const RolodexItem = memo(function RolodexItem({
       <RecipeCard
         recipe={item.recipe}
         oneLineTitle
+        peekHeight={full ? undefined : PEEK_H}
         canEditPlan={canEditPlan}
         canEditRecipes={canEditRecipes}
         role="button"

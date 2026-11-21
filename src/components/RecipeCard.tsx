@@ -47,24 +47,29 @@ function IngredientLine({ ing }: { ing: Ingredient }) {
   )
 }
 
-function CardBody({ recipe }: { recipe: Recipe }) {
+/** Ingredient lines that can show on a peeking card (more than fit). */
+const PEEK_LINES = 16
+
+function CardBody({ recipe, peek }: { recipe: Recipe; peek: boolean }) {
+  const ingredients = peek
+    ? recipe.ingredients.slice(0, PEEK_LINES)
+    : recipe.ingredients
   return (
     <>
       <ul>
         {recipe.ingredients.length === 0 ? (
           <li className="text-[#8a8170]">No ingredients yet</li>
         ) : (
-          recipe.ingredients.map((ing, i) => (
-            <IngredientLine key={i} ing={ing} />
-          ))
+          ingredients.map((ing, i) => <IngredientLine key={i} ing={ing} />)
         )}
       </ul>
-      {recipe.tags.length > 0 && (
+      {/* (Peeking, below what can show: not drawn.) */}
+      {!peek && recipe.tags.length > 0 && (
         <p className="mt-[22px] text-[#8a8170]">
           {recipe.tags.join(' · ')}
         </p>
       )}
-      {recipe.notes && (
+      {!peek && recipe.notes && (
         <>
           <div className="h-[22px]" />
           <div className="font-semibold text-[#8a8170]">Notes</div>
@@ -86,6 +91,10 @@ type CardProps = {
   oneLineTitle?: boolean
   /** In hand: written a little larger (the card is a little bigger). */
   large?: boolean
+  /** In the box: drawn only as far down as can ever show (this tall at
+   *  most; its notes and tags not at all) — a whole long card would be a
+   *  lot to draw and keep for a strip of it. */
+  peekHeight?: number
   /** Replaces the usual actions (Add to Meal · Edit) below the border. */
   actions?: ReactNode
   bodyRef?: Ref<HTMLDivElement>
@@ -106,6 +115,7 @@ export const RecipeCard = forwardRef<HTMLDivElement, CardProps>(
       scrollable = false,
       oneLineTitle = false,
       large = false,
+      peekHeight,
       actions,
       bodyRef,
       className = '',
@@ -120,7 +130,7 @@ export const RecipeCard = forwardRef<HTMLDivElement, CardProps>(
         ref={ref}
         {...rest}
         className={`paper-card rolodex-card relative flex flex-col text-left ${className}`}
-        style={{ minHeight: CARD_H, ...style }}
+        style={{ minHeight: CARD_H, maxHeight: peekHeight, ...style }}
       >
         <div className="relative flex min-h-0 flex-1 flex-col">
           <div className="paper-frame" />
@@ -147,7 +157,7 @@ export const RecipeCard = forwardRef<HTMLDivElement, CardProps>(
               scrollable ? 'scroll-y no-scrollbar' : 'overflow-hidden'
             }`}
           >
-            <CardBody recipe={recipe} />
+            <CardBody recipe={recipe} peek={peekHeight !== undefined} />
           </div>
         </div>
 
