@@ -942,6 +942,7 @@ const DROP_MS = 300 // …and dropping back in
 const FADE_IN_DELAY_MS = 400 // the card in hand (and the shade) start fading in…
 const FADE_IN_MS = 375 // …over this
 const HAND_FROM = 0.93 // …growing from this size to its own
+const HAND_GROW_EASE = 'cubic-bezier(0.22, 1, 0.36, 1)' // fast, then easing in
 const FADE_IN_EASE = 'linear' // steady, start to finish
 const FADE_MS = 225 // …and fading out
 /** Let go of while moving, a card coasts on, slowing as it goes. */
@@ -1239,11 +1240,10 @@ export function CardDetail({
             duration: fadesWithSlide ? LIFT_MS : LIFT_FADE_MS,
             easing: LIFT_FADE,
           }),
-          // (Growing to full size as it comes, as if raised to you.)
           card.animate(
             [
-              { opacity: 0, transform: `${pose(0)} scale(${HAND_FROM})` },
-              { opacity: 1, transform: `${pose(0)} scale(1)` },
+              { opacity: 0, transform: pose(0) },
+              { opacity: 1, transform: pose(0) },
             ],
             // After a fixed pause (wherever the card coming out has got to).
             { ...fade, delay: FADE_IN_DELAY_MS, easing: FADE_IN_EASE },
@@ -1293,7 +1293,21 @@ export function CardDetail({
     for (const a of anims) if (a) a.startTime = now
     // Opening: the fade (only it is on this card, so its fill is what's
     // dropped once it ends). Closing: whichever ends last.
-    if (opening) return anims[2]
+    if (opening) {
+      // It grows to full size as it comes, as if raised to you: quickly at
+      // first, then easing into it. (Its own animation, on `scale`, so its
+      // curve isn't the fade's; dropped once done, like the fade.)
+      const grow = card.animate([{ scale: HAND_FROM }, { scale: 1 }], {
+        ...fade,
+        delay: FADE_IN_DELAY_MS,
+        easing: HAND_GROW_EASE,
+      })
+      grow.startTime = now
+      grow.onfinish = () => {
+        if (!closing.current) grow.cancel()
+      }
+      return anims[2]
+    }
     return FADE_MS > DROP_MS ? anims[1] : anims[0]
   }
 
