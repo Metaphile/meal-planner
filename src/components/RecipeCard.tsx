@@ -921,9 +921,12 @@ const HAND_GROW = 8
 const TAKE_OUT: 'arc' | 'lift' = 'lift'
 const LIFT_MS = 409 // the card lifting out of the box (after its sink)
 /** Taking a card out, it first sinks a little into the box, as if pressed,
- *  then springs out. */
-const SINK_PX = 8
-const SINK_MS = 110
+ *  then springs out; putting it back, it drops in past its place, then
+ *  settles back up to it. */
+const SINK_PX = 14
+const SINK_MS = 130
+const SETTLE_MS = 140
+const SETTLE = 'cubic-bezier(0.3, 0, 0.3, 1)' // back up to its place
 const SINK = 'cubic-bezier(0.25, 0.6, 0.4, 1)' // easing into the bottom
 const DROP_MS = 300 // …and dropping back in
 const FADE_IN_DELAY_MS = 400 // the card in hand (and the shade) start fading in…
@@ -1245,10 +1248,21 @@ export function CardDetail({
           // it drops — not appearing there all at once.)
           rdxCard.animate(
             [
-              { transform: gone, opacity: fadesWithSlide ? 0 : 1 },
-              { transform: home, opacity: 1 },
+              {
+                offset: 0,
+                transform: gone,
+                opacity: fadesWithSlide ? 0 : 1,
+                easing: DROP_IN,
+              },
+              {
+                offset: DROP_MS / (DROP_MS + SETTLE_MS),
+                transform: `translateY(${SINK_PX}px)`,
+                opacity: 1,
+                easing: SETTLE,
+              },
+              { offset: 1, transform: home, opacity: 1 },
             ],
-            { ...lift, easing: DROP_IN },
+            { ...lift, duration: DROP_MS + SETTLE_MS },
           ),
           card.animate(
             fadingAway(fromY, fromV, cardOpacity),
