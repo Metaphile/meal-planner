@@ -252,8 +252,10 @@ function HaveCounter({
       <input
         value={shown}
         // As wide as what's in it: digits a ch each (at least one), the
-        // point narrower.
-        style={{ width: `calc(${fieldWidth(shown)}ch + 12px)` }}
+        // point narrower — plus its padding, and room for the caret (else,
+        // exactly full, Safari scrolls the text aside for it while editing,
+        // so it sits differently while editing and after).
+        style={{ width: `calc(${fieldWidth(shown)}ch + 16px)` }}
         onChange={(e) => {
           setDraft(e.target.value)
           const n = parseAmount(e.target.value)
