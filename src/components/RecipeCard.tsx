@@ -1872,7 +1872,7 @@ export function CardDetail({
   stepRef.current = step
   const prevRef = useRef<HTMLDivElement>(null) // the card before it, off left
   const nextRef = useRef<HTMLDivElement>(null) // and after it, off right
-  // (Their layers: slid off and faded as it comes and goes.)
+  // (Their layers: slid off as it comes and goes.)
   const prevLayerRef = useRef<HTMLDivElement>(null)
   const nextLayerRef = useRef<HTMLDivElement>(null)
   // And the cards beyond those, further off: swiped, the one coming next
@@ -1881,7 +1881,7 @@ export function CardDetail({
   const afterRef = useRef<HTMLDivElement>(null)
   const beforeLayerRef = useRef<HTMLDivElement>(null)
   const afterLayerRef = useRef<HTMLDivElement>(null)
-  // How far they've gone (0: in place, 1: off the screen and faded).
+  // How far they've gone (0: in place, 1: off the screen).
   const besideGone = useRef(0)
   // How far down each card was scrolled, swiping from one to the next —
   // shown that way beside it, and again in hand. (Forgotten once it's put
@@ -2264,13 +2264,10 @@ export function CardDetail({
     // (Done once the cards beside it are gone too.)
     anim.onfinish = () => void away.then(() => onClosedRef.current())
   }
-  /** The cards either side of it, `p` of the way gone: slid off the screen
-   *  (each the way it is) and faded. */
+  /** The cards either side of it, `p` of the way gone: slid off the screen,
+   *  each the way it is. (Just slid: not faded.) */
   const besideFrame = (p: number): Keyframe[] =>
-    [-1, 1].map((side) => ({
-      transform: sideways(side * p * BESIDE_AWAY),
-      opacity: 1 - p,
-    }))
+    [-1, 1].map((side) => ({ transform: sideways(side * p * BESIDE_AWAY) }))
   const besideLayers = () =>
     [prevLayerRef.current, nextLayerRef.current] as const
   /** Set them `p` of the way gone (following a finger). */
@@ -2280,7 +2277,6 @@ export function CardDetail({
     besideLayers().forEach((el, i) => {
       if (!el) return
       el.style.transform = p ? String(frame[i].transform) : ''
-      el.style.opacity = p ? String(frame[i].opacity) : ''
     })
   }
   /** Move them from where they are to `p` of the way gone, over `ms`
@@ -2299,8 +2295,8 @@ export function CardDetail({
     )
     return Promise.all(anims.map((a) => a?.finished.catch(() => {})))
   }
-  /** Put away (back in its slot, or fading away): they slide off and fade
-   *  — from wherever pulling it down has got them to. */
+  /** Put away (back in its slot, or fading away): they slide off — from
+   *  wherever pulling it down has got them to. */
   const besideAtRef = useRef(besideAt)
   besideAtRef.current = besideAt
   const besideToRef = useRef(besideTo)
@@ -2829,7 +2825,7 @@ export function CardDetail({
               key={side}
               ref={layerRef}
               className="absolute inset-x-0 bottom-0 overflow-hidden"
-              style={{ top: origin.viewTop, willChange: 'transform, opacity' }}
+              style={{ top: origin.viewTop, willChange: 'transform' }}
             >
               <div className="flex min-h-full flex-col" style={HAND_PADDING}>
                 <div
