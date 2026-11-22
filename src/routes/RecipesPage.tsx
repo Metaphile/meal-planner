@@ -37,6 +37,7 @@ import {
   strs,
   type Slice,
 } from '../lib/uiState'
+import { LIST_CARD, LIST_KEY, ListCard } from '../components/ListCard'
 import {
   allIngredients,
   favoriteKey,
@@ -52,8 +53,9 @@ import {
  * wheel: facing you at the front line, tipping back (and shrinking, and
  * shading) toward the top until it goes edge-on over it, leaning toward you
  * below. The drum turns between two stops: the blank card for a new recipe
- * (in front of A) brought down into reach, and the back of the box resting
- * near the bottom. It opens with A near the top.
+ * (in front of A) brought down into reach, and the list (behind the back of
+ * the box: everything the wanted recipes call for — see ListCard) facing
+ * you near the bottom. It opens with A near the top.
  *
  * Touch turns the drum under its own iOS-style physics (`lib/drumScroll`):
  * drag, momentum, and a soft spring at the stops — even a box too short to
@@ -109,8 +111,8 @@ const SPIN_MS = 260 // turning the drum to a tapped letter (max)
 const START_PHI = -28 * DEG
 // How far it can turn past that: down until the first recipe (or the blank
 // card, before A) is well below the tipped-back zone, where it's easy to
-// read; up until the last item (the back of the box) faces you, not leaning
-// at the bottom.
+// read; up until the last item (the list, behind the back of the box) faces
+// you, not leaning at the bottom.
 const REACH_FIRST_CARD_PHI = -12 * DEG
 const REACH_LAST_PHI = 16 * DEG
 
@@ -129,6 +131,8 @@ type Item =
   | { kind: 'card'; key: string; recipe: Recipe; rod: number }
   /** The blank index card at the front of the box: write a new recipe. */
   | { kind: 'blank'; key: string; rod: number }
+  /** The list (what the wanted recipes call for), at the back of the box. */
+  | { kind: 'list'; key: string; rod: number }
 
 /** How far below an item's top its rod (where it hangs from the wheel) is. */
 const rodOffset = (it: Item) =>
@@ -145,8 +149,8 @@ function letterOf(title: string): string {
 }
 
 /** (For those who can write recipes) a blank card at the front, then
- *  dividers (A–Z, plus # if needed) and cards, then the back of the box —
- *  with their
+ *  dividers (A–Z, plus # if needed) and cards, then the back of the box and
+ *  the list behind it — with their
  *  rods' positions along the wheel's rim. Search results use the same box:
  *  every letter's divider stays, so missing cards show as empty dividers (and
  *  no matches at all, as a box of nothing but dividers). */
@@ -180,7 +184,7 @@ function layout(recipes: Recipe[], withBlank: boolean): Item[] {
     }
   })
   // The back of the box: a plain divider (no tab), so the last recipe has
-  // something in front of it.
+  // something in front of it, and the list isn't filed under Z.
   items.push({
     kind: 'divider',
     key: 'div-end',
@@ -188,6 +192,8 @@ function layout(recipes: Recipe[], withBlank: boolean): Item[] {
     n: 0,
     rod: top + TAB_H + CARD_H,
   })
+  top += DIVIDER_STRIP
+  items.push({ kind: 'list', key: LIST_KEY, rod: top + CARD_H })
   return items
 }
 
@@ -810,14 +816,15 @@ export default function RecipesPage() {
     (index: number, resume?: Hand) => {
       const it = items[index]
       const wrap = itemEls.current[index]
-      if (it.kind !== 'card' || !wrap || busy.current) return
+      if ((it.kind !== 'card' && it.kind !== 'list') || !wrap || busy.current)
+        return
       busy.current = true
       lifted.current = it.key
       freeSlot(wrap)
       uncoverBehind(index)
       const next = {
         key: it.key,
-        recipe: it.recipe,
+        recipe: it.kind === 'card' ? it.recipe : LIST_CARD,
         origin: originOf(index),
         resume,
       }
@@ -1374,8 +1381,13 @@ export default function RecipesPage() {
           isNew={open.isNew}
           remember
           resume={open.resume}
+          face={
+            open.key === LIST_KEY ? (
+              <ListCard canEdit={canEditPlan} />
+            ) : undefined
+          }
           step={(() => {
-            if (open.isNew) return undefined
+            if (open.isNew || open.key === LIST_KEY) return undefined
             const at = indexOf(open.key)
             const p = besideOf(at, -1)
             const n = besideOf(at, 1)
@@ -1565,6 +1577,30 @@ const RolodexItem = memo(function RolodexItem({
           <div className="paper-lines mx-5 mb-2 flex-1" />
           <span className="rolodex-dim" />
         </div>
+        {shadow}
+      </div>
+    )
+  }
+
+  if (item.kind === 'list') {
+    return (
+      <div {...common}>
+        <ListCard
+          peekHeight={full ? undefined : PEEK_H}
+          canEdit={canEditPlan}
+          role="button"
+          tabIndex={0}
+          aria-label="Open the ingredients list"
+          className="cursor-pointer"
+          onClick={() => onOpen(index)}
+          onKeyDown={(e) => {
+            if (e.target !== e.currentTarget) return
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              onOpen(index)
+            }
+          }}
+        />
         {shadow}
       </div>
     )

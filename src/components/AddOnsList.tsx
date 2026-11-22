@@ -30,7 +30,14 @@ const FITTED = 'h-full min-w-[4px] bg-transparent p-0 text-left focus:outline-no
  * Taking items off is two steps: × crosses a line out (↺ brings it back),
  * as many as you like; then Delete takes them off, or Cancel keeps them all.
  */
-export function AddOnsList({ canEdit }: { canEdit: boolean }) {
+export function AddOnsList({
+  canEdit,
+  bare = false,
+}: {
+  canEdit: boolean
+  /** Written straight on what it's on (a card), not on a sheet of its own. */
+  bare?: boolean
+}) {
   const addons = useStore((s) => s.addons)
   const remove = useStore((s) => s.removeAddOn)
   const [crossed, setCrossed] = useState<ReadonlySet<string>>(new Set())
@@ -54,7 +61,11 @@ export function AddOnsList({ canEdit }: { canEdit: boolean }) {
   }, [addons])
 
   return (
-    <div className="paper-card notepad font-hand rounded-t-md px-4 pt-3 pb-3 text-[22px]">
+    <div
+      className={`font-hand text-[22px] ${
+        bare ? '' : 'paper-card notepad rounded-t-md px-4 pt-3 pb-3'
+      }`}
+    >
       <div role="table" aria-label="Add-ons">
         {addons.map((a) => (
           <AddOnLine

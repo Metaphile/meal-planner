@@ -22,6 +22,7 @@ export function IngredientsList({
   empty,
   checkable = false,
   canEdit = false,
+  bare = false,
 }: {
   ingredients: AggregatedIngredient[]
   /** What it says with nothing on it. */
@@ -29,6 +30,8 @@ export function IngredientsList({
   checkable?: boolean
   /** May tick lines and change how much is on hand. */
   canEdit?: boolean
+  /** Written straight on what it's on (a card), not on a sheet of its own. */
+  bare?: boolean
 }) {
   const haves = useStore((s) => s.haves)
   const byKey = new Map(haves.map((h) => [h.id, h]))
@@ -50,7 +53,9 @@ export function IngredientsList({
 
   return (
     // A notepad sheet: each ingredient on a ruled line, where it's from below.
-    <div className="paper-card notepad rounded-t-md px-4 pt-2.5 pb-3">
+    <div
+      className={bare ? '' : 'paper-card notepad rounded-t-md px-4 pt-2.5 pb-3'}
+    >
       {lines.length === 0 ? (
         <p className="paper-serif py-3 text-center italic text-ink-faint">
           {empty}
