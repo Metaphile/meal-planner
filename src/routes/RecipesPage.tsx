@@ -64,7 +64,7 @@ import { favoriteKey, isWanted, type Recipe } from '../data/types'
  * React renders while it turns.
  */
 
-const STRIP = 52 // arc between recipe cards: packed close — just the title (to its rule, 47px down) shows
+const STRIP = 64 // arc between recipe cards: packed close — the title (to its rule, 47px down) and a little room below it
 const TAB_H = 26 // divider tab height (sticks up above the divider card)
 const DIVIDER_STRIP = TAB_H + 12 // tab + a sliver of the divider's edge
 const SIDE = 16 // horizontal inset
