@@ -726,6 +726,67 @@ export default function RecipesPage() {
     busy.current = false
   }, [open, items, paint])
 
+  /** The card `dir` along from item `from` (1: the next, -1: the one
+   *  before) — as the box shows them now (searched, or only the wanted) —
+   *  or -1 if there's none that way. */
+  const besideOf = (from: number, dir: 1 | -1) => {
+    if (from < 0) return -1
+    for (let j = from + dir; j >= 0 && j < items.length; j += dir)
+      if (items[j].kind === 'card') return j
+    return -1
+  }
+
+  // Swiped to the card beside the one in hand: that one is taken out of the
+  // box instead, and the other is back in its slot, as if never taken out
+  // (behind the shade). The drum turns to bring its slot into view if it's
+  // off the screen — so putting it back, it drops into its slot there.
+  const stepCard = (dir: 1 | -1) => {
+    if (!open) return
+    const i = indexOf(open.key)
+    const j = besideOf(i, dir)
+    const it = items[j]
+    if (j < 0 || it.kind !== 'card') return
+    // The one that was in hand: back in its slot.
+    const wrap = itemEls.current[i]
+    const card = cardEl(i)
+    for (const el of [card, wrap, card?.querySelector('.rolodex-dim')])
+      el?.getAnimations().forEach((a) => a.cancel())
+    if (wrap) {
+      wrap.style.clipPath = SLOT_CLIP
+      delete wrap.dataset.free
+    }
+    if (uncovered.current) {
+      uncovered.current.style.clipPath = SLOT_CLIP
+      uncovered.current = null
+    }
+    lifted.current = null
+    lastPose.current = []
+    lastZ.current = []
+    lastShade.current = []
+    shown.current = []
+    paint()
+    flushSync(() => setOpen({ ...open, key: it.key, recipe: it.recipe }))
+    // This one: out of sight in its slot (as it is once it's lifted out —
+    // putting it back drops it in from wherever it's gone).
+    cardEl(j)?.animate([{ opacity: 0 }, { opacity: 0 }], {
+      duration: 1,
+      fill: 'forwards',
+    })
+    const takeOut = () => {
+      // (Unless it's been put back meanwhile, or swiped past.)
+      if (lifted.current !== null || openKey.current !== it.key) return
+      const w = itemEls.current[j]
+      if (!w) return
+      lifted.current = it.key
+      freeSlot(w)
+      uncoverBehind(j)
+    }
+    if (shown.current[j]) takeOut()
+    else void turnTo(j).then(takeOut)
+  }
+  const openKey = useRef<string | null>(null)
+  openKey.current = open?.key ?? null
+
   // If the cards change under us (e.g. a sync), drop any half-done lift.
   useEffect(() => {
     busy.current = false
@@ -1000,8 +1061,9 @@ export default function RecipesPage() {
       </>
 
       {open && (
+        // (Not keyed by recipe: swiped to the one beside it, it's the same
+        // card in hand, showing another recipe.)
         <CardDetail
-          key={open.recipe.id}
           recipe={open.recipe}
           origin={open.origin}
           getOrigin={() => homeOf(open.key)}
@@ -1013,6 +1075,14 @@ export default function RecipesPage() {
           canEditRecipes={canEditRecipes}
           canEditPlan={canEditPlan}
           isNew={open.isNew}
+          step={
+            open.isNew
+              ? undefined
+              : {
+                  has: (dir) => besideOf(indexOf(open.key), dir) >= 0,
+                  go: stepCard,
+                }
+          }
           onClosed={onClosed}
         />
       )}

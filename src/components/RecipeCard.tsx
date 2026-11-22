@@ -1735,6 +1735,12 @@ const EASE_OUT = 'cubic-bezier(0.2, 0.9, 0.25, 1)'
 const STAND = 'cubic-bezier(0.4, 0, 0.2, 1)' // standing up off / back onto the wheel
 
 const pose = (dy: number) => `translate(0px, ${dy}px)`
+/** A card in hand slid `dx` sideways (turning a little with it, as a card
+ *  pushed along by a finger does). */
+const sideways = (dx: number) =>
+  `translate(${dx}px, 0px) rotate(${(dx * 0.012).toFixed(2)}deg)`
+/** The recipe beside it coming in, from off the screen to its place. */
+const STEP_IN_MS = 320
 /** How much wider a card in hand is than its column, each side. */
 const HAND_GROW = 8
 
@@ -1813,6 +1819,7 @@ export function CardDetail({
   canEditPlan,
   renderActions,
   isNew = false,
+  step,
   onClosed,
 }: {
   recipe: Recipe
@@ -1832,8 +1839,14 @@ export function CardDetail({
    *  to its (empty) back. Cancel lets it fall away; Save turns it to its
    *  front, a recipe like any other. */
   isNew?: boolean
+  /** Swiping it sideways (its front): the recipe beside it in the box —
+   *  `dir` 1 the next, -1 the one before. Whether there is one, and taking
+   *  that one in hand instead (`recipe` then changes under this card). */
+  step?: { has: (dir: 1 | -1) => boolean; go: (dir: 1 | -1) => void }
   onClosed: () => void
 }) {
+  const stepRef = useRef(step)
+  stepRef.current = step
   // In hand, you're cooking from it: the screen stays on till it's put back.
   useWakeLock()
   // Show the recipe as it is now (it may be edited while in hand).
@@ -2311,9 +2324,86 @@ export function CardDetail({
   const leaveRef = useRef(leave)
   leaveRef.current = leave
 
+  /**
+   * Swiped sideways far enough: it carries on off the screen that way (from
+   * `fromX`, at `v` px/ms), the recipe beside it is taken in hand, and comes
+   * in from the other side. (Nothing beside it that way: it springs back.)
+   */
+  const stepTo = (dir: 1 | -1, fromX = 0, v = 0) => {
+    const card = cardRef.current!
+    if (closing.current || flipping.current || editingRef.current) return
+    if (!stepRef.current?.has(dir)) {
+      if (fromX) springBack(fromX)
+      return
+    }
+    flipping.current = true // (no taps, pulls or swipes till it's in)
+    card.getAnimations().forEach((a) => a.finish())
+    // Its place with no transform: off the screen is past that edge.
+    const left = origin.left - HAND_GROW
+    const offLeft = -(left + card.offsetWidth + 24)
+    const offRight = window.innerWidth - left + 24
+    const outX = dir === 1 ? offLeft : offRight
+    const inX = dir === 1 ? offRight : offLeft
+    // Out the way it was going, never slowing: from the finger's speed (or
+    // from a standstill, for a key), picking up to clear the screen briskly.
+    const outPx = Math.abs(outX - fromX)
+    const outMs = Math.min(240, Math.max(130, outPx / 1.6))
+    const outAvg = outPx / outMs
+    // (Its curve's first slope is the finger's speed, its last the average.)
+    const k = Math.min(1, Math.abs(v) / outAvg)
+    card.style.transform = sideways(outX)
+    const out = card.animate(
+      [{ transform: sideways(fromX) }, { transform: sideways(outX) }],
+      {
+        duration: outMs,
+        easing: `cubic-bezier(0.33, ${(0.33 * k).toFixed(3)}, 0.67, 0.67)`,
+      },
+    )
+    out.onfinish = () => {
+      flushSync(() => stepRef.current?.go(dir))
+      scrollRef.current?.scrollTo({ top: 0 })
+      card.style.transform = ''
+      // In at the speed it went out, easing into its place.
+      const inAvg = Math.abs(inX) / STEP_IN_MS
+      const k2 = Math.min(3, Math.max(1, outAvg / inAvg))
+      const back = card.animate(
+        [{ transform: sideways(inX) }, { transform: sideways(0) }],
+        {
+          duration: STEP_IN_MS,
+          easing: `cubic-bezier(0.25, ${(0.25 * k2).toFixed(3)}, 0.35, 1)`,
+        },
+      )
+      back.onfinish = () => {
+        flipping.current = false
+      }
+    }
+  }
+  /** Let go short of swiping it away: back to its place. */
+  const springBack = (fromX: number) => {
+    const card = cardRef.current!
+    card.style.transform = ''
+    card.animate([{ transform: sideways(fromX) }, { transform: sideways(0) }], {
+      duration: 220,
+      easing: EASE_OUT,
+    })
+  }
+  const stepToRef = useRef(stepTo)
+  stepToRef.current = stepTo
+  const springBackRef = useRef(springBack)
+  springBackRef.current = springBack
+
   // Escape puts the card back (or, turned over, cancels the edit).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // ← → (a keyboard's swipe): the recipe before or after it.
+      if (
+        (e.key === 'ArrowLeft' || e.key === 'ArrowRight') &&
+        !editingRef.current &&
+        !(e.target as Element | null)?.closest?.('input, textarea')
+      ) {
+        stepToRef.current(e.key === 'ArrowRight' ? 1 : -1)
+        return
+      }
       if (e.key !== 'Escape') return
       // (A dialog over the card handles its own Escape.)
       if (document.querySelector('[role="alertdialog"]')) return
@@ -2336,6 +2426,12 @@ export function CardDetail({
       fromScroller: false,
       // Started on a cut-off title (or name), swiped sideways to read.
       onLine: false,
+      // Swiping it sideways, to the recipe beside it (not pulling it down).
+      side: false,
+      mouse: false,
+      dx: 0,
+      lastX: 0,
+      vx: 0,
       x0: 0,
       y0: 0,
       dy: 0,
@@ -2373,6 +2469,11 @@ export function CardDetail({
       }
       d.active = false
       d.decided = false
+      d.side = false
+      d.mouse = mouse
+      d.dx = 0
+      d.lastX = x
+      d.vx = 0
       d.fromScroller = !!scrollRef.current?.contains(target as Node)
       d.onLine = !!(target as Element | null)?.closest?.('.one-line-cut')
       d.x0 = x
@@ -2395,6 +2496,20 @@ export function CardDetail({
           window.getSelection()?.removeAllRanges()
           card.style.userSelect = 'none'
           card.getAnimations().forEach((a) => a.finish())
+        } else if (
+          Math.abs(dx) > 3 &&
+          Math.abs(dx) > Math.abs(dy) &&
+          stepRef.current &&
+          !editingRef.current &&
+          !d.onLine
+        ) {
+          // Sideways: on to the recipe beside it.
+          d.decided = true
+          d.active = true
+          d.side = true
+          window.getSelection()?.removeAllRanges()
+          card.style.userSelect = 'none'
+          card.getAnimations().forEach((a) => a.finish())
         } else if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
           d.decided = true
           return false
@@ -2409,6 +2524,16 @@ export function CardDetail({
       }
       if (!d.active) return false
       const now = performance.now()
+      if (d.side) {
+        const stepV = (x - d.lastX) / Math.max(1, now - d.lastT)
+        d.vx = 0.7 * stepV + 0.3 * d.vx
+        d.lastX = x
+        d.lastT = now
+        // (Nothing beside it that way: it gives only a little.)
+        d.dx = stepRef.current?.has(dx < 0 ? 1 : -1) ? dx : dx * 0.3
+        card.style.transform = sideways(d.dx)
+        return true
+      }
       // (Smoothed: a single step is jittery.)
       const step = (y - d.lastY) / Math.max(1, now - d.lastT)
       d.v = 0.7 * step + 0.3 * d.v
@@ -2425,6 +2550,28 @@ export function CardDetail({
       if (!d.active) return
       d.active = false
       card.style.userSelect = ''
+      if (d.side) {
+        d.side = false
+        // (A mouse lets go anywhere — maybe off the card, on the shade,
+        // whose click would put the card back: that click is swallowed.)
+        if (d.mouse) {
+          const swallow = (c: MouseEvent) => {
+            c.preventDefault()
+            c.stopPropagation()
+          }
+          window.addEventListener('click', swallow, { capture: true, once: true })
+          setTimeout(() => window.removeEventListener('click', swallow, true), 0)
+        }
+        const dir = d.dx < 0 ? 1 : -1
+        const v = performance.now() - d.lastT > 80 ? 0 : d.vx
+        // Far enough, or flicked that way.
+        const far =
+          Math.abs(d.dx) > card.offsetWidth * 0.3 ||
+          (Math.abs(d.dx) > 30 && Math.abs(v) > 0.4 && Math.sign(v) === Math.sign(d.dx))
+        if (far && stepRef.current?.has(dir)) stepToRef.current(dir, d.dx, v)
+        else springBackRef.current(d.dx)
+        return
+      }
       // Far enough, or a real downward flick (not just a twitch).
       const far = d.dy > 110 || (d.v > 0.5 && d.dy > 40)
       if (far && !editingRef.current) {
