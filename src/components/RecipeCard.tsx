@@ -837,6 +837,35 @@ export function sectionsFromGroups(
 }
 
 /**
+ * A drag by a grip is never a tap on what's under the finger when it lets
+ * go — on iOS, lifting the finger can count as a tap there, which would put
+ * the caret in the field now under it (after a drop, another line's name).
+ * So the touch's end is the grip's alone (no tap made of it), any click it
+ * makes is swallowed, and nothing in the table takes the focus meanwhile.
+ * Returns what to call once the drag's over (it stands guard a moment
+ * longer, for a tap that comes late).
+ */
+function guardDrag(handle: HTMLElement, table: HTMLElement) {
+  const noTap = (ev: TouchEvent) => {
+    if (ev.cancelable) ev.preventDefault()
+  }
+  const noClick = (ev: MouseEvent) => {
+    ev.preventDefault()
+    ev.stopPropagation()
+  }
+  const noFocus = (ev: FocusEvent) => (ev.target as HTMLElement).blur?.()
+  handle.addEventListener('touchend', noTap, { passive: false })
+  window.addEventListener('click', noClick, true)
+  table.addEventListener('focusin', noFocus)
+  return () =>
+    setTimeout(() => {
+      handle.removeEventListener('touchend', noTap)
+      window.removeEventListener('click', noClick, true)
+      table.removeEventListener('focusin', noFocus)
+    }, 400)
+}
+
+/**
  * Dragging a whole section by its title's grip: up or down, among the
  * sections (it can go first: the first is the starter, whichever it is). It
  * lifts, title and lines together; the others slide aside to show where
@@ -854,6 +883,7 @@ function dragSection(
   const handle = e.currentTarget
   const table = handle.closest('[role=table]') as HTMLElement
   const block = handle.closest('[role=rowgroup]') as HTMLElement
+  const unguard = guardDrag(handle, table)
   try {
     handle.setPointerCapture(e.pointerId)
   } catch {
@@ -909,6 +939,7 @@ function dragSection(
   const stopScrolling = scrollNearEdges(table, () => lastY, () => follow(lastY))
   const finish = (drop: boolean) => {
     stopScrolling()
+    unguard()
     handle.removeEventListener('pointermove', onMove)
     handle.removeEventListener('pointerup', onUp)
     handle.removeEventListener('pointercancel', onCancel)
@@ -1010,6 +1041,7 @@ function dragRow(
   const handle = e.currentTarget
   const origin = handle.closest('[role=row]') as HTMLElement
   const table = handle.closest('[role=table]') as HTMLElement
+  const unguard = guardDrag(handle, table)
   try {
     handle.setPointerCapture(e.pointerId)
   } catch {
@@ -1090,6 +1122,7 @@ function dragRow(
 
   const finish = (drop: boolean) => {
     stopScrolling()
+    unguard()
     handle.removeEventListener('pointermove', onMove)
     handle.removeEventListener('pointerup', onUp)
     handle.removeEventListener('pointercancel', onCancel)
