@@ -1746,6 +1746,8 @@ const BESIDE_AWAY = 60
  *  and going (as it's put away). */
 const BESIDE_IN_MS = 650
 const BESIDE_OUT_MS = 750
+/** …and coming in, the new one on the far side, swiped to the next card. */
+const BESIDE_STEP_MS = 500
 /** How much sooner than the card in hand they're in place. */
 const BESIDE_LEAD_MS = 75
 const BESIDE_EASE = 'cubic-bezier(0.3, 0, 0.5, 1)'
@@ -2480,6 +2482,13 @@ export function CardDetail({
       for (const el of [card, prevRef.current, nextRef.current])
         el?.getAnimations().forEach((a) => a.cancel())
       slideAll(0)
+      // The card now beside it on the far side is new: it slides in from
+      // off the screen, as they do when a card comes out (not just there).
+      const i = dir === 1 ? 1 : 0
+      ;(dir === 1 ? nextLayerRef : prevLayerRef).current?.animate(
+        [besideFrame(1)[i], besideFrame(0)[i]],
+        { duration: BESIDE_STEP_MS, easing: BESIDE_EASE, fill: 'backwards' },
+      )
       flipping.current = false
     }
   }
