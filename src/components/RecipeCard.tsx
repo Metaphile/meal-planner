@@ -1381,10 +1381,7 @@ function IngredientTable({
             onKeyDown={(e) => toNextLine(e, row)}
             enterKeyHint="next"
             readOnly={struck}
-            // (Crossed out: no hint — it's going.)
-            placeholder={
-              struck ? '' : spare ? 'Add ingredient…' : 'Ingredient'
-            }
+            placeholder={spare ? 'Add ingredient…' : 'Ingredient'}
             // (No "name" in the label: Safari would offer to AutoFill a
             // contact.)
             aria-label="Ingredient"
@@ -1535,9 +1532,8 @@ function IngredientTable({
               {titleField(
                 group.title,
                 (t) => setTitle(g, t),
-                // (Untitled: that a heading's optional. Crossed out: no hint —
-                // it's going.)
-                group.struck ? '' : HEADING_HINT,
+                // (Untitled: that a heading's optional.)
+                HEADING_HINT,
                 group.struck,
               )}
             </div>
