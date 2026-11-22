@@ -251,7 +251,7 @@ body {
     font-size: inherit;
   }
   /* Crossed off by hand: a line through the middle of its small letters,
-     as thick as the pen's other lines (a title's underline), in its ink.
+     1px (as the lines on a card being edited), in its ink.
      (Drawn, not a line-through: the browser puts that by the font's own
      figures, off the middle of the handwriting's letters.) Here on the
      writing itself — its box, the font's ascent and descent: 0.96em and
@@ -262,7 +262,7 @@ body {
         var(--strike, currentColor),
         var(--strike, currentColor)
       )
-      no-repeat 0 calc(0.775em - 0.75px) / 100% 1.5px;
+      no-repeat 0 calc(0.775em - 0.5px) / 100% 1px;
   }
   .handwritten ::placeholder {
     color: var(--color-pencil);

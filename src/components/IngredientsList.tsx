@@ -144,7 +144,7 @@ function IngredientLine({
   const struck = !crossed || stroke ? '' : hand ? 'struck' : 'line-through'
   return (
     <li
-      className={`${type.line} flex gap-2.5 border-b border-line-blue pt-1.5 pb-1 last:border-b-0`}
+      className={`${type.line} flex ${hand ? 'gap-1' : 'gap-2.5'} border-b border-line-blue pt-1.5 pb-1 last:border-b-0`}
     >
       {checkable && (
         <Tickbox
@@ -221,10 +221,10 @@ function IngredientLine({
             // 0.145em of the name below that. See `.struck`.)
             <span
               aria-hidden
-              className={`pointer-events-none absolute inset-x-0 h-[1.5px] bg-pen text-[26px] ${
+              className={`pointer-events-none absolute inset-x-0 h-px bg-pen text-[26px] ${
                 needed ? '' : 'opacity-50'
               }`}
-              style={{ top: 'calc(15px + 0.145em - 0.75px)' }}
+              style={{ top: 'calc(15px + 0.145em - 0.5px)' }}
             />
           )}
         </div>
