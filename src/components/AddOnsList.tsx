@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type FocusEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type FocusEvent } from 'react'
 import { useStore } from '../store/store'
 import type { AddOn, Ingredient } from '../data/types'
 import { QuantityInput } from './QuantityInput'
@@ -33,7 +33,8 @@ const FITTED = 'h-full min-w-[4px] bg-transparent p-0 text-left focus:outline-no
  * Taking items off is two steps: × crosses a line out (↺ brings it back),
  * as many as you like; then Delete takes them off, or Cancel keeps them all.
  * Each can be ticked once it's got (on hand) — just ticked: there's nothing
- * to count it against.
+ * to count it against. One with nothing left on it (no name, amount or
+ * unit) goes — however it got that way — once it's not being written in.
  */
 export function AddOnsList({
   canEdit,
@@ -128,13 +129,57 @@ function AddOnLine({
   onToggle: () => void
 }) {
   const update = useStore((s) => s.updateAddOn)
-  const set = (patch: Partial<Ingredient & Pick<AddOn, 'have'>>) =>
+  const remove = useStore((s) => s.removeAddOn)
+  const rowRef = useRef<HTMLDivElement>(null)
+  // (A tap within the line, under way: on iOS a tap on a button, like its
+  // unit's, takes the focus to nowhere — that's not leaving it.)
+  const tapping = useRef(false)
+  // Nothing left on it, and not being written in: gone.
+  const dropIfEmpty = () => {
+    const now = useStore.getState().addons.find((x) => x.id === addon.id)
+    if (
+      !now ||
+      !blank(now) ||
+      tapping.current ||
+      rowRef.current?.contains(document.activeElement)
+    )
+      return
+    remove(addon.id)
+  }
+  const set = (patch: Partial<Ingredient & Pick<AddOn, 'have'>>) => {
     update(addon.id, patch)
+    // (Emptied from outside it — its unit taken off, no field in it
+    // focused: gone at once.)
+    setTimeout(dropIfEmpty)
+  }
+  // Empty, a tap anywhere else leaves it (even with nothing focused in it).
+  const empty = blank(addon)
+  useEffect(() => {
+    if (!empty || !canEdit) return
+    const onDown = (e: PointerEvent) => {
+      if (rowRef.current?.contains(e.target as Node)) return
+      setTimeout(dropIfEmpty, 300)
+    }
+    window.addEventListener('pointerdown', onDown, { capture: true })
+    return () =>
+      window.removeEventListener('pointerdown', onDown, { capture: true })
+  })
   const fixed = !canEdit || crossed
   return (
     <div
+      ref={rowRef}
       role="row"
       className={`${COLS} relative items-center border-b border-line-blue`}
+      onPointerDownCapture={() => {
+        tapping.current = true
+        const done = () => setTimeout(() => (tapping.current = false))
+        window.addEventListener('click', done, { capture: true, once: true })
+        setTimeout(done, 1000)
+      }}
+      onBlur={(e) => {
+        if (rowRef.current?.contains(e.relatedTarget as Node)) return
+        setTimeout(dropIfEmpty)
+      }}
     >
       <Tickbox
         state={addon.have ? 'on' : 'off'}
@@ -196,6 +241,10 @@ function AddOnLine({
     </div>
   )
 }
+
+/** Nothing on it: no name, amount or unit. */
+const blank = (a: Ingredient) =>
+  !a.name.trim() && a.quantity === undefined && !a.unit
 
 /** The empty line at the end: written on, it becomes an add-on. */
 function SpareLine({ units }: { units: string[] }) {
