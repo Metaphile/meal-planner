@@ -66,9 +66,10 @@ import {
 const STRIP = 92 // arc between recipe cards: title + ~2 ingredients show
 const TAB_H = 26 // divider tab height (sticks up above the divider card)
 const DIVIDER_STRIP = TAB_H + 12 // tab + a sliver of the divider's edge
-// Empty letters pack tightly: their tabs are staggered across the width, so
-// they still don't collide — you just see a staircase of tabs.
-const EMPTY_DIVIDER_STRIP = 13
+// Empty letters pack tightly: their tabs are staggered across the width (five
+// places), so a tab only shares its place with the fifth one on — spaced so
+// those don't touch, every tab shows whole, in a dense staircase.
+const EMPTY_DIVIDER_STRIP = Math.ceil(TAB_H / 5) + 1
 const SIDE = 16 // horizontal inset
 /** The most of a card in the box that can ever show: down to its rod, and
  *  down to the next one's when the card in front is out (see
@@ -1473,10 +1474,18 @@ const RolodexItem = memo(function RolodexItem({
   }
 
   if (item.kind === 'divider') {
+    // (Only its paper takes a tap — not the air beside its tab, which, packed
+    // tight, lies over the tabs of the dividers behind it.)
     return (
-      <div {...common}>
+      <div
+        {...common}
+        className={common.className.replace(
+          'pointer-events-auto',
+          'pointer-events-none',
+        )}
+      >
         <div
-          className="paper-card paper-divider rolodex-card absolute inset-x-0"
+          className="paper-card paper-divider rolodex-card pointer-events-auto absolute inset-x-0"
           style={{ top: TAB_H, height: CARD_H }}
         >
           <div className="rolodex-dim" />
@@ -1488,7 +1497,7 @@ const RolodexItem = memo(function RolodexItem({
           <button
             onClick={() => onJump(index)}
             aria-label={`Jump to ${item.letter}`}
-            className="paper-divider rolodex-card paper-serif absolute top-0 grid place-items-center rounded-t-lg border-b-0 text-[15px] font-bold"
+            className="paper-divider rolodex-card paper-serif pointer-events-auto absolute top-0 grid place-items-center rounded-t-lg border-b-0 text-[15px] font-bold"
             style={{
               height: TAB_H + 1,
               width: TAB_W,
