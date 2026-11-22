@@ -1311,10 +1311,11 @@ function IngredientTable({
     gs[to.g].rows.splice(at, 0, row)
     set(gs)
   }
-  // Return on a line with something on it: on to the next line (the one
+  // Return on a line — anything on it or not — on to the next line (the one
   // below in its section — at the end, its "Add ingredient…"), to write it.
-  const toNextLine = (e: ReactKeyboardEvent<HTMLInputElement>, row: Row) => {
-    if (e.key !== 'Enter' || blank(row)) return
+  // (On that last, spare line, there's none below: it stays.)
+  const toNextLine = (e: ReactKeyboardEvent<HTMLInputElement>) => {
+    if (e.key !== 'Enter') return
     e.preventDefault()
     // (Past crossed-out lines: they're not to be written in.)
     let next = e.currentTarget.closest('[role=row]')?.nextElementSibling
@@ -1429,7 +1430,7 @@ function IngredientTable({
           <input
             value={row.name}
             onChange={(e) => update(g, i, { name: e.target.value })}
-            onKeyDown={(e) => toNextLine(e, row)}
+            onKeyDown={toNextLine}
             enterKeyHint="next"
             readOnly={struck}
             // (Crossed out: not to be written in — nor tapped into, nor
@@ -1445,7 +1446,7 @@ function IngredientTable({
           <QuantityInput
             value={row.quantity}
             onChange={(quantity) => update(g, i, { quantity })}
-            onKeyDown={(e) => toNextLine(e, row)}
+            onKeyDown={toNextLine}
             enterKeyHint="next"
             placeholder=""
             readOnly={struck}
