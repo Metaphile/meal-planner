@@ -784,15 +784,16 @@ const newEditId = () => ++lastId
 
 const blank = (i: Row) =>
   !i.struck && !i.name.trim() && i.quantity === undefined && !i.unit
-/** Always exactly one empty line at the end, to write the next one on. */
-const withSpareLine = (rows: Row[]) => {
+/** Always exactly one empty line at the end, to write the next one on.
+ *  (Of two there, not `hold` — the one being written in: the other goes.) */
+const withSpareLine = (rows: Row[], hold?: number | null) => {
   const out = [...rows]
   while (
     out.length > 1 &&
     blank(out[out.length - 1]) &&
     blank(out[out.length - 2])
   )
-    out.pop()
+    out.splice(out[out.length - 1].rid === hold ? -2 : -1, 1)
   if (!out.length || !blank(out[out.length - 1]))
     out.push({ name: '', rid: newEditId() })
   return out
@@ -856,12 +857,13 @@ export type Group = {
 
 /** The groups as they should stand after a change: each with its spare
  *  line — and every section and line with an id of its own. */
-const tidyGroups = (gs: Group[]) =>
+const tidyGroups = (gs: Group[], hold?: number | null) =>
   gs.map((g) => ({
     ...g,
     gid: g.gid ?? newEditId(),
     rows: withSpareLine(
       g.rows.map((r) => (r.rid === undefined ? { ...r, rid: newEditId() } : r)),
+      hold,
     ),
   }))
 
@@ -869,16 +871,30 @@ const tidyGroups = (gs: Group[]) =>
  * The sections and lines, but none with nothing to it — however it came to
  * be empty (a line's last word rubbed out with the unit picker, a section's
  * last line dragged away, …), it goes. Not the one being written in, though
- * (it goes once it's left — see IngredientTable), nor `keep` (a line just
- * opened, to be written on next); nor a section's spare line at the end
+ * (it goes once it's left — see IngredientTable: the line with the focus,
+ * or its unit being picked), nor any in `keep` (a line just opened, to be
+ * written on next; the line being written in, the focus gone from it for
+ * a tap within it); nor a section's spare line at the end
  * (where the next line's written), nor the only section: every recipe has a
  * first section. (A titled section stays, empty or not.)
  */
-function withoutEmpties(gs: Group[], keep?: number): Group[] {
+function withoutEmpties(
+  gs: Group[],
+  keep: (number | null | undefined)[] = [],
+): Group[] {
   const active =
     typeof document === 'undefined' ? null : document.activeElement
   const here = active?.closest('[data-gid]')?.getAttribute('data-gid')
-  const line = active?.closest('[data-rid]')?.getAttribute('data-rid')
+  const kept = new Set(keep.filter((k) => k != null).map(String))
+  for (const el of [
+    active,
+    typeof document === 'undefined'
+      ? null
+      : document.querySelector('[data-rid] [aria-expanded="true"]'),
+  ]) {
+    const rid = el?.closest('[data-rid]')?.getAttribute('data-rid')
+    if (rid != null) kept.add(rid)
+  }
   const lines = gs.map((x) =>
     x.rows.some((r, i) => blank(r) && i < x.rows.length - 1)
       ? {
@@ -887,21 +903,21 @@ function withoutEmpties(gs: Group[], keep?: number): Group[] {
             (r, i) =>
               !blank(r) ||
               i === x.rows.length - 1 ||
-              r.rid === keep ||
-              (line != null && String(r.rid) === line),
+              kept.has(String(r.rid)),
           ),
         }
       : x,
   )
   if (lines.length < 2) return lines
-  const kept = lines.filter(
+  const sections = lines.filter(
     (x) =>
       x.struck ||
       x.title.trim() ||
       !x.rows.every(blank) ||
-      (here != null && String(x.gid) === here),
+      (here != null && String(x.gid) === here) ||
+      x.rows.some((r) => kept.has(String(r.rid))),
   )
-  return kept.length ? kept : lines.slice(0, 1)
+  return sections.length ? sections : lines.slice(0, 1)
 }
 
 /**
@@ -1294,7 +1310,29 @@ function IngredientTable({
     return [...COMMON_UNITS, ...[...extra].sort()]
   }, [recipes, groups])
   const set = (gs: Group[], keep?: number) =>
-    onChange(withoutEmpties(tidyGroups(gs), keep))
+    onChange(
+      withoutEmpties(tidyGroups(gs, held.current), [keep, held.current]),
+    )
+  // The line being written in: from its taking the focus till it's left
+  // (see whenLeft) — kept, empty or not, all the while. (The focus can go
+  // from it to nowhere for a tap within it: its unit, say, on iOS.)
+  const held = useRef<number | null>(null)
+  useEffect(() => {
+    const onDown = (e: PointerEvent) => {
+      const rid = held.current
+      if (rid === null) return
+      const row = document.querySelector(`[data-rid="${rid}"]`)
+      if (row?.contains(e.target as Node)) return
+      // (A tap elsewhere: left — the focus with it, or none was there.)
+      held.current = null
+      setTimeout(() => {
+        if (!row?.contains(document.activeElement)) dropIfEmptyLine(rid)
+      }, 300)
+    }
+    window.addEventListener('pointerdown', onDown, { capture: true })
+    return () =>
+      window.removeEventListener('pointerdown', onDown, { capture: true })
+  })
   // The ids the next section made here will have, and its first line:
   // "Add section…" (and the line under it) carry them already, so writing
   // there — making the section — keeps the caret where it is.
@@ -1339,6 +1377,7 @@ function IngredientTable({
   // An empty line, left: gone. (Not the spare one at the end — that's
   // where the next line's written.)
   const dropIfEmptyLine = (rid: number | undefined) => {
+    if (held.current === rid) held.current = null
     const gs = groupsRef.current
     const g = gs.findIndex((x) => x.rows.some((r) => r.rid === rid))
     if (g < 0) return
@@ -1599,6 +1638,9 @@ function IngredientTable({
           data-i={i}
           data-rid={row.rid}
           {...(g < groups.length ? whenLeft(() => dropIfEmptyLine(row.rid)) : {})}
+          onFocus={() => {
+            if (row.rid !== undefined) held.current = row.rid
+          }}
           className={`${cols} relative items-center border-b border-line-blue`}
         >
           {spare ? (
