@@ -1920,8 +1920,9 @@ const RecipeCardBack = forwardRef<
               )}
               {/* The hint, while nothing's written — blank lines are nothing:
                   a tap on a line further down fills them in. (Not the field's
-                  own, which any of them would hide.) */}
-              {!notes.trim() && (
+                  own, which any of them would hide.) A space typed is
+                  something: that's written. */}
+              {/^[\r\n]*$/.test(notes) && (
                 <span
                   aria-hidden
                   className="pointer-events-none absolute inset-x-0 top-0 truncate pr-1 leading-[22px] text-pencil"
