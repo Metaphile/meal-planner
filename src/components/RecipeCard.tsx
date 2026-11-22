@@ -1436,7 +1436,9 @@ function IngredientTable({
             // (Crossed out: not to be written in — nor tapped into, nor
             // tabbed to: a tap goes through it.)
             tabIndex={struck ? -1 : undefined}
-            placeholder={spare ? 'Add ingredient…' : 'Ingredient'}
+            // (Nothing on it — the spare line, or one emptied: as good as
+            // a new line. Something on it but no name: it wants one.)
+            placeholder={blank(row) ? 'Add ingredient…' : 'Ingredient'}
             // (No "name" in the label: Safari would offer to AutoFill a
             // contact.)
             aria-label="Ingredient"
