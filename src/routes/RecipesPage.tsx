@@ -877,6 +877,8 @@ export default function RecipesPage() {
   // other's (as far as the other is from it), as the card in hand fades
   // back into its slot and the other fades out of its — `p` of the way
   // (0: as it was, 1: all the way), one smooth motion with the swipe.
+  // The card in hand, being swiped back into the box (see previewStep).
+  const [returning, setReturning] = useState<string | null>(null)
   const swipe = useRef<{
     dir: 1 | -1
     i: number // the card in hand's item
@@ -905,6 +907,7 @@ export default function RecipesPage() {
         uncovered.current = null
       }
       backInSlot(i)
+      setReturning(open.key)
       // (The one in front see-through as it fades: what's behind it shows —
       // all of it, below where it's trimmed too, as it will with that one
       // gone. Not behind the one behind: it's whole under the one in front,
@@ -958,6 +961,7 @@ export default function RecipesPage() {
     const s = swipe.current
     if (!s) return
     swipe.current = null
+    setReturning(null)
     for (const el of s.seeThrough) el.style.clipPath = SLOT_CLIP
     backInSlot(s.j)
     drumRef.current?.set(s.from)
@@ -978,7 +982,10 @@ export default function RecipesPage() {
     backInSlot(s.i)
     const it = items[s.j]
     if (it.kind !== 'card') return
-    flushSync(() => setOpen({ ...open, key: it.key, recipe: it.recipe }))
+    flushSync(() => {
+      setOpen({ ...open, key: it.key, recipe: it.recipe })
+      setReturning(null)
+    })
     outOfSlot(s.j)
   }
 
@@ -1281,8 +1288,10 @@ export default function RecipesPage() {
                 key={item.key}
                 item={item}
                 index={i}
-                // (Drawn whole only while it's coming out or going back.)
-                full={open?.key === item.key}
+                // (Drawn whole only while it's coming out or going back — not
+                // as it's swiped back into the box: drawn as it'll be once
+                // it's in, so nothing on it moves when it is.)
+                full={open?.key === item.key && returning !== item.key}
                 coveredFrom={
                   i + 1 < items.length
                     ? items[i + 1].rod -
