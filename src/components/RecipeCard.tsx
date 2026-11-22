@@ -2692,6 +2692,10 @@ export function CardDetail({
   // (Comes out already turned over: a new card, or one left mid-edit.)
   const onBack = isNew || !!resume?.editing
   const [editing, setEditing] = useState(onBack) // the back is there
+  // The cards beside it showing: not while it's turned over to edit. (They
+  // go as it starts turning over; they come back as it turns face up —
+  // from the moment it's edge-on — easing in as it settles.)
+  const [besideShown, setBesideShown] = useState(!onBack)
   const [facing, setFacing] = useState<'front' | 'back'>(
     onBack ? 'back' : 'front',
   )
@@ -3202,7 +3206,10 @@ export function CardDetail({
     const flipper = flipRef.current!
     if (toBack) {
       editingRef.current = true
-      flushSync(() => setEditing(true)) // mount the back, out of the layout
+      flushSync(() => {
+        setEditing(true) // mount the back, out of the layout
+        setBesideShown(false)
+      })
     }
     const front = frontRef.current!
     const back = backRef.current!
@@ -3226,8 +3233,12 @@ export function CardDetail({
       },
     )
     first.onfinish = () => {
-      // Edge-on: swap which face holds the layout.
-      flushSync(() => setFacing(toBack ? 'back' : 'front'))
+      // Edge-on: swap which face holds the layout. (Turning face up: the
+      // cards beside it start coming back.)
+      flushSync(() => {
+        setFacing(toBack ? 'back' : 'front')
+        if (!toBack) setBesideShown(true)
+      })
       const second = flipper.animate(
         [
           { transform: `rotateY(${mid}deg)` },
@@ -3707,8 +3718,14 @@ export function CardDetail({
       {step && (
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 transition-opacity duration-200"
-          style={{ opacity: editing ? 0 : 1 }}
+          className="pointer-events-none absolute inset-0 transition-opacity"
+          style={{
+            opacity: besideShown ? 1 : 0,
+            // (Going: quickly, as it starts turning. Coming back: gently,
+            // as it turns face up and settles.)
+            transitionDuration: besideShown ? '450ms' : '200ms',
+            transitionTimingFunction: besideShown ? BESIDE_EASE : 'ease-in',
+          }}
         >
           {([
             [beforeLayerRef, beforeRef, step.before, -2],
