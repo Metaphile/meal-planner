@@ -1445,16 +1445,6 @@ const sameText = (a: RecipeText, b: RecipeText) => {
   return key(a) === key(b)
 }
 
-/** How many ruled lines the writing in `el` (the notes) takes up, wrapped
- *  lines and all. (Measured at no height: just the writing's.) */
-function notesLines(el: HTMLTextAreaElement) {
-  const h = el.style.height
-  el.style.height = '0px'
-  const lines = Math.max(1, Math.round((el.scrollHeight - NOTES_DROP) / 22))
-  el.style.height = h
-  return lines
-}
-
 /**
  * The back of a card: the recipe written out on paper fields to edit. Nothing
  * reaches the store until Save.
@@ -1548,6 +1538,27 @@ const RecipeCardBack = forwardRef<
       keepDraft({ recipeId: recipe.id, isNew, base, title, tagsText, notes, groups })
   }, [remember, recipe.id, isNew, base, title, tagsText, notes, groups])
 
+  // The ruled line `text` (the notes' writing, from the start) ends on —
+  // laid out in the copy beside the field, as in it: wrapped lines and all.
+  // (Measured there, never by changing the field's own size: that shrinks
+  // the card for a moment, and the card jumps.)
+  const notesMirrorRef = useRef<HTMLSpanElement>(null)
+  const lineAfter = (text: string) => {
+    const mirror = notesMirrorRef.current
+    if (!mirror) return 0
+    mirror.textContent = text
+    const mark = document.createElement('span')
+    mark.textContent = '\u200b'
+    mirror.appendChild(mark)
+    // (By its middle: the handwriting's taller than its lines, so its top
+    // edge rides up into the line above.)
+    const mid = mark.offsetTop + mark.offsetHeight / 2
+    mirror.textContent = ''
+    return Math.max(0, Math.floor((mid - NOTES_DROP) / 22))
+  }
+  /** How many ruled lines the notes' writing takes up. */
+  const notesLines = (text: string) => lineAfter(text) + 1
+
   // Notes grow a ruled line at a time as you write, so they never scroll.
   // (The writing is set NOTES_DROP down from the top of its lines.)
   const notesRef = useRef<HTMLTextAreaElement>(null)
@@ -1558,7 +1569,7 @@ const RecipeCardBack = forwardRef<
     // writing goes on from there — but never adds to them. More room is
     // typed in: Return.)
     el.style.height = `${
-      Math.max(NOTES_MIN_LINES, notesLines(el)) * 22 + NOTES_DROP
+      Math.max(NOTES_MIN_LINES, notesLines(el.value)) * 22 + NOTES_DROP
     }px`
   }, [notes])
   // Tapped on an empty line below what's written: the writing goes on from
@@ -1566,20 +1577,10 @@ const RecipeCardBack = forwardRef<
   // them in first). (Blank lines left at the end go when it's saved.)
   // The line the caret's on (null: not writing in the notes).
   const [notesLine, setNotesLine] = useState<number | null>(null)
-  const notesMirrorRef = useRef<HTMLSpanElement>(null)
   const findNotesLine = () => {
     const el = notesRef.current
-    const mirror = notesMirrorRef.current
-    if (!el || !mirror || document.activeElement !== el) return setNotesLine(null)
-    mirror.textContent = el.value.slice(0, el.selectionEnd)
-    const mark = document.createElement('span')
-    mark.textContent = '\u200b'
-    mirror.appendChild(mark)
-    // (By its middle: the handwriting's taller than its lines, so its top
-    // edge rides up into the line above.)
-    const mid = mark.offsetTop + mark.offsetHeight / 2
-    setNotesLine(Math.max(0, Math.floor((mid - NOTES_DROP) / 22)))
-    mirror.textContent = ''
+    if (!el || document.activeElement !== el) return setNotesLine(null)
+    setNotesLine(lineAfter(el.value.slice(0, el.selectionEnd)))
   }
   const findNotesLineRef = useRef(findNotesLine)
   findNotesLineRef.current = findNotesLine
@@ -1600,7 +1601,7 @@ const RecipeCardBack = forwardRef<
     const line = Math.floor(
       (e.clientY - el.getBoundingClientRect().top - NOTES_DROP) / 22,
     )
-    const last = notesLines(el) - 1 // the line the writing ends on
+    const last = notesLines(el.value) - 1 // the line the writing ends on
     if (line <= last) return
     const value = el.value + '\n'.repeat(line - last)
     caretTo.current = value.length
