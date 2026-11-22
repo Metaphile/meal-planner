@@ -1423,21 +1423,49 @@ function IngredientTable({
     gs[to.g].rows.splice(at, 0, row)
     set(gs)
   }
-  // Return on a line — anything on it or not — on to the next line (the one
-  // below in its section — at the end, its "Add ingredient…"), to write it.
-  // (On that last, spare line, there's none below: it stays.)
-  const toNextLine = (e: ReactKeyboardEvent<HTMLInputElement>) => {
+  // Return on a line with something on it: a new line opens just after it,
+  // to write the next on — or, the line after it empty already (the spare
+  // one at the end, say), on to that. On an empty line: nothing. (A new
+  // line left empty goes again — see dropIfEmptyLine.)
+  const focusRid = useRef<number | null>(null)
+  const newLineAfter = (
+    e: ReactKeyboardEvent<HTMLInputElement>,
+    g: number,
+    i: number,
+  ) => {
     if (e.key !== 'Enter') return
     e.preventDefault()
-    // (Past crossed-out lines: they're not to be written in.)
-    let next = e.currentTarget.closest('[role=row]')?.nextElementSibling
-    while (
-      next &&
-      (!(next as HTMLElement).dataset.g || next.querySelector('input')?.readOnly)
-    )
-      next = next.nextElementSibling
-    next?.querySelector('input')?.focus()
+    const rows = groups[g]?.rows
+    if (!rows || blank(rows[i])) return
+    const next = rows[i + 1]
+    if (next && blank(next)) {
+      focusRid.current = next.rid ?? null
+    } else {
+      const rid = newEditId()
+      focusRid.current = rid
+      set(
+        groups.map((x, k) =>
+          k === g
+            ? { ...x, rows: [...rows.slice(0, i + 1), { name: '', rid }, ...rows.slice(i + 1)] }
+            : x,
+        ),
+      )
+    }
+    if (next && blank(next)) focusLine()
   }
+  const tableRef = useRef<HTMLDivElement>(null)
+  const focusLine = () => {
+    const rid = focusRid.current
+    if (rid === null) return
+    focusRid.current = null
+    tableRef.current
+      ?.querySelector<HTMLInputElement>(`[data-rid="${rid}"] input`)
+      ?.focus()
+  }
+  // (A line just opened: written on, once it's drawn.)
+  useLayoutEffect(() => {
+    focusLine()
+  })
   const setStruck = (g: number, struck: boolean) =>
     set(groups.map((x, i) => (i === g ? { ...x, struck } : x)))
   // (A whole section moved: to just before the section at `to`, or last.)
@@ -1524,6 +1552,7 @@ function IngredientTable({
           role="row"
           data-g={g}
           data-i={i}
+          data-rid={row.rid}
           {...(g < groups.length ? whenLeft(() => dropIfEmptyLine(row.rid)) : {})}
           className={`${cols} relative items-center border-b border-line-blue`}
         >
@@ -1543,7 +1572,7 @@ function IngredientTable({
           <input
             value={row.name}
             onChange={(e) => update(g, i, { name: e.target.value })}
-            onKeyDown={toNextLine}
+            onKeyDown={(e) => newLineAfter(e, g, i)}
             enterKeyHint="next"
             readOnly={struck}
             // (Crossed out: not to be written in — nor tapped into, nor
@@ -1562,7 +1591,7 @@ function IngredientTable({
           <QuantityInput
             value={row.quantity}
             onChange={(quantity) => update(g, i, { quantity })}
-            onKeyDown={toNextLine}
+            onKeyDown={(e) => newLineAfter(e, g, i)}
             enterKeyHint="next"
             placeholder=""
             readOnly={struck}
@@ -1611,7 +1640,7 @@ function IngredientTable({
   }
 
   return (
-    <div role="table" aria-label="Ingredients">
+    <div ref={tableRef} role="table" aria-label="Ingredients">
       {[...groups, null].map((group, g) =>
         group === null ? (
           // "Add section…": a title written here starts a new section (with
