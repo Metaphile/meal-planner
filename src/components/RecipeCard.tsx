@@ -128,6 +128,10 @@ function CardBody({ recipe, peek }: { recipe: Recipe; peek: boolean }) {
           {recipe.tags.join(' · ')}
         </p>
       )}
+      {/* (Right under its tags; with none, a line left blank above it.) */}
+      {!peek && (
+        <FavoritedBy recipeId={recipe.id} gap={recipe.tags.length === 0} />
+      )}
       {!peek && recipe.notes && (
         <>
           <div className="h-[var(--rule)]" />
@@ -135,14 +139,13 @@ function CardBody({ recipe, peek }: { recipe: Recipe; peek: boolean }) {
           <p className="whitespace-pre-wrap pb-[var(--rule)]">{recipe.notes}</p>
         </>
       )}
-      {!peek && <FavoritedBy recipeId={recipe.id} gap={!recipe.notes} />}
     </>
   )
 }
 
-/** At the foot of a card: who else has favorited it (a star, and their
- *  names — not yours: that's the star at the top). A line left blank above
- *  it — after the notes, they leave one. */
+/** Under a card's tags: who else has favorited it (a star, and their names
+ *  — not yours: that's the star at the top). With `gap`, a line left blank
+ *  above it. */
 function FavoritedBy({ recipeId, gap }: { recipeId: string; gap: boolean }) {
   const { user } = useAuth()
   const names = useFavoritedBy(recipeId, user?.id)
@@ -152,9 +155,8 @@ function FavoritedBy({ recipeId, gap }: { recipeId: string; gap: boolean }) {
       className={`flex items-center gap-1.5 text-[#8a8170] ${gap ? 'mt-[var(--rule)]' : ''}`}
     >
       <span className="sr-only">Favorite of</span>
-      {/* (Others' stars: no outline, as in the header — so a little larger,
-          to look as big.) */}
-      <StarIcon on outlined={false} size={19} />
+      {/* (Outlined, filled: a favorite's star, as at the top.) */}
+      <StarIcon on size={18} />
       <span className="min-w-0">{names}</span>
     </p>
   )
@@ -447,16 +449,7 @@ const STAR_BOX = { x: 2.62, y: 2.3, w: 18.76, h: 17.93 }
 
 /** A five-pointed star, filled (lavender, inked) when on. `size` is its
  *  width. */
-export function StarIcon({
-  on,
-  size = 20,
-  outlined = true,
-}: {
-  on: boolean
-  size?: number
-  /** (Off: just the fill — others' stars, under yours.) */
-  outlined?: boolean
-}) {
+export function StarIcon({ on, size = 20 }: { on: boolean; size?: number }) {
   return (
     <svg
       viewBox={`${STAR_BOX.x} ${STAR_BOX.y} ${STAR_BOX.w} ${STAR_BOX.h}`}
@@ -468,7 +461,7 @@ export function StarIcon({
       <path
         d={STAR_PATH}
         fill={on ? 'var(--color-kraft)' : 'var(--color-paper)'}
-        stroke={outlined ? 'currentColor' : 'none'}
+        stroke="currentColor"
         // (Drawn 1.5px wide whatever its size, like the Want box's border.)
         strokeWidth={(1.5 * STAR_BOX.w) / size}
         strokeLinejoin="round"
