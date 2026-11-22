@@ -11,9 +11,10 @@ import { OneLine } from './OneLine'
  * The lines come from a memoized selector.
  *
  * With `checkable`, each line has a box to tick when it's on hand. Ticking
- * it takes it you have just what's needed, and it says so: "3 of 3 cup".
- * Needed more since (a recipe wanted more times over, say), it's short: in
- * red, its box – ("3 of 4 cup") — to be looked at again, and a tap
+ * it takes it you have just what's needed (its name crossed off, its
+ * amount as it was: "3 cup"). Needed more since (a recipe wanted more times
+ * over, say), it's short: in red, its box –, saying how much of it there
+ * is ("3 of 4 cup") — to be looked at again, and a tap
  * confirms there's enough (ticked at what's needed now). Ticked, a tap
  * unticks it.
  */
@@ -130,9 +131,14 @@ function IngredientLine({
   // Ticked at less than's needed now (needed more since): short.
   const short =
     !!have && need !== undefined && round(have.amount ?? 0) < need
-  // Ticked, with an amount to tell (needed, or on hand by itself).
+  // Ticked, with an amount of its own to tell: on hand by itself, or not
+  // just what's needed. (Just what's needed — "6 of 6" — it says only what's
+  // needed, as unticked: "6".)
   const counted =
-    !!have && (needed ? need !== undefined : have.amount !== undefined)
+    !!have &&
+    (needed
+      ? need !== undefined && round(have.amount ?? 0) !== need
+      : have.amount !== undefined)
   const line = { name: ing.name, unit: ing.unit }
   // Ticked (enough on hand): its name crossed off — by hand (see
   // `.struck`), or typed, struck through. Not its amount: how much there is
