@@ -1458,7 +1458,10 @@ function IngredientTable({
                   onKeyDown={(e) => toNextLine(e, row)}
                   enterKeyHint="next"
                   readOnly={struck}
-                  placeholder={spare ? 'Add ingredient…' : 'Ingredient'}
+                  // (Crossed out: no hint — it's going.)
+                  placeholder={
+                    struck ? '' : spare ? 'Add ingredient…' : 'Ingredient'
+                  }
                   // (No "name" in the label: Safari would offer to AutoFill a
                   // contact.)
                   aria-label="Ingredient"
