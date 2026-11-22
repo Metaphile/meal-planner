@@ -1510,9 +1510,6 @@ function IngredientTable({
   // one at the end, say), on to that. On an empty line: nothing. (A new
   // line left empty goes again — see dropIfEmptyLine.)
   const focusRid = useRef<number | null>(null)
-  // (The lines opened so: no "Add ingredient…" on them — a line's been
-  // asked for, and it's there to write on.)
-  const opened = useRef(new Set<number>())
   const newLineAfter = (
     e: ReactKeyboardEvent<HTMLInputElement>,
     g: number,
@@ -1528,7 +1525,6 @@ function IngredientTable({
     } else {
       const rid = newEditId()
       focusRid.current = rid
-      opened.current.add(rid)
       set(
         groups.map((x, k) =>
           k === g
@@ -1674,14 +1670,11 @@ function IngredientTable({
             // (Crossed out: not to be written in — nor tapped into, nor
             // tabbed to: a tap goes through it.)
             tabIndex={struck ? -1 : undefined}
-            // (Nothing on it — the spare line, or one emptied: as good as
-            // a new line. Something on it but no name: no hint — a name
-            // isn't needed. Nor on a line opened with Return.)
-            placeholder={
-              blank(row) && !opened.current.has(row.rid ?? -1)
-                ? 'Add ingredient…'
-                : ''
-            }
+            // (Only on the spare line: where the next is written. Not on
+            // a line emptied, or opened with Return — it's being written
+            // in already; nor on one with something on it but no name — a
+            // name isn't needed.)
+            placeholder={spare ? 'Add ingredient…' : ''}
             // (No "name" in the label: Safari would offer to AutoFill a
             // contact.)
             aria-label="Ingredient"
