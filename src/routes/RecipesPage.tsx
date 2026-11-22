@@ -245,6 +245,20 @@ function fitWheel(stageH: number): Wheel {
   }
 }
 
+/** The screen-space top (in the stage's units, from the top of the page) of
+ *  a divider's paper — not its tab — hanging at angle `phi` on the wheel:
+ *  tilted about its rod, seen in the stage's perspective. (Below the wheel's
+ *  visible arc, off the bottom of the screen.) */
+function dividerTop(w: Wheel, headerU: number, phi: number): number {
+  if (phi > PHI_BOTTOM + 20 * DEG) return Infinity
+  const d = CARD_H // its paper, above the rod
+  const front = headerU + w.front // (where the perspective's seen from)
+  const y = front + w.R * Math.sin(phi) - d * Math.cos(phi)
+  const z = w.R * (Math.cos(phi) - 1) + d * Math.sin(phi)
+  if (z >= PERSPECTIVE - 1) return Infinity
+  return front + ((y - front) * PERSPECTIVE) / (PERSPECTIVE - z)
+}
+
 const clamp = (v: number, lo: number, hi: number) =>
   Math.min(hi, Math.max(lo, v))
 
@@ -457,17 +471,32 @@ export default function RecipesPage() {
   const shown = useRef<boolean[]>([])
   const headerRef = useRef<HTMLDivElement>(null)
   const wheel = useMemo(() => fitWheel(stageH), [stageH])
+  // Where the shopping list's top is on screen (from the top of the page)
+  // with the back of the box at angle `phi` on the wheel: following the
+  // top of that divider up from the bottom edge — never lower than peeking
+  // over it.
+  const listTopAt = useCallback(
+    (phi: number) =>
+      Math.min(
+        pageH - LIST_PEEK,
+        dividerTop(wheel, headerU, phi) * SCALE,
+      ),
+    [wheel, headerU, pageH],
+  )
+  // (Turned to the end: where it starts sliding on up from.)
+  const listStart = listTopAt(REACH_LAST_PHI)
   const bounds = useMemo(
     () =>
       boundsOf(
         wheel,
         items,
         narrowed,
-        // (Its top from peeking over the bottom edge to its end in view, with
-        // room below it — and the home indicator's. In the stage's units.)
-        (listH - LIST_PEEK + LIST_ROOM + footH) / SCALE,
+        // (Its top from where the turning leaves it to its end in view,
+        // with room below it — and the home indicator's. In the stage's
+        // units.)
+        (listStart + listH + LIST_ROOM + footH - pageH) / SCALE,
       ),
-    [wheel, items, narrowed, listH, footH],
+    [wheel, items, narrowed, listH, footH, listStart, pageH],
   )
   // The card in hand, by recipe id (editing it can move it to another
   // letter, or delete it, while it's out).
@@ -502,11 +531,15 @@ export default function RecipesPage() {
     const at = drum.get()
     const turn = bounds.turn * SCALE
     const st = Math.min(at, turn)
-    // The shopping list: from peeking over the bottom edge, slid up by as
-    // much as the box is scrolled past the turning (on screen, 1:1).
+    // The shopping list: following the top of the back of the box up from
+    // the bottom edge as the drum turns; past the turning, slid on up by as
+    // much as the box is scrolled past it (on screen, 1:1).
     const sheet = listRef.current
     if (sheet) {
-      const y = `translate3d(0px, ${(-Math.max(0, at - turn)).toFixed(1)}px, 0px)`
+      const k = items.length - 1
+      const phi = PHI_TOP + rimPos(k, st) / wheel.R
+      const top = listTopAt(phi) - Math.max(0, at - turn)
+      const y = `translate3d(0px, ${top.toFixed(1)}px, 0px)`
       if (sheet.style.transform !== y) sheet.style.transform = y
     }
     for (let i = 0; i < items.length; i++) {
@@ -563,7 +596,7 @@ export default function RecipesPage() {
         el.style.zIndex = String(zi)
       }
     }
-  }, [items, wheel, rimPos, headerU, bounds])
+  }, [items, wheel, rimPos, headerU, bounds, listTopAt])
 
   const busy = useRef(false)
 
@@ -679,16 +712,26 @@ export default function RecipesPage() {
         placed.current &&
         returnTo.current === undefined &&
         back!.key === key
-      // The shopping list slid up (more than its peeking top): the box is
-      // anchored to it. It stays just where it was, whatever the box behind
-      // it is narrowed to — measured from where the drum stops turning,
-      // which moves as the box gets longer or shorter.
+      // The shopping list up in view (more than its peeking top — following
+      // the back of the box up, or slid on up past it): the box is anchored
+      // to it. It stays just where it was, whatever the box behind it is
+      // narrowed to — measured from where the drum stops turning (which
+      // moves as the box gets longer or shorter), so the back of the box,
+      // and the list with it, is where it was. (Only so far as the box
+      // allows: too short to hold it there, as near as it can.)
       const at = drum?.get() ?? 0
+      const sheet = listRef.current
+      const layer = scrollRef.current
+      const raised =
+        !!sheet &&
+        !!layer &&
+        sheet.getBoundingClientRect().top <
+          layer.getBoundingClientRect().bottom - LIST_PEEK - 1
       const onList =
         placed.current &&
         returnTo.current === undefined &&
         turnWas.current !== null &&
-        at > turnWas.current + 0.5
+        raised
       if (undo) {
         drum?.set(within(back!.from))
         if (!narrowed) beforeSearch.current = null
@@ -1339,7 +1382,7 @@ export default function RecipesPage() {
               ref={listRef}
               className="pointer-events-auto absolute"
               style={{
-                top: pageH - LIST_PEEK,
+                top: 0,
                 left: SIDE,
                 right: SIDE,
                 willChange: 'transform',
