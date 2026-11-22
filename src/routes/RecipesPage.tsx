@@ -744,56 +744,134 @@ export default function RecipesPage() {
     return it?.kind === 'card' ? it.recipe : undefined
   }
 
-  // Swiped to the card beside the one in hand: that one is taken out of the
-  // box instead, and the other is back in its slot, as if never taken out
-  // (behind the shade). The drum turns to bring its slot into view if it's
-  // off the screen — so putting it back, it drops into its slot there.
-  const stepCard = (dir: 1 | -1) => {
-    if (!open) return
-    const i = indexOf(open.key)
-    const j = besideOf(i, dir)
-    const it = items[j]
-    if (j < 0 || it.kind !== 'card') return
-    // The one that was in hand: back in its slot.
-    const wrap = itemEls.current[i]
-    const card = cardEl(i)
+  /** Item `k` back in its slot, hanging there as in the box (not lifted
+   *  out, not faded). */
+  const backInSlot = (k: number) => {
+    const wrap = itemEls.current[k]
+    const card = cardEl(k)
     for (const el of [card, wrap, card?.querySelector('.rolodex-dim')])
       el?.getAnimations().forEach((a) => a.cancel())
+    if (card) card.style.opacity = ''
     if (wrap) {
       wrap.style.clipPath = SLOT_CLIP
       delete wrap.dataset.free
     }
-    if (uncovered.current) {
-      uncovered.current.style.clipPath = SLOT_CLIP
-      uncovered.current = null
-    }
+  }
+  /** Item `k` out of the box: its slot freed, the card out of sight in it
+   *  (as once it's lifted out — putting it back drops it in from there). */
+  const outOfSlot = (k: number) => {
+    const it = items[k]
+    const wrap = itemEls.current[k]
+    const card = cardEl(k)
+    if (!wrap || !card) return
+    card.style.opacity = ''
+    card.animate([{ opacity: 0 }, { opacity: 0 }], {
+      duration: 1,
+      fill: 'forwards',
+    })
+    lifted.current = it.key
+    freeSlot(wrap)
+    uncoverBehind(k)
+  }
+  /** The card behind item `k` shown whole (under it, while it's
+   *  see-through); returns it, to be trimmed again after. */
+  const seeBehind = (k: number) => {
+    const behind = k > 0 ? itemEls.current[k - 1] : null
+    if (!behind) return null
+    const more = items[k].rod - items[k - 1].rod + 12
+    behind.style.clipPath = `inset(-24px -24px ${-more}px -24px)`
+    return behind
+  }
+  /** Every card placed afresh (none skipped as out of the box). */
+  const repaintAll = () => {
     lifted.current = null
     lastPose.current = []
     lastZ.current = []
     lastShade.current = []
     shown.current = []
     paint()
-    flushSync(() => setOpen({ ...open, key: it.key, recipe: it.recipe }))
-    // This one: out of sight in its slot (as it is once it's lifted out —
-    // putting it back drops it in from wherever it's gone).
-    cardEl(j)?.animate([{ opacity: 0 }, { opacity: 0 }], {
-      duration: 1,
-      fill: 'forwards',
-    })
-    const takeOut = () => {
-      // (Unless it's been put back meanwhile, or swiped past.)
-      if (lifted.current !== null || openKey.current !== it.key) return
-      const w = itemEls.current[j]
-      if (!w) return
-      lifted.current = it.key
-      freeSlot(w)
-      uncoverBehind(j)
-    }
-    if (shown.current[j]) takeOut()
-    else void turnTo(j).then(takeOut)
   }
-  const openKey = useRef<string | null>(null)
-  openKey.current = open?.key ?? null
+
+  // Swiping from the card in hand to the one beside it, the box follows
+  // along, behind the shade: the drum turns from the one's slot toward the
+  // other's (as far as the other is from it), as the card in hand fades
+  // back into its slot and the other fades out of its — `p` of the way
+  // (0: as it was, 1: all the way), one smooth motion with the swipe.
+  const swipe = useRef<{
+    dir: 1 | -1
+    i: number // the card in hand's item
+    j: number // the one beside it
+    from: number // the drum, before
+    to: number // …and once there
+    seeThrough: HTMLElement[]
+  } | null>(null)
+  const previewStep = (dir: 1 | -1, p: number) => {
+    if (!open) return
+    let s = swipe.current
+    // (Swiped the other way, or back where it started: as it was.)
+    if (s && (s.dir !== dir || p <= 0)) {
+      undoSwipe()
+      s = null
+    }
+    if (p <= 0) return
+    const drum = drumRef.current
+    if (!s) {
+      const i = indexOf(open.key)
+      const j = besideOf(i, dir)
+      if (i < 0 || j < 0 || !drum) return
+      // The card in hand's slot: as in the box again, its card faded out.
+      if (uncovered.current) {
+        uncovered.current.style.clipPath = SLOT_CLIP
+        uncovered.current = null
+      }
+      backInSlot(i)
+      const ci = cardEl(i)
+      if (ci) ci.style.opacity = '0'
+      // (Both see-through as they fade: what's behind each shows.)
+      const seeThrough = [seeBehind(i), seeBehind(j)].filter(
+        (el): el is HTMLDivElement => !!el,
+      )
+      repaintAll()
+      const from = drum.get()
+      const to =
+        clamp(from / SCALE + items[j].rod - items[i].rod, 0, bounds.max) *
+        SCALE
+      s = swipe.current = { dir, i, j, from, to, seeThrough }
+    }
+    drum!.set(s.from + (s.to - s.from) * p)
+    const ci = cardEl(s.i)
+    const cj = cardEl(s.j)
+    if (ci) ci.style.opacity = String(p)
+    if (cj) cj.style.opacity = String(1 - p)
+  }
+  /** Swiped back: the box as it was (the card in hand out of its slot
+   *  again, the other in its own). */
+  const undoSwipe = () => {
+    const s = swipe.current
+    if (!s) return
+    swipe.current = null
+    for (const el of s.seeThrough) el.style.clipPath = SLOT_CLIP
+    backInSlot(s.j)
+    drumRef.current?.set(s.from)
+    repaintAll()
+    outOfSlot(s.i)
+  }
+  // Swiped all the way to the card beside it: that one is out of the box
+  // now, in hand, and the other back in its slot — where the swipe left
+  // them. (A key: all the way at once.)
+  const stepCard = (dir: 1 | -1) => {
+    if (!open) return
+    previewStep(dir, 1)
+    const s = swipe.current
+    if (!s) return
+    swipe.current = null
+    for (const el of s.seeThrough) el.style.clipPath = SLOT_CLIP
+    backInSlot(s.i)
+    const it = items[s.j]
+    if (it.kind !== 'card') return
+    flushSync(() => setOpen({ ...open, key: it.key, recipe: it.recipe }))
+    outOfSlot(s.j)
+  }
 
   // If the cards change under us (e.g. a sync), drop any half-done lift.
   useEffect(() => {
@@ -1094,7 +1172,7 @@ export default function RecipesPage() {
             const before = recipeAt(besideOf(p, -1))
             const after = recipeAt(besideOf(n, 1))
             return prev && next && before && after
-              ? { prev, next, before, after, go: stepCard }
+              ? { prev, next, before, after, go: stepCard, preview: previewStep }
               : undefined
           })()}
           onClosed={onClosed}

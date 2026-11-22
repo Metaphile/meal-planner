@@ -1865,6 +1865,9 @@ export function CardDetail({
     before: Recipe
     after: Recipe
     go: (dir: 1 | -1) => void
+    /** Swiped `p` of the way toward the one beside it `dir` (0: not at
+     *  all): whatever's behind follows along. */
+    preview: (dir: 1 | -1, p: number) => void
   }
   onClosed: () => void
 }) {
@@ -2465,6 +2468,28 @@ export function CardDetail({
   // Between the card in hand and those either side of it: what's left of
   // its margin once their slivers show.
   const besideGap = Math.max(6, origin.left - HAND_GROW - BESIDE_PEEK)
+  /** Tell what's behind how far it's been swiped: slid `dx`, as a part of
+   *  the way to the card beside it. */
+  const reportSlide = (dx: number) => {
+    const w = pitch()
+    if (w > 0)
+      stepRef.current?.preview(dx < 0 ? 1 : -1, Math.min(1, Math.abs(dx) / w))
+  }
+  const reportSlideRef = useRef(reportSlide)
+  reportSlideRef.current = reportSlide
+  /** While `anim` slides the cards, report how far each frame. */
+  const followRaf = useRef(0)
+  const follow = (anim: Animation) => {
+    cancelAnimationFrame(followRaf.current)
+    const card = cardRef.current!
+    const tick = () => {
+      const t = getComputedStyle(card).transform
+      reportSlide(t === 'none' ? 0 : new DOMMatrix(t).e)
+      if (anim.playState === 'running')
+        followRaf.current = requestAnimationFrame(tick)
+    }
+    followRaf.current = requestAnimationFrame(tick)
+  }
   /** One card's width and the gap to the next, side by side. */
   const pitch = () => (cardRef.current?.offsetWidth ?? 0) + besideGap
 
@@ -2493,7 +2518,9 @@ export function CardDetail({
       duration: ms,
       easing: `cubic-bezier(0.3, ${(0.3 * k).toFixed(3)}, 0.35, 1)`,
     })
+    follow(anim)
     anim.onfinish = () => {
+      cancelAnimationFrame(followRaf.current)
       // The one beside it, in its place, becomes the card in hand (all in
       // one frame: the cards and their places swap under the same picture).
       flushSync(() => stepRef.current?.go(dir))
@@ -2507,8 +2534,13 @@ export function CardDetail({
   }
   /** Let go short of swiping it away: back to its place. */
   const springBack = (fromX: number) => {
-    animateAll(fromX, 0, { duration: 240, easing: EASE_OUT }).onfinish = () =>
+    const anim = animateAll(fromX, 0, { duration: 240, easing: EASE_OUT })
+    follow(anim)
+    anim.onfinish = () => {
+      cancelAnimationFrame(followRaf.current)
       slideAll(0)
+      reportSlide(0)
+    }
   }
   const stepToRef = useRef(stepTo)
   stepToRef.current = stepTo
@@ -2657,6 +2689,7 @@ export function CardDetail({
         d.lastT = now
         d.dx = dx
         slideAllRef.current(dx)
+        reportSlideRef.current(dx)
         return true
       }
       // (Smoothed: a single step is jittery.)
