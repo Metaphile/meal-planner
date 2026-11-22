@@ -1746,6 +1746,8 @@ const BESIDE_AWAY = 60
  *  and going (as it's put away). */
 const BESIDE_IN_MS = 650
 const BESIDE_OUT_MS = 750
+/** How much sooner than the card in hand they're in place. */
+const BESIDE_LEAD_MS = 75
 const BESIDE_EASE = 'cubic-bezier(0.3, 0, 0.5, 1)'
 /** Room around a card in hand, in the layer it rests in (and so in those
  *  beside it). */
@@ -2204,12 +2206,14 @@ export function CardDetail({
     }
     // The cards either side slide in from off the screen as it fades in.
     besideGone.current = 1
-    // (Arriving as it does: in place just as it's fully faded in.)
+    // (Arriving as it does: in place just before it's fully faded in.)
     void besideTo(
       0,
       BESIDE_IN_MS,
       BESIDE_EASE,
-      rdxCard ? Math.max(0, FADE_IN_DELAY_MS + FADE_IN_MS - BESIDE_IN_MS) : 0,
+      rdxCard
+        ? Math.max(0, FADE_IN_DELAY_MS + FADE_IN_MS - BESIDE_IN_MS - BESIDE_LEAD_MS)
+        : 0,
     )
     return () => {
       for (const el of [card, shadeRef.current])
