@@ -80,6 +80,24 @@ describe('sections as written on the back of a card', () => {
     })
   })
 
+  it('a section made in this edit, untitled, its only line crossed out: not saved', () => {
+    const fresh = { ...g('', [{ name: 'Basil', struck: true }, { name: '' }]), fresh: true }
+    expect(sectionsFromGroups([g('', [{ name: 'Bread' }]), fresh])).toEqual({
+      ingredients: [{ name: 'Bread' }],
+      ingredientsTitle: undefined,
+      sections: undefined,
+    })
+    // (Titled, it's kept — empty or not. Saved before, it's kept too.)
+    expect(
+      sectionsFromGroups([g('', [{ name: 'Bread' }]), { ...fresh, title: 'Herbs' }])
+        .sections,
+    ).toEqual([{ title: 'Herbs', ingredients: [] }])
+    expect(
+      sectionsFromGroups([g('', [{ name: 'Bread' }]), { ...fresh, fresh: undefined }])
+        .sections,
+    ).toEqual([{ title: '', ingredients: [] }])
+  })
+
   it('every section crossed out: one first section, with nothing in it', () => {
     expect(
       sectionsFromGroups([g('A', [{ name: 'x' }], true), g('B', [], true)]),

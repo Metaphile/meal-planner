@@ -32,6 +32,8 @@ export interface DraftRow {
 export interface DraftGroup {
   title: string
   struck?: boolean
+  /** Made in this edit. */
+  fresh?: boolean
   rows: DraftRow[]
 }
 /** What a recipe said when its editing began (to tell, on saving, whether
@@ -96,6 +98,7 @@ export const DRAFT: Slice<Draft> = {
         (g): DraftGroup => ({
           title: str(g.title),
           struck: bool(g.struck) || undefined,
+          fresh: bool(g.fresh) || undefined,
           rows: (Array.isArray(g.rows) ? g.rows : []).filter(isObj).map(
             (r): DraftRow => ({
               name: str(r.name),

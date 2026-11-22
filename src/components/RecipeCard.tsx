@@ -806,6 +806,9 @@ export type Group = {
    *  each line's own mark (kept: brought back, the section's lines are as
    *  they were). */
   struck?: boolean
+  /** Made in this edit (not yet saved): untitled, with nothing in it kept,
+   *  it's not saved either — see sectionsFromGroups. */
+  fresh?: boolean
 }
 
 /** The groups as they should stand after a change: each with its spare
@@ -821,7 +824,8 @@ const tidyGroups = (gs: Group[]) =>
  * and `ingredientsTitle`) — whichever it is: cross out the first, and the
  * next takes its place. (Crossed out, every one: a first section with
  * nothing in it, as every recipe has.) Every other section kept stays,
- * titled or not, empty or not: sections stand on their own.
+ * titled or not, empty or not: sections stand on their own — except one
+ * made in this edit, untitled, with nothing in it kept.
  */
 export function sectionsFromGroups(
   groups: Group[],
@@ -831,7 +835,12 @@ export function sectionsFromGroups(
       .filter((i) => !i.struck)
       .map(({ struck: _, ...i }) => ({ ...i, name: i.name.trim() }))
       .filter(hasAnything)
-  const [first, ...rest] = groups.filter((g) => !g.struck)
+  // (A section made in this edit, untitled, nothing in it kept — its only
+  // line crossed out, say: there's nothing to save. A section saved
+  // before stays, empty or not.)
+  const [first, ...rest] = groups.filter(
+    (g) => !g.struck && !(g.fresh && !g.title.trim() && !lines(g.rows).length),
+  )
   const sections = rest.map((g) => ({
     title: g.title.trim(),
     ingredients: lines(g.rows),
@@ -1230,7 +1239,10 @@ function IngredientTable({
     // written in.)
     if (g === groups.length) {
       setAddingSection(false)
-      return set([...groups, { title: '', rows: [{ name: '', ...patch }] }])
+      return set([
+        ...groups,
+        { title: '', rows: [{ name: '', ...patch }], fresh: true },
+      ])
     }
     const next = groups.map((x, i) =>
       i === g
@@ -1264,9 +1276,8 @@ function IngredientTable({
   ) => {
     const gs = groups.map((x) => ({ ...x, rows: [...x.rows] }))
     const [row] = gs[from.g].rows.splice(from.i, 1)
-    // (Onto "Add section…": a new section, untitled — "Section", as it
-    // shows among others.)
-    if (to.g >= gs.length) gs.push({ title: '', rows: [] })
+    // (Onto "Add section…": a new section, untitled.)
+    if (to.g >= gs.length) gs.push({ title: '', rows: [], fresh: true })
     const at = to.g === from.g && to.i > from.i ? to.i - 1 : to.i
     gs[to.g].rows.splice(at, 0, row)
     set(gs)
@@ -1495,7 +1506,7 @@ function IngredientTable({
                     // (A section now, the field its title: a new "Add
                     // section…" below, not being written in.)
                     setAddingSection(false)
-                    set([...groups, { title: t, rows: [] }])
+                    set([...groups, { title: t, rows: [], fresh: true }])
                   },
                   // (Being written in: what's written here is its heading.)
                   addingSection ? HEADING_HINT : 'Add section…',
