@@ -146,6 +146,7 @@ function AddOnLine({ addon, canEdit }: { addon: AddOn; canEdit: boolean }) {
 function SpareLine() {
   const add = useStore((s) => s.addAddOn)
   const [text, setText] = useState('')
+  const fieldRef = useRef<HTMLInputElement>(null)
   const commit = () => {
     if (!text.trim()) return
     add({ name: text.trim() })
@@ -157,12 +158,21 @@ function SpareLine() {
       <input
         value={text}
         onChange={(e) => setText(e.target.value)}
-        onKeyDown={(e) => e.key === 'Enter' && commit()}
+        ref={fieldRef}
+        // Return: it's added, and the line's ready for the next — one after
+        // another. (The keyboard's key says "next", and the field keeps the
+        // focus: "done", iOS would put the keyboard away.)
+        onKeyDown={(e) => {
+          if (e.key !== 'Enter') return
+          e.preventDefault()
+          commit()
+          fieldRef.current?.focus()
+        }}
         onBlur={commit}
         placeholder="Add an item…"
         aria-label="New item"
         autoComplete="off"
-        enterKeyHint="done"
+        enterKeyHint="next"
         className={`${CELL} placeholder:text-pencil`}
       />
     </div>
