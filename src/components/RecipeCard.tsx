@@ -1740,6 +1740,8 @@ const sideways = (dx: number) => `translate(${dx}px, 0px)`
 /** How much of the cards either side of the card in hand shows, at the
  *  screen's edges — just a sliver, saying there's more to swipe to. */
 const BESIDE_PEEK = 5
+/** How far they slide (off the screen, shadow and all) as it's put away. */
+const BESIDE_AWAY = 60
 /** Room around a card in hand, in the layer it rests in (and so in those
  *  beside it). */
 const HAND_PADDING = {
@@ -2200,11 +2202,25 @@ export function CardDetail({
       dismiss(fromY, fromV)
       return
     }
+    besideAway()
     const rdxCard = TAKE_OUT === 'lift' ? getRolodexCard() : undefined
     const anim = rdxCard
       ? liftFade(o, rdxCard, false, fromY, fromV)
       : fly(arcThrough(base + fromY, o.clearTop, o.slotTop), o, false, base)
     anim.onfinish = () => onClosedRef.current()
+  }
+  /** Put away (back in its slot, or fading away): the cards either side of
+   *  it slide off the screen the way they are, as the shade they're on
+   *  fades — gathering speed, as if swept aside. */
+  const besideAway = () => {
+    for (const [el, side] of [
+      [prevRef.current, -1],
+      [nextRef.current, 1],
+    ] as const)
+      el?.animate(
+        [{ transform: sideways(0) }, { transform: sideways(side * BESIDE_AWAY) }],
+        { duration: FADE_MS, easing: 'cubic-bezier(0.4, 0, 1, 1)', fill: 'forwards' },
+      )
   }
   const closeRef = useRef(close)
   closeRef.current = close
@@ -2216,6 +2232,7 @@ export function CardDetail({
   const dismiss = (fromY = 0, v = 0) => {
     if (closing.current) return
     closing.current = true
+    besideAway()
     const card = cardRef.current!
     const shade = shadeRef.current!
     card.getAnimations().forEach((a) => a.cancel())
