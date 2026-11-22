@@ -12,13 +12,11 @@ import { CARD_H } from './RecipeCard'
  * added up — ticked off as it's on hand — then Add-ons: anything else
  * wanted, written in by hand.
  *
- * It's not taken out: it's worked on right there in the box. Turned all the
- * way to the back, it stands facing you, and scrolling on carries on down it
- * (see RecipesPage).
+ * It's not in the box, nor taken out like a card: it's a sheet waiting
+ * just below the screen, the top of it peeking over the bottom edge; turned
+ * to the end of the box, scrolling on slides it up (see RecipesPage), and
+ * it's worked on right there.
  */
-
-/** Its key in the box. */
-export const LIST_KEY = 'list'
 
 /** The box on a recipe card (empty, to be ticked), drawn inline in the
  *  text. */

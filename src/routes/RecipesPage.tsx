@@ -37,7 +37,7 @@ import {
   strs,
   type Slice,
 } from '../lib/uiState'
-import { LIST_KEY, ListCard } from '../components/ListCard'
+import { ListCard } from '../components/ListCard'
 import { favoriteKey, isWanted, type Recipe } from '../data/types'
 
 /*
@@ -48,9 +48,13 @@ import { favoriteKey, isWanted, type Recipe } from '../data/types'
  * wheel: facing you at the front line, tipping back (and shrinking, and
  * shading) toward the top until it goes edge-on over it, leaning toward you
  * below. The drum turns between two stops: the blank card for a new recipe
- * (in front of A) brought down into reach, and the list (behind the back of
- * the box: everything the wanted recipes call for — see ListCard) facing
- * you near the bottom. It opens with A near the top.
+ * (in front of A) brought down into reach, and the back of the box resting
+ * near the bottom. It opens with A near the top.
+ *
+ * The shopping list (everything the wanted recipes call for — see ListCard)
+ * isn't in the box: it's a sheet that waits just below the screen, the top
+ * of it peeking over the bottom edge. Turned to the end, scrolling on slides
+ * it up from the bottom, and on up till its end is in view.
  *
  * Touch turns the drum under its own iOS-style physics (`lib/drumScroll`):
  * drag, momentum, and a soft spring at the stops — even a box too short to
@@ -106,14 +110,16 @@ const SPIN_MS = 260 // turning the drum to a tapped letter (max)
 const START_PHI = -28 * DEG
 // How far it can turn past that: down until the first recipe (or the blank
 // card, before A) is well below the tipped-back zone, where it's easy to
-// read; up until the last item (the list, behind the back of the box) stands
-// at the front line, flat, facing you — where scrolling on carries on down
-// it (see boundsOf).
+// read; up until the last item (the back of the box) faces you, not leaning
+// at the bottom.
 const REACH_FIRST_CARD_PHI = -12 * DEG
-const REACH_LAST_PHI = 0
-/** Scrolled to the end of the list, this much room is left below it (and
- *  the iPhone's home indicator's room besides: see boundsOf). */
+const REACH_LAST_PHI = 16 * DEG
+/** Scrolled to the end of the shopping list, this much room is left below
+ *  it (and the iPhone's home indicator's room besides). */
 const LIST_ROOM = 24
+/** Below the screen, how much of the top of the shopping list shows over
+ *  its bottom edge (as the cards beside one in hand show a sliver). */
+const LIST_PEEK = 6
 
 /** A card on the wheel is trimmed at its rod (the rest is behind the cards
  *  in front), with room above and to the sides for its shadow. (A clip-path,
@@ -130,8 +136,6 @@ type Item =
   | { kind: 'card'; key: string; recipe: Recipe; rod: number }
   /** The blank index card at the front of the box: write a new recipe. */
   | { kind: 'blank'; key: string; rod: number }
-  /** The list (what the wanted recipes call for), at the back of the box. */
-  | { kind: 'list'; key: string; rod: number }
 
 /** How far below an item's top its rod (where it hangs from the wheel) is. */
 const rodOffset = (it: Item) =>
@@ -148,8 +152,8 @@ function letterOf(title: string): string {
 }
 
 /** (For those who can write recipes) a blank card at the front, then
- *  dividers (A–Z, plus # if needed) and cards, then the back of the box and
- *  the list behind it — with their
+ *  dividers (A–Z, plus # if needed) and cards, then the back of the box —
+ *  with their
  *  rods' positions along the wheel's rim. Narrowed (only the wanted, or
  *  only favorites), it's the same box: every letter's divider stays, so
  *  missing cards show as empty dividers (and none at all, as a box of
@@ -184,7 +188,7 @@ function layout(recipes: Recipe[], withBlank: boolean): Item[] {
     }
   })
   // The back of the box: a plain divider (no tab), so the last recipe has
-  // something in front of it, and the list isn't filed under Z.
+  // something in front of it.
   items.push({
     kind: 'divider',
     key: 'div-end',
@@ -192,8 +196,6 @@ function layout(recipes: Recipe[], withBlank: boolean): Item[] {
     n: 0,
     rod: top + TAB_H + CARD_H,
   })
-  top += DIVIDER_STRIP
-  items.push({ kind: 'list', key: LIST_KEY, rod: top + CARD_H })
   return items
 }
 
@@ -250,24 +252,20 @@ const clamp = (v: number, lo: number, hi: number) =>
  *  for pos from 0 to `max` (worked out from the first divider: the blank
  *  card, if any, before it):
  *  - It turns from its first recipe (or the blank card) brought well down
- *    into easy reading, to the list standing flat at the front line
- *    (`turn`). It opens at `initial`: with its first divider near the top —
- *    or, narrowed, its first card as near the front as the stops allow.
- *  - A box too short to need turning (everything in it in view, the list
- *    at the front — narrowed to nothing, say) doesn't: it stands with
- *    the list at the front (`turn` 0).
- *  Past `turn`, the drum doesn't turn, but the list slides on up, as far as
- *  there's more of it below the screen (`listH`, its height): `max`.
- *  (Flat, it's carried up just as fast as turning carried it: one motion.)
+ *    into easy reading, to its last item brought well up (`turn`). It
+ *    opens at `initial`: with its first divider near the top — or,
+ *    narrowed, its first card as near the front as the stops allow.
+ *  - A box too short to need turning (everything in it in view — narrowed
+ *    to nothing, say) doesn't: it stands as it would at the end (`turn` 0).
+ *  Past `turn`, the drum doesn't turn, but the shopping list slides up from
+ *  the bottom of the screen, as far as there's list (`slide`): `max`.
  *  Either way it can always give a little (springing back) past the ends. */
 function boundsOf(
   w: Wheel,
   items: Item[],
   faceFirst: boolean,
-  stageH: number,
-  listH: number,
-  /** Room the screen keeps at its foot (the home indicator's). */
-  footRoom = 0,
+  /** How far the shopping list slides up, till its end's in view. */
+  slide: number,
 ) {
   if (items.length === 0) return { first: 0, max: 0, initial: 0, turn: 0 }
   // (From the first divider; the first item's is so much less.)
@@ -282,22 +280,14 @@ function boundsOf(
   const lead = k >= 0 ? items[k].rod - rod0 : 0 // first divider → first recipe
   // The first divider's rim distance (it grows down the screen) with the
   // box turned all the way down (to the start: the first recipe, or the
-  // blank card, in reach) and all the way up (to the end: the list at the
-  // front).
+  // blank card, in reach) and all the way up (to the end).
   const down = Math.max(
     home,
     rim(REACH_FIRST_CARD_PHI) - lead,
     ahead ? rim(REACH_FIRST_CARD_PHI) + ahead : 0,
   )
   const up = rim(REACH_LAST_PHI) - span
-  // (Past the turning, how far there is to slide down the list.)
-  const below =
-    last.kind === 'list'
-      ? Math.max(
-          0,
-          w.front - rodOffset(last) + listH + LIST_ROOM + footRoom - stageH,
-        )
-      : 0
+  const below = Math.max(0, slide)
   if (down <= up)
     // Too short to turn: as it is at the end.
     return { first: up - ahead, turn: 0, max: below, initial: 0 }
@@ -468,8 +458,16 @@ export default function RecipesPage() {
   const headerRef = useRef<HTMLDivElement>(null)
   const wheel = useMemo(() => fitWheel(stageH), [stageH])
   const bounds = useMemo(
-    () => boundsOf(wheel, items, narrowed, stageH, listH, footH / SCALE),
-    [wheel, items, narrowed, stageH, listH, footH],
+    () =>
+      boundsOf(
+        wheel,
+        items,
+        narrowed,
+        // (Its top from peeking over the bottom edge to its end in view, with
+        // room below it — and the home indicator's. In the stage's units.)
+        (listH - LIST_PEEK + LIST_ROOM + footH) / SCALE,
+      ),
+    [wheel, items, narrowed, listH, footH],
   )
   // The card in hand, by recipe id (editing it can move it to another
   // letter, or delete it, while it's out).
@@ -504,7 +502,13 @@ export default function RecipesPage() {
     const at = drum.get()
     const turn = bounds.turn * SCALE
     const st = Math.min(at, turn)
-    const slid = Math.max(0, at - turn) / SCALE
+    // The shopping list: from peeking over the bottom edge, slid up by as
+    // much as the box is scrolled past the turning (on screen, 1:1).
+    const sheet = listRef.current
+    if (sheet) {
+      const y = `translate3d(0px, ${(-Math.max(0, at - turn)).toFixed(1)}px, 0px)`
+      if (sheet.style.transform !== y) sheet.style.transform = y
+    }
     for (let i = 0; i < items.length; i++) {
       const el = itemEls.current[i]
       if (!el) continue
@@ -527,8 +531,7 @@ export default function RecipesPage() {
       const phi = PHI_TOP + v / wheel.R
       const rodY = wheel.front + wheel.R * Math.sin(phi)
       const z = wheel.R * (Math.cos(phi) - 1)
-      const up = items[i].kind === 'list' ? slid : 0
-      const pose = `translate3d(0px, ${(headerU + rodY - rodOffset(items[i]) - up).toFixed(1)}px, ${z.toFixed(1)}px) rotateX(${(-phi / DEG).toFixed(2)}deg)`
+      const pose = `translate3d(0px, ${(headerU + rodY - rodOffset(items[i])).toFixed(1)}px, ${z.toFixed(1)}px) rotateX(${(-phi / DEG).toFixed(2)}deg)`
       if (lastPose.current[i] !== pose) {
         lastPose.current[i] = pose
         el.style.transform = pose
@@ -619,17 +622,18 @@ export default function RecipesPage() {
   useLayoutEffect(() => {
     drumRef.current?.setMax(bounds.max * SCALE)
   }, [bounds])
-  // (Measured as it's drawn, and again whenever it grows or shrinks.)
+  // The shopping list's sheet. (Its length measured as it's drawn, and
+  // again whenever it grows or shrinks.)
+  const listRef = useRef<HTMLDivElement>(null)
   useLayoutEffect(() => {
-    const k = items.length - 1
-    const el = items[k]?.kind === 'list' ? cardEl(k) : undefined
+    const el = listRef.current
     if (!el) return
     const measure = () => setListH(el.offsetHeight)
     measure()
     const ro = new ResizeObserver(measure)
     ro.observe(el)
     return () => ro.disconnect()
-  }, [items])
+  }, [])
 
   // Start at the start (A near the top; a short box with its first recipe
   // facing you) — again each time it's narrowed, and once the page is
@@ -675,28 +679,16 @@ export default function RecipesPage() {
         placed.current &&
         returnTo.current === undefined &&
         back!.key === key
-      // The shopping list in view (any of it — coming up the drum, at the
-      // front, or scrolled down): the box is anchored to it. It stays just
-      // where it was, whatever the box behind it is narrowed to — measured
-      // from where the drum stops turning (the list at the front), which
-      // moves as the box gets longer or shorter. (Only so far as the box
-      // allows: too short to hold it there, as near as it can.)
+      // The shopping list slid up (more than its peeking top): the box is
+      // anchored to it. It stays just where it was, whatever the box behind
+      // it is narrowed to — measured from where the drum stops turning,
+      // which moves as the box gets longer or shorter.
       const at = drum?.get() ?? 0
-      const k = items.length - 1
-      const listEl = items[k]?.kind === 'list' ? cardEl(k) : undefined
-      const layer = scrollRef.current
-      // (As last drawn — not yet redrawn for the new box. Its wrapper's
-      // hidden when it's off the drum's visible arc.)
-      const inView =
-        !!listEl &&
-        !!layer &&
-        listEl.parentElement?.style.visibility !== 'hidden' &&
-        listEl.getBoundingClientRect().top < layer.getBoundingClientRect().bottom
       const onList =
         placed.current &&
         returnTo.current === undefined &&
         turnWas.current !== null &&
-        inView
+        at > turnWas.current + 0.5
       if (undo) {
         drum?.set(within(back!.from))
         if (!narrowed) beforeSearch.current = null
@@ -1333,6 +1325,29 @@ export default function RecipesPage() {
           className="scroll-y no-scrollbar absolute inset-0 z-[2] overflow-x-hidden"
           style={{ touchAction: 'none' }}
         >
+          {/* The shopping list's sheet: pinned to the screen (in this layer,
+              so a drag on it is the drum's), waiting just below the bottom
+              edge, its top peeking over it — slid up as the box is
+              scrolled past its end (see paint). Clipped to the screen, so
+              what's below doesn't lengthen the scrolling. Over the wheel,
+              under the header. */}
+          <div
+            className="pointer-events-none sticky top-0 z-[1] overflow-clip"
+            style={{ height: pageH, marginBottom: -pageH }}
+          >
+            <div
+              ref={listRef}
+              className="pointer-events-auto absolute"
+              style={{
+                top: pageH - LIST_PEEK,
+                left: SIDE,
+                right: SIDE,
+                willChange: 'transform',
+              }}
+            >
+              <ListCard canEdit={canEditPlan} />
+            </div>
+          </div>
           {/* The wheel: pinned while the spacer below scrolls under it. */}
           <div
             className="sticky top-0 overflow-clip"
@@ -1590,18 +1605,6 @@ const RolodexItem = memo(function RolodexItem({
           <div className="paper-lines mx-5 mb-2 flex-1" />
           <span className="rolodex-dim" />
         </div>
-        {shadow}
-      </div>
-    )
-  }
-
-  if (item.kind === 'list') {
-    // The shopping list, worked on right here: whole (nothing's in front of
-    // it to trim it to — it carries on down past the screen, to be
-    // scrolled up into view).
-    return (
-      <div {...common} style={{ ...common.style, clipPath: 'none' }}>
-        <ListCard canEdit={canEditPlan} />
         {shadow}
       </div>
     )
