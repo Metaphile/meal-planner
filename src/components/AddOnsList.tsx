@@ -20,10 +20,9 @@ const CELL =
  * one on; it's added once you press Enter or move off the line (with
  * something written on it).
  *
- * Each can be ticked once it's got. Ticked, it's done with: Remove selected
- * (there while any is ticked) takes off all the ticked ones. One with
- * nothing left on it goes — however it got that way — once it's not being
- * written in.
+ * Each can be ticked once it's got. Ticked, it's done with: Reconcile (at
+ * the foot of the list it's on) takes it off. One with nothing left on it
+ * goes — however it got that way — once it's not being written in.
  */
 export function AddOnsList({
   canEdit,
@@ -34,11 +33,6 @@ export function AddOnsList({
   bare?: boolean
 }) {
   const addons = useStore((s) => s.addons)
-  const remove = useStore((s) => s.removeAddOn)
-  const ticked = addons.filter((a) => a.have)
-  const removeTicked = () => {
-    for (const a of ticked) remove(a.id)
-  }
 
   return (
     <div
@@ -58,19 +52,6 @@ export function AddOnsList({
           <p className="py-1 text-center text-ink-faint">Nothing yet.</p>
         )}
       </div>
-      {canEdit && ticked.length > 0 && (
-        // (Printed, not written: it's a button. At the right, coloured as
-        // a card's Save.)
-        <div className="flex justify-end pt-3 font-sans">
-          <button
-            type="button"
-            onClick={removeTicked}
-            className="rounded-full border border-kraft-edge bg-brand px-4 py-1.5 text-sm font-semibold leading-5 text-on-brand transition active:scale-95"
-          >
-            Remove selected
-          </button>
-        </div>
-      )}
     </div>
   )
 }

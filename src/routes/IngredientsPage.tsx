@@ -6,6 +6,7 @@ import { useWantedIngredients } from '../store/selectors'
 import { AddOnsList } from '../components/AddOnsList'
 import { useAuth } from '../auth/AuthProvider'
 import { WantBoxPicture } from '../components/ListCard'
+import { ReconcileButton } from '../components/Reconcile'
 
 /**
  * Ingredients: everything the wanted recipes call for (each as many times
@@ -86,6 +87,7 @@ export default function IngredientsPage() {
         <div className="kraft-pocket rounded-tl-none p-2">
           <AddOnsList canEdit={canWrite} />
         </div>
+        <ReconcileButton ingredients={ingredients} canEdit={canWrite} />
       </div>
     </div>
   )
