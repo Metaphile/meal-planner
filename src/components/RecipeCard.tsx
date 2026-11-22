@@ -1197,6 +1197,7 @@ function IngredientTable({
   const [addingSection, setAddingSection] = useState(false)
   // (…till a tap lands anywhere else.)
   const addRef = useRef<HTMLDivElement>(null)
+  const tappingAdd = useRef(false) // (a tap within it, under way)
   useEffect(() => {
     if (!addingSection) return
     const onDown = (e: PointerEvent) => {
@@ -1451,13 +1452,27 @@ function IngredientTable({
             className="relative mt-3"
             // (Being written in — its heading, or the line under it: going
             // from one to the other, it stays open. Focus going elsewhere,
-            // it closes; and a tap anywhere else — see addRef — as on iOS a
-            // tap on a button, like a unit's, takes no focus, so leaving the
-            // field for it can't be told from leaving altogether.)
+            // or nowhere — the keyboard put away — it closes; and at a tap
+            // anywhere else (see addRef). But not for a tap within it: on
+            // iOS a tap on a button, like a unit's, takes no focus, so it
+            // too leaves the field for nowhere.)
+            onPointerDownCapture={() => {
+              tappingAdd.current = true
+              const done = () => setTimeout(() => (tappingAdd.current = false))
+              window.addEventListener('click', done, { capture: true, once: true })
+              setTimeout(() => (tappingAdd.current = false), 1000)
+            }}
             onFocus={() => setAddingSection(true)}
             onBlur={(e) => {
               const to = e.relatedTarget as Node | null
-              if (to && !e.currentTarget.contains(to)) setAddingSection(false)
+              const area = e.currentTarget
+              if (to) {
+                if (!area.contains(to)) setAddingSection(false)
+              } else
+                setTimeout(() => {
+                  if (!tappingAdd.current && !area.contains(document.activeElement))
+                    setAddingSection(false)
+                })
             }}
           >
             {/* (Tapped into, before anything's written: already laid out as
