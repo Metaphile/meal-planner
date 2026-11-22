@@ -1747,7 +1747,7 @@ const BESIDE_AWAY = 60
 const BESIDE_IN_MS = 650
 const BESIDE_OUT_MS = 750
 /** How much sooner than the card in hand they're in place. */
-const BESIDE_LEAD_MS = 75
+const BESIDE_LEAD_MS = 175
 const BESIDE_EASE = 'cubic-bezier(0.3, 0, 0.5, 1)'
 /** Room around a card in hand, in the layer it rests in (and so in those
  *  beside it). */
@@ -2669,7 +2669,8 @@ export function CardDetail({
       // It fades as you pull it, telling you it's on its way back (and the
       // cards beside it slide away: they're going too).
       card.style.opacity = String(1 - 0.65 * Math.min(1, d.dy / 280))
-      besideAtRef.current(Math.min(1, d.dy / 280))
+      // (Gently: only a long pull takes them all the way, as with the shade.)
+      besideAtRef.current(Math.min(1, d.dy / 450))
       shade.style.opacity = String(1 - Math.min(0.7, d.dy / 450))
       return true
     }
