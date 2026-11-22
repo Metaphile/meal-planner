@@ -67,10 +67,6 @@ import { favoriteKey, isWanted, type Recipe } from '../data/types'
 const STRIP = 92 // arc between recipe cards: title + ~2 ingredients show
 const TAB_H = 26 // divider tab height (sticks up above the divider card)
 const DIVIDER_STRIP = TAB_H + 12 // tab + a sliver of the divider's edge
-// Empty letters pack tightly: their tabs are staggered across the width (five
-// places), so a tab only shares its place with the fifth one on — spaced so
-// those don't touch, every tab shows whole, in a dense staircase.
-const EMPTY_DIVIDER_STRIP = Math.ceil(TAB_H / 5) + 1
 const SIDE = 16 // horizontal inset
 /** The most of a card in the box that can ever show: down to its rod, and
  *  down to the next one's when the card in front is out (see
@@ -160,10 +156,10 @@ function letterOf(title: string): string {
 /** (For those who can write recipes) a blank card at the front, then
  *  dividers (A–Z, plus # if needed) and cards, then the back of the box —
  *  with their
- *  rods' positions along the wheel's rim. Narrowed (only the wanted, or
- *  only favorites), it's the same box: every letter's divider stays, so
- *  missing cards show as empty dividers (and none at all, as a box of
- *  nothing but dividers). */
+ *  rods' positions along the wheel's rim. Only the letters with cards
+ *  behind them have dividers — narrowed (only the wanted, or only
+ *  favorites) to fewer cards, fewer dividers (and none at all, just the
+ *  blank card and the back of the box). */
 function layout(recipes: Recipe[], withBlank: boolean): Item[] {
   const byLetter = new Map<string, Recipe[]>()
   for (const r of [...recipes].sort((a, b) => a.title.localeCompare(b.title))) {
@@ -185,9 +181,12 @@ function layout(recipes: Recipe[], withBlank: boolean): Item[] {
   }
   letters.forEach((letter, n) => {
     const group = byLetter.get(letter) ?? []
+    // (A letter with nothing behind it has no divider. Its tab's place —
+    // the n-th, staggered across the width — stays its own.)
+    if (group.length === 0) return
     items.push({ kind: 'divider', key: `div-${letter}`, letter, n, rod: 0 })
     items[items.length - 1].rod = top + TAB_H + CARD_H
-    top += group.length > 0 ? DIVIDER_STRIP : EMPTY_DIVIDER_STRIP
+    top += DIVIDER_STRIP
     for (const recipe of group) {
       items.push({ kind: 'card', key: recipe.id, recipe, rod: top + CARD_H })
       top += STRIP
@@ -1374,7 +1373,6 @@ export default function RecipesPage() {
 
   return (
     <div className="relative h-full">
-      {/* An empty box is still a box: A–Z dividers and blank cards. */}
       <>
         {/* (The room the screen keeps at its foot, to measure.) */}
         <div
