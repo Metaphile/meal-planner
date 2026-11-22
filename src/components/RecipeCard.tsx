@@ -2519,9 +2519,10 @@ export const HAND: Slice<Hand> = {
 /** How a card comes out of the rolodex (or a pocket) into your hand:
  *  - 'arc': it slides up out of its slot and hands over, mid-flight, to the
  *    card in hand, on one continuous arc.
- *  - 'lift': it lifts straight up out of its slot and off the screen, and
- *    after a pause the card in hand fades in where it rests (putting it back, the
- *    card in hand fades out as the other drops back into its slot). */
+ *  - 'lift': it lifts straight up out of its slot and off the screen, as
+ *    the card in hand slides up from below the screen to where it rests
+ *    (putting it back, the card in hand fades out as the other drops back
+ *    into its slot). */
 // ('arc' predates the Recipes rolodex being drawn scaled down: its flight
 // would need converting to the stage's units before being used there again.)
 const TAKE_OUT: 'arc' | 'lift' = 'lift'
@@ -2535,12 +2536,10 @@ const SETTLE_MS = 140
 const SETTLE = 'cubic-bezier(0.3, 0, 0.3, 1)' // back up to its place
 const SINK = 'cubic-bezier(0.25, 0.6, 0.4, 1)' // easing into the bottom
 const DROP_MS = 300 // …and dropping back in
-const FADE_IN_DELAY_MS = 400 // the card in hand (and the shade) start fading in…
-const FADE_IN_MS = 375 // …over this
-const HAND_FROM = 0.93 // …growing from this size to its own
-const HAND_GROW_EASE = 'cubic-bezier(0.22, 1, 0.36, 1)' // fast, then easing in
-const FADE_IN_EASE = 'linear' // steady, start to finish
-const FADE_MS = 225 // …and fading out
+const RISE_DELAY_MS = SINK_MS // the card in hand starts sliding up from below (as the other springs out)…
+const RISE_MS = 500 // …over this (the shade darkening with it)
+const RISE_EASE = 'cubic-bezier(0.33, 1, 0.68, 1)' // quick, then settling into place (as one put back drops in)
+const FADE_MS = 225 // putting it back: fading out
 /** Let go of while moving, a card coasts on, slowing as it goes. */
 const COAST_TAU = 500 // ms; the same slowing as scrolling (0.998 per ms)
 
@@ -2893,10 +2892,14 @@ export function CardDetail({
       duration: opening ? LIFT_MS : DROP_MS,
       fill: 'both' as const,
     }
-    const fade = {
-      duration: opening ? FADE_IN_MS : FADE_MS,
+    const fade = { duration: FADE_MS, fill: 'both' as const }
+    const rise = {
+      duration: RISE_MS,
+      delay: RISE_DELAY_MS,
       fill: 'both' as const,
     }
+    // (From just out of sight below the screen, shadow and all.)
+    const below = window.innerHeight + 24 - restTop.current
     const anims = opening
       ? [
           // It sinks a little into its slot, then springs up out of it;
@@ -2920,18 +2923,13 @@ export function CardDetail({
             easing: LIFT_FADE,
           }),
           card.animate(
-            [
-              { opacity: 0, transform: pose(0) },
-              { opacity: 1, transform: pose(0) },
-            ],
-            // After a fixed pause (wherever the card coming out has got to).
-            { ...fade, delay: FADE_IN_DELAY_MS, easing: FADE_IN_EASE },
+            [{ transform: pose(below) }, { transform: pose(0) }],
+            { ...rise, easing: RISE_EASE },
           ),
-          // The shade darkens with it.
+          // The shade darkens as it comes.
           shade.animate([{ opacity: 0 }, { opacity: 1 }], {
-            ...fade,
-            delay: FADE_IN_DELAY_MS,
-            easing: FADE_IN_EASE,
+            ...rise,
+            easing: 'linear',
           }),
         ]
       : [
@@ -2970,23 +2968,9 @@ export function CardDetail({
     // Same clock, to the frame.
     const now = document.timeline.currentTime
     for (const a of anims) if (a) a.startTime = now
-    // Opening: the fade (only it is on this card, so its fill is what's
+    // Opening: the rise (only it is on this card, so its fill is what's
     // dropped once it ends). Closing: whichever ends last.
-    if (opening) {
-      // It grows to full size as it comes, as if raised to you: quickly at
-      // first, then easing into it. (Its own animation, on `scale`, so its
-      // curve isn't the fade's; dropped once done, like the fade.)
-      const grow = card.animate([{ scale: HAND_FROM }, { scale: 1 }], {
-        ...fade,
-        delay: FADE_IN_DELAY_MS,
-        easing: HAND_GROW_EASE,
-      })
-      grow.startTime = now
-      grow.onfinish = () => {
-        if (!closing.current) grow.cancel()
-      }
-      return anims[2]
-    }
+    if (opening) return anims[2]
     return FADE_MS > DROP_MS ? anims[1] : anims[0]
   }
 
@@ -3034,7 +3018,7 @@ export function CardDetail({
       BESIDE_IN_MS,
       BESIDE_EASE,
       rdxCard
-        ? Math.max(0, FADE_IN_DELAY_MS + FADE_IN_MS - BESIDE_IN_MS - BESIDE_LEAD_MS)
+        ? Math.max(0, RISE_DELAY_MS + RISE_MS - BESIDE_IN_MS - BESIDE_LEAD_MS)
         : 0,
     )
     return () => {

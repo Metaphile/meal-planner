@@ -89,20 +89,23 @@ export function AddOnsList({
       </div>
       {marked.length > 0 && (
         // (Printed, not written: they're buttons.)
-        <div className="flex justify-end gap-2 pt-3 font-sans">
-          <button
-            type="button"
-            onClick={() => setCrossed(new Set())}
-            className={EDIT_CLASS}
-          >
-            Cancel
-          </button>
+        // (Delete at the far left, Cancel at the right — as on a card's
+        // back.)
+        <div className="flex gap-2 pt-3 font-sans">
           <button
             type="button"
             onClick={deleteMarked}
             className="rounded-full bg-danger px-4 py-1.5 text-sm font-semibold leading-5 text-white transition active:scale-95"
           >
             Delete
+          </button>
+          <span className="flex-1" />
+          <button
+            type="button"
+            onClick={() => setCrossed(new Set())}
+            className={EDIT_CLASS}
+          >
+            Cancel
           </button>
         </div>
       )}
