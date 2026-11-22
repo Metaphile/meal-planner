@@ -2,6 +2,7 @@ import { useMemo, useRef, useState, type FocusEvent } from 'react'
 import { useStore } from '../store/store'
 import type { AddOn, Ingredient } from '../data/types'
 import { QuantityInput } from './QuantityInput'
+import { Tickbox } from './IngredientsList'
 import {
   COMMON_UNITS,
   EDIT_CLASS,
@@ -10,8 +11,10 @@ import {
   UnitCell,
 } from './RecipeCard'
 
-// The lines: the item, how much, its unit, and × to take it off.
-const COLS = 'grid grid-cols-[minmax(0,1fr)_3.25rem_4.25rem_1.75rem]'
+// The lines: a box to tick once it's got, the item, how much, its unit, and
+// × to take it off. (The box where the shopping list's are, before its
+// lines.)
+const COLS = 'grid grid-cols-[1.75rem_minmax(0,1fr)_3.25rem_4.25rem_1.75rem]'
 const CELL =
   // (The middle of its lowercase letters the line's middle: a stroke
   // through them meets the ×. A field centres its writing in what its
@@ -29,6 +32,8 @@ const FITTED = 'h-full min-w-[4px] bg-transparent p-0 text-left focus:outline-no
  *
  * Taking items off is two steps: × crosses a line out (↺ brings it back),
  * as many as you like; then Delete takes them off, or Cancel keeps them all.
+ * Each can be ticked once it's got (on hand) — just ticked: there's nothing
+ * to count it against.
  */
 export function AddOnsList({
   canEdit,
@@ -120,13 +125,21 @@ function AddOnLine({
   onToggle: () => void
 }) {
   const update = useStore((s) => s.updateAddOn)
-  const set = (patch: Partial<Ingredient>) => update(addon.id, patch)
+  const set = (patch: Partial<Ingredient & Pick<AddOn, 'have'>>) =>
+    update(addon.id, patch)
   const fixed = !canEdit || crossed
   return (
     <div
       role="row"
       className={`${COLS} relative items-center border-b border-line-blue`}
     >
+      <Tickbox
+        state={addon.have ? 'on' : 'off'}
+        disabled={fixed}
+        label={`Have ${addon.name || 'item'}`}
+        onChange={(have) => set({ have: have || undefined })}
+        className="items-center"
+      />
       <input
         value={addon.name}
         onChange={(e) => set({ name: e.target.value })}
@@ -173,7 +186,7 @@ function AddOnLine({
         // A pen stroke through the line.
         <span
           aria-hidden
-          className="pointer-events-none absolute -left-0.5 right-8 top-[calc(50%-0.5px)] h-px rounded-full bg-ink"
+          className="pointer-events-none absolute left-[calc(1.75rem-2px)] right-8 top-[calc(50%-0.5px)] h-px rounded-full bg-ink"
           style={{ transform: 'rotate(-0.5deg)' }}
         />
       )}
@@ -202,6 +215,7 @@ function SpareLine({ units }: { units: string[] }) {
       onBlur={onBlur}
       className={`${COLS} items-center border-b border-line-blue`}
     >
+      <span />
       <input
         value={draft.name}
         onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}

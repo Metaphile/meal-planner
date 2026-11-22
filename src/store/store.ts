@@ -53,7 +53,10 @@ interface AppState {
 
   // Add-ons
   addAddOn: (item: Ingredient) => void
-  updateAddOn: (id: string, patch: Partial<Ingredient>) => void
+  updateAddOn: (
+    id: string,
+    patch: Partial<Ingredient & Pick<AddOn, 'have'>>,
+  ) => void
   removeAddOn: (id: string) => void
 
   // Haves

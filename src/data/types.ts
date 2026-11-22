@@ -126,6 +126,8 @@ export const isWanted = (w: Want) => w.wanted !== false
 export interface AddOn extends Ingredient {
   id: string
   position: number
+  /** Ticked: got it (on hand). (Absent on older rows: not ticked.) */
+  have?: boolean
 }
 
 /**

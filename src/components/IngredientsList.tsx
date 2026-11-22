@@ -226,16 +226,19 @@ function IngredientLine({
  * hand), ✓ (enough), or – in red (some, but short). Tapping an empty box
  * ticks it; tapping a ticked or short one unticks it.
  */
-function Tickbox({
+export function Tickbox({
   state,
   disabled,
   label,
   onChange,
+  className = '-my-1 items-start pt-[7px]',
 }: {
   state: 'off' | 'on' | 'short'
   disabled: boolean
   label: string
   onChange: (checked: boolean) => void
+  /** Where the box sits in its target (level with a line's name). */
+  className?: string
 }) {
   const checked = state !== 'off'
   return (
@@ -248,7 +251,7 @@ function Tickbox({
       onClick={() => onChange(!checked)}
       // A generous target around the small box, level with the name. (Not
       // to be ticked here — a reader: faded, still showing its state.)
-      className="-my-1 -ml-1.5 flex shrink-0 items-start p-1.5 pt-[7px] disabled:cursor-default disabled:opacity-55"
+      className={`-ml-1.5 flex shrink-0 p-1.5 disabled:cursor-default disabled:opacity-55 ${className}`}
     >
       <span
         className={`grid h-[18px] w-[18px] place-items-center rounded-[4px] border-[1.5px] ${
