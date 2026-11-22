@@ -601,10 +601,14 @@ export default function RecipesPage() {
   useLayoutEffect(() => {
     const scroller = scrollRef.current
     if (!scroller) return
-    const ro = new ResizeObserver(() => {
+    const measure = () => {
       setPageH(scroller.clientHeight)
       setHeaderH(headerRef.current?.offsetHeight ?? 0)
-    })
+    }
+    // (At once, before anything's drawn — so the box is turned to where it
+    // was, and a card left in hand is back in it, from the first frame.)
+    measure()
+    const ro = new ResizeObserver(measure)
     ro.observe(scroller)
     if (headerRef.current) ro.observe(headerRef.current)
     return () => {
@@ -749,14 +753,16 @@ export default function RecipesPage() {
       lifted.current = it.key
       freeSlot(wrap)
       uncoverBehind(index)
-      flushSync(() =>
-        setOpen({
-          key: it.key,
-          recipe: it.recipe,
-          origin: originOf(index),
-          resume,
-        }),
-      )
+      const next = {
+        key: it.key,
+        recipe: it.recipe,
+        origin: originOf(index),
+        resume,
+      }
+      // (Taken up as it was — from a layout effect, before it's drawn: set
+      // there, it's drawn already in hand.)
+      if (resume) setOpen(next)
+      else flushSync(() => setOpen(next))
     },
     [items, originOf],
   )
@@ -956,7 +962,7 @@ export default function RecipesPage() {
   // A blank card: write a new recipe on it.
   // The blank card: a new card rises into view already turned over, to be
   // written on. (Saved, it's a recipe like any other, and goes into the box.)
-  const newCard = useCallback((id?: string) => {
+  const newCard = useCallback((id?: string, resume?: Hand) => {
     const layer = scrollRef.current
     if (!layer || busy.current) return
     busy.current = true
@@ -965,24 +971,25 @@ export default function RecipesPage() {
     const draft: Recipe = { id: id ?? newId(), title: '', tags: [], ingredients: [] }
     lifted.current = draft.id
     const below = window.innerHeight + 24
-    flushSync(() =>
-      setOpen({
-        key: draft.id,
-        recipe: draft,
-        isNew: true,
-        origin: {
-          slotTop: below,
-          clearTop: below,
-          left: r.left + layer.clientLeft + SIDE,
-          width: layer.clientWidth - SIDE * 2,
-          height: CARD_H,
-          viewTop: r.top + layer.clientTop,
-          wheelPose: 'none',
-          flatPose: 'none',
-          shade: 0,
-        },
-      }),
-    )
+    const next = {
+      key: draft.id,
+      recipe: draft,
+      isNew: true,
+      origin: {
+        slotTop: below,
+        clearTop: below,
+        left: r.left + layer.clientLeft + SIDE,
+        width: layer.clientWidth - SIDE * 2,
+        height: CARD_H,
+        viewTop: r.top + layer.clientTop,
+        wheelPose: 'none',
+        flatPose: 'none',
+        shade: 0,
+      },
+      resume,
+    }
+    if (resume) setOpen(next)
+    else flushSync(() => setOpen(next))
   }, [])
 
   // The card that was in hand when the app was left (or a new version of it
@@ -1012,20 +1019,16 @@ export default function RecipesPage() {
       : null
   })
   const resumed = useRef(false)
-  useEffect(() => {
+  // (A layout effect: in hand before the box is first drawn, as it was —
+  // nothing to see happen.)
+  useLayoutEffect(() => {
     if (resumed.current || !(pageH > 0 && headerH > 0)) return
     resumed.current = true
     if (!resumeHand) return
-    // (Next frame: taking a card out renders at once, not from in here.)
-    if (resumeHand.isNew && canEditRecipes) {
-      requestAnimationFrame(() => newCard(resumeHand.recipeId))
-      return
-    }
+    if (resumeHand.isNew && canEditRecipes)
+      return newCard(resumeHand.recipeId, resumeHand)
     const i = indexOf(resumeHand.recipeId)
-    if (i >= 0) {
-      requestAnimationFrame(() => openCard(i, resumeHand))
-      return
-    }
+    if (i >= 0) return openCard(i, resumeHand)
     // Not in the box (deleted meanwhile): nothing to take out — but an edit
     // of it isn't lost.
     save(HAND, null)

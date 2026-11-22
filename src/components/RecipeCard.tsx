@@ -1285,7 +1285,7 @@ function IngredientTable({
                 (t) => setTitle(g, t),
                 // (Untitled: what it'll be called — or, the only one, that a
                 // title's optional.)
-                labels[g] ?? 'Section (optional)',
+                labels[g] ?? 'Heading (optional)',
                 group.struck,
               )}
             </div>
@@ -2311,6 +2311,16 @@ export function CardDetail({
     card.getAnimations().forEach((x) => x.cancel())
     restTop.current = card.getBoundingClientRect().top
     const rdxCard = TAKE_OUT === 'lift' ? getRolodexCard() : undefined
+    if (resume) {
+      // Taken up as it was left: already in hand — nothing to see happen.
+      // (Its card in the box: out of sight in its slot, as once lifted out;
+      // putting it back drops it in from there.)
+      rdxCard?.animate([{ opacity: 0 }, { opacity: 0 }], {
+        duration: 1,
+        fill: 'forwards',
+      })
+      return
+    }
     // (Fading in is the only part on this card, and the first to finish.)
     const anim = rdxCard
       ? liftFade(origin, rdxCard, true)
