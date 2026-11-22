@@ -143,12 +143,15 @@ function CardBody({ recipe, peek }: { recipe: Recipe; peek: boolean }) {
   )
 }
 
-/** Under a card's tags: who else has favorited it — "★ by Rey, Tara" (not
- *  you: that's the star at the top). With `gap`, a line left blank
- *  above it. */
+/** Under a card's tags: who's favorited it — "★ by you, Rey, Tara" (you
+ *  first, if it's yours; then the others, by name). With `gap`, a line left
+ *  blank above it. */
 function FavoritedBy({ recipeId, gap }: { recipeId: string; gap: boolean }) {
   const { user } = useAuth()
-  const names = useFavoritedBy(recipeId, user?.id)
+  const others = useFavoritedBy(recipeId, user?.id)
+  // (You first, if it's yours too.)
+  const mine = useIsFavorite(user?.id, recipeId)
+  const names = [mine ? 'you' : '', others].filter(Boolean).join(', ')
   if (!names) return null
   return (
     <p
