@@ -122,7 +122,7 @@ const LIST_ROOM = 24
 const LIST_PEEK = 6
 /** Following the back of the box up, the list's top is this far below the
  *  top of that divider (a sliver of it showing over the list). */
-const LIST_DROP = 14
+const LIST_DROP = 30
 
 /** A card on the wheel is trimmed at its rod (the rest is behind the cards
  *  in front), with room above and to the sides for its shadow. (A clip-path,
