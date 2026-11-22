@@ -1410,8 +1410,6 @@ function IngredientTable({
 if (typeof document !== 'undefined') void document.fonts?.load('22px Caveat')
 
 const NOTES_MIN_LINES = 6
-/** Ruled lines kept empty below the notes' last, to write further down on. */
-const NOTES_SPARE = 2
 const NOTES_DROP = 3
 
 /** What a recipe says (its words, nothing else). */
@@ -1553,8 +1551,11 @@ const RecipeCardBack = forwardRef<
   useLayoutEffect(() => {
     const el = notesRef.current
     if (!el) return
+    // (No more lines than written, or the fewest: tapping a line below the
+    // writing goes on from there — but never adds to them. More room is
+    // typed in: Return.)
     el.style.height = `${
-      Math.max(NOTES_MIN_LINES, notesLines(el) + NOTES_SPARE) * 22 + NOTES_DROP
+      Math.max(NOTES_MIN_LINES, notesLines(el)) * 22 + NOTES_DROP
     }px`
   }, [notes])
   // Tapped on an empty line below what's written: the writing goes on from
