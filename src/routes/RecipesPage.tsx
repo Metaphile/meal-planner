@@ -34,17 +34,11 @@ import {
   num,
   onLeave,
   save,
-  str,
   strs,
   type Slice,
 } from '../lib/uiState'
 import { LIST_KEY, ListCard } from '../components/ListCard'
-import {
-  allIngredients,
-  favoriteKey,
-  isWanted,
-  type Recipe,
-} from '../data/types'
+import { favoriteKey, isWanted, type Recipe } from '../data/types'
 
 /*
  * Recipes — a rolodex of paper cards on a wheel.
@@ -156,9 +150,10 @@ function letterOf(title: string): string {
 /** (For those who can write recipes) a blank card at the front, then
  *  dividers (A–Z, plus # if needed) and cards, then the back of the box and
  *  the list behind it — with their
- *  rods' positions along the wheel's rim. Search results use the same box:
- *  every letter's divider stays, so missing cards show as empty dividers (and
- *  no matches at all, as a box of nothing but dividers). */
+ *  rods' positions along the wheel's rim. Narrowed (only the wanted, or
+ *  only favorites), it's the same box: every letter's divider stays, so
+ *  missing cards show as empty dividers (and none at all, as a box of
+ *  nothing but dividers). */
 function layout(recipes: Recipe[], withBlank: boolean): Item[] {
   const byLetter = new Map<string, Recipe[]>()
   for (const r of [...recipes].sort((a, b) => a.title.localeCompare(b.title))) {
@@ -257,10 +252,9 @@ const clamp = (v: number, lo: number, hi: number) =>
  *  - It turns from its first recipe (or the blank card) brought well down
  *    into easy reading, to the list standing flat at the front line
  *    (`turn`). It opens at `initial`: with its first divider near the top —
- *    or, for search results, its first match as near the front as the
- *    stops allow.
+ *    or, narrowed, its first card as near the front as the stops allow.
  *  - A box too short to need turning (everything in it in view, the list
- *    at the front — a search with no matches, say) doesn't: it stands with
+ *    at the front — narrowed to nothing, say) doesn't: it stands with
  *    the list at the front (`turn` 0).
  *  Past `turn`, the drum doesn't turn, but the list slides on up, as far as
  *  there's more of it below the screen (`listH`, its height): `max`.
@@ -309,7 +303,7 @@ function boundsOf(
     return { first: up - ahead, turn: 0, max: below, initial: 0 }
   // The first divider's rim distance that puts the first recipe at the front.
   const faceOn = k >= 0 ? w.toFront - lead : home
-  // Search results open with the first match as near the front as the stops
+  // Narrowed, it opens with its first card as near the front as the stops
   // allow; the whole box opens with its first divider near the top.
   const opening = faceFirst ? clamp(faceOn, up, down) : home
   const turn = down - up
@@ -324,10 +318,8 @@ function boundsOf(
 /** The box as it was left, to come back to. */
 interface LeftAs {
   pos: number
-  /** Where the whole box was before the search in progress. */
+  /** Where the whole box was before it was narrowed. */
   beforeSearch: number | null
-  searching: boolean
-  query: string
   wantedOnly: boolean
   favoritesOnly: boolean
   keptFavorites: ReadonlySet<string>
@@ -349,8 +341,6 @@ const BOX: Slice<LeftAs> = {
       ? {
           pos: num(x.pos) ?? 0,
           beforeSearch: num(x.beforeSearch) ?? null,
-          searching: bool(x.searching),
-          query: str(x.query),
           wantedOnly: bool(x.wantedOnly),
           favoritesOnly: bool(x.favoritesOnly),
           keptFavorites: new Set(strs(x.keptFavorites)),
@@ -377,12 +367,8 @@ export default function RecipesPage() {
   const canEditRecipes = canWrite
   const canEditPlan = canWrite
 
-  // Search narrows the rolodex to the cards that match (title, tag or
-  // ingredient); the dividers stay, so it's still the same box.
-  const [searching, setSearching] = useState(left?.searching ?? false)
-  const [query, setQuery] = useState(left?.query ?? '')
-  const q = query.trim().toLowerCase()
-  // …and, ticked, to just the wanted recipes.
+  // Ticked, the box narrows to just the wanted recipes (the dividers stay,
+  // so it's still the same box).
   const [wantedOnly, setWantedOnly] = useState(left?.wantedOnly ?? false)
   const wants = useStore((s) => s.wants)
   // The recipes wanted when it was ticked stay in the box until it's
@@ -429,18 +415,13 @@ export default function RecipesPage() {
       (r) =>
         made.has(r.id) ||
         ((!wantedOnly || wanted.has(r.id) || kept.has(r.id)) &&
-        (!favoritesOnly ||
-          myFavorites.has(r.id) ||
-          keptFavorites.has(r.id)) &&
-        (!q ||
-          r.title.toLowerCase().includes(q) ||
-          r.tags.some((t) => t.toLowerCase().includes(q)) ||
-          allIngredients(r).some((i) => i.name.toLowerCase().includes(q)))),
+          (!favoritesOnly ||
+            myFavorites.has(r.id) ||
+            keptFavorites.has(r.id))),
     )
   }, [
     made,
     recipes,
-    q,
     wantedOnly,
     wants,
     kept,
@@ -448,8 +429,8 @@ export default function RecipesPage() {
     myFavorites,
     keptFavorites,
   ])
-  // Any narrowing at all: a search (it opens on its first match).
-  const narrowed = !!q || wantedOnly || favoritesOnly
+  // Any narrowing at all (it opens on its first match).
+  const narrowed = wantedOnly || favoritesOnly
   // (Narrowed or not any more: the new recipes made meanwhile are just
   // recipes again.)
   const madeWhile = useRef(narrowed)
@@ -586,10 +567,8 @@ export default function RecipesPage() {
   // The drum turns under our own iOS-style physics (no native scrolling): it
   // tells us when it moves, and we paint.
   const drumRef = useRef<DrumScroll | null>(null)
-  // The search as it is now (remembered with the drum on leaving).
+  // What the box is narrowed to now (remembered with the drum on leaving).
   const leftStateRef = useRef({
-    searching,
-    query,
     wantedOnly,
     kept,
     favoritesOnly,
@@ -597,8 +576,6 @@ export default function RecipesPage() {
     made,
   })
   leftStateRef.current = {
-    searching,
-    query,
     wantedOnly,
     kept,
     favoritesOnly,
@@ -655,13 +632,14 @@ export default function RecipesPage() {
   }, [items])
 
   // Start at the start (A near the top; a short box with its first recipe
-  // facing you) — again for each search, and once the page is measured.
+  // facing you) — again each time it's narrowed, and once the page is
+  // measured.
   const positionedFor = useRef<string | null>(null)
   const placed = useRef(false) // turned to where it starts (or was left)
   // (Back from another tab: turned where it was left, once it's measured.)
   const returnTo = useRef(left?.pos)
-  // Where the whole box was turned to when a search narrowed it: the search
-  // done (cancelled, or its text cleared), it goes back there.
+  // Where the whole box was turned to when it was narrowed: no longer
+  // narrowed, it goes back there.
   const beforeSearch = useRef<number | null>(left?.beforeSearch ?? null)
   const wasNarrowed = useRef(narrowed)
   // Where the drum stopped turning (the list at the front), as last placed.
@@ -680,7 +658,7 @@ export default function RecipesPage() {
     const drum = drumRef.current
     // (The list's length too: how far the box was scrolled down it.)
     const measured = pageH > 0 && headerH > 0 && listH > 0
-    const key = `${q}|${wantedOnly}|${favoritesOnly}|${measured}`
+    const key = `${wantedOnly}|${favoritesOnly}|${measured}`
     const within = (p: number) => Math.min(Math.max(0, p), bounds.max * SCALE)
     if (positionedFor.current !== key) {
       const keyWas = positionedFor.current
@@ -753,7 +731,7 @@ export default function RecipesPage() {
     lastShade.current = []
     shown.current = []
     paint()
-  }, [paint, q, wantedOnly, favoritesOnly, narrowed, pageH, headerH, listH, bounds])
+  }, [paint, wantedOnly, favoritesOnly, narrowed, pageH, headerH, listH, bounds])
 
   useLayoutEffect(() => {
     const scroller = scrollRef.current
@@ -870,7 +848,7 @@ export default function RecipesPage() {
   }
 
   /** Where the card in hand goes back to — or null if it has no place in
-   *  the box (a new card saved while searching for something else). A card
+   *  the box (a new card saved while it's narrowed to something else). A card
    *  that was never in the box (a new one, just saved) gets its slot
    *  readied first; one whose slot is out of sight has the box turned to
    *  it. */
@@ -970,7 +948,7 @@ export default function RecipesPage() {
   }, [open, items, paint])
 
   /** The card `dir` along from item `from` (1: the next, -1: the one
-   *  before) — as the box shows them now (searched, or only the wanted) —
+   *  before) — as the box shows them now (only the wanted, say) —
    *  or -1 if it's the only one. */
   const besideOf = (from: number, dir: 1 | -1) => {
     if (from < 0) return -1
@@ -1244,24 +1222,14 @@ export default function RecipesPage() {
     itemEls.current[i] = el
   }, [])
 
-  const searchRef = useRef<HTMLInputElement>(null)
-  // Only the wanted recipes: the same box as on the cards, beside the search
-  // button (and in the search field's bar while searching).
+  // Only the wanted recipes: the same box as on the cards.
   const wantedOnlyBox = (
     <button
       type="button"
       role="checkbox"
       aria-checked={wantedOnly}
       aria-label="Only wanted recipes"
-      // (Searching, it leaves the search field focused, keyboard up: no
-      // focus taken on pressing — iOS takes it on mousedown — and the
-      // field focused again after.)
-      onPointerDown={(e) => e.preventDefault()}
-      onMouseDown={(e) => e.preventDefault()}
-      onClick={() => {
-        toggleWantedOnly()
-        if (searching) searchRef.current?.focus()
-      }}
+      onClick={toggleWantedOnly}
       className="-mx-1 grid h-9 w-9 shrink-0 place-items-center"
     >
       <span
@@ -1293,22 +1261,12 @@ export default function RecipesPage() {
       type="button"
       aria-pressed={favoritesOnly}
       aria-label="Only favorites"
-      // (As the box: the search field keeps focus.)
-      onPointerDown={(e) => e.preventDefault()}
-      onMouseDown={(e) => e.preventDefault()}
-      onClick={() => {
-        toggleFavoritesOnly()
-        if (searching) searchRef.current?.focus()
-      }}
+      onClick={toggleFavoritesOnly}
       className="-mx-1 grid h-9 w-9 shrink-0 place-items-center"
     >
       <StarIcon on={favoritesOnly} size={20} />
     </button>
   )
-  const closeSearch = () => {
-    setSearching(false)
-    setQuery('')
-  }
   const header = (
     // Over the rolodex, casting a shadow onto it (and onto a card sliding
     // up behind it).
@@ -1317,104 +1275,35 @@ export default function RecipesPage() {
       className="absolute inset-x-0 top-0 z-[3]"
       style={{ boxShadow: '0 4px 12px -6px rgb(0 0 0 / 0.35)' }}
     >
-      {searching ? (
-        <header className="flex items-center gap-3 bg-backdrop px-4 pt-2.5 pb-2 text-ink">
-          <div className="relative min-w-0 flex-1">
-            <input
-              ref={searchRef}
-              autoFocus
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={(e) => e.key === 'Escape' && closeSearch()}
-              inputMode="search"
-              enterKeyHint="search"
-              placeholder="Recipe, tag or ingredient"
-              autoComplete="off"
-              aria-label="Search recipes"
-              className="h-9 w-full rounded-lg border border-paper-edge bg-paper pr-9 pl-3 placeholder:text-ink-faint focus:border-kraft-edge focus:outline-none"
-            />
-            {query && (
-              <button
-                type="button"
-                aria-label="Clear search"
-                // (Keeps the keyboard up: the field doesn't lose focus.)
-                onPointerDown={(e) => e.preventDefault()}
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => {
-                  setQuery('')
-                  searchRef.current?.focus()
-                }}
-                className="absolute inset-y-0 right-0 grid w-9 place-items-center text-ink-faint active:text-ink-soft"
+      <PageHeader
+        title="Meals"
+        // (New recipes start on the blank card at the front of the box.)
+        action={
+          <div className="flex items-center gap-1">
+            {favoritesOnlyStar}
+            {wantedOnlyBox}
+            {/* Settings — your account, and the group's — in the corner. */}
+            <Link
+              to="/account"
+              aria-label="Account"
+              className="grid h-9 w-9 place-items-center rounded-full text-ink-soft active:bg-black/5"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                className="h-[21px] w-[21px]"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
               >
-                <svg viewBox="0 0 20 20" className="h-[18px] w-[18px]">
-                  <circle cx="10" cy="10" r="9" fill="currentColor" />
-                  <path
-                    d="m7 7 6 6m0-6-6 6"
-                    stroke="var(--color-paper)"
-                    strokeWidth="1.8"
-                    strokeLinecap="round"
-                  />
-                </svg>
-              </button>
-            )}
+                <circle cx="12" cy="12" r="3" />
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" />
+              </svg>
+            </Link>
           </div>
-          {/* (Still here while searching: they narrow the search too.) */}
-          {favoritesOnlyStar}
-          {wantedOnlyBox}
-          <button
-            onClick={closeSearch}
-            className="paper-serif h-9 shrink-0 text-[15px] font-semibold active:opacity-60"
-          >
-            Cancel
-          </button>
-        </header>
-      ) : (
-        <PageHeader
-          title="Meals"
-          // (New recipes start on the blank card at the front of the box.)
-          action={
-            <div className="flex items-center gap-1">
-              {favoritesOnlyStar}
-              {wantedOnlyBox}
-              <button
-                onClick={() => setSearching(true)}
-                aria-label="Search recipes"
-                className="grid h-9 w-9 place-items-center rounded-full text-ink-soft active:bg-black/5"
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  className="h-[22px] w-[22px]"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                >
-                  <circle cx="11" cy="11" r="6.5" />
-                  <path d="m16 16 4.5 4.5" />
-                </svg>
-              </button>
-              {/* Your account (and the group's), in the corner. */}
-              <Link
-                to="/account"
-                aria-label="Account"
-                className="grid h-9 w-9 place-items-center rounded-full text-ink-soft active:bg-black/5"
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  className="h-[22px] w-[22px]"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.9"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-7 8a7 7 0 0 1 14 0" />
-                </svg>
-              </Link>
-            </div>
-          }
-        />
-      )}
+        }
+      />
     </div>
   )
 
