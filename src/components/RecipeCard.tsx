@@ -1564,11 +1564,14 @@ function IngredientTable({
   const grip =
     'grid h-[30px] cursor-grab touch-none select-none place-items-center text-pencil active:cursor-grabbing'
   const stroke = (
-    // A pen stroke through a line (from its writing to its mark).
+    // A pen stroke through a line (from its writing to its mark): level —
+    // the same through each word on it — through the middle of its small
+    // letters: its writing's line 1px down (see `cell`), its middle 12px
+    // below that, and 0.145em of the writing below that (see `.struck`).
     <span
       aria-hidden
-      className="pointer-events-none absolute left-[0.875rem] right-8 top-[calc(50%-0.5px)] h-px rounded-full bg-pen"
-      style={{ transform: 'rotate(-0.5deg)' }}
+      className="pointer-events-none absolute left-[0.875rem] right-8 h-px rounded-full bg-pen"
+      style={{ top: 'calc(13px + 0.145em - 0.5px)' }}
     />
   )
   const cell =
