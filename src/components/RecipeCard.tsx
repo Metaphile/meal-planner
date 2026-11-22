@@ -1132,11 +1132,13 @@ function GripIcon() {
  * move is made (`onDrop`: to just before the line at `to`; a section past
  * the last is a new one). Near the top or
  * bottom of what scrolls, it scrolls. All by transforms on the lines, laid
- * out once at the start: no re-rendering mid-drag.
+ * out once at the start: no re-rendering mid-drag. (Not anywhere `goes`
+ * says no to: a move that would change nothing.)
  */
 function dragRow(
   e: ReactPointerEvent<HTMLElement>,
   onDrop: (to: { g: number; i: number }) => void,
+  goes: (to: { g: number; i: number }) => boolean = () => true,
 ) {
   if (e.pointerType === 'mouse' && e.button !== 0) return
   e.preventDefault() // (not focusing, not selecting)
@@ -1162,8 +1164,12 @@ function dragRow(
   const add = els.findIndex((el) => el.dataset.newSection !== undefined)
   const spots = els
     .map((_, k) => k)
-    .filter(
-      (k) => k !== o && (els[k].dataset.g !== undefined || k === add),
+    .filter((k) =>
+      k === add
+        ? goes({ g: Number(els[k].dataset.newSection), i: 0 })
+        : k !== o &&
+          els[k].dataset.g !== undefined &&
+          goes({ g: Number(els[k].dataset.g), i: Number(els[k].dataset.i) }),
     )
   // Its top, put there (the lines below where it was having closed up).
   const slot = (k: number) =>
@@ -1440,6 +1446,23 @@ function IngredientTable({
     gs[to.g].rows.splice(at, 0, row)
     set(gs)
   }
+  // (Whether a move would change anything. Not the one line in the last
+  // section, untitled, to a new section after it: that section would go,
+  // empty, and the new one — untitled too, with just that line — would be
+  // it all over again.)
+  const changes = (
+    from: { g: number; i: number },
+    to: { g: number; i: number },
+  ) => {
+    const x = groups[from.g]
+    return !(
+      to.g >= groups.length &&
+      from.g === groups.length - 1 &&
+      !x.struck &&
+      !x.title.trim() &&
+      x.rows.every((r, j) => j === from.i || blank(r))
+    )
+  }
   // Return on a line with something on it: a new line opens just after it,
   // to write the next on — or, the line after it empty already (the spare
   // one at the end, say), on to that. On an empty line: nothing. (A new
@@ -1585,7 +1608,13 @@ function IngredientTable({
               role="button"
               aria-label={`Move ${row.name || 'ingredient'}`}
               data-drag-handle
-              onPointerDown={(e) => dragRow(e, (to) => moveRow({ g, i }, to))}
+              onPointerDown={(e) =>
+                dragRow(
+                  e,
+                  (to) => moveRow({ g, i }, to),
+                  (to) => changes({ g, i }, to),
+                )
+              }
               className={grip}
             >
               <GripIcon />
