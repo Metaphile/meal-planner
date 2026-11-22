@@ -1561,6 +1561,36 @@ const RecipeCardBack = forwardRef<
   // Tapped on an empty line below what's written: the writing goes on from
   // that line, as on paper — the lines between left blank (no need to type
   // them in first). (Blank lines left at the end go when it's saved.)
+  // The line the caret's on (null: not writing in the notes).
+  const [notesLine, setNotesLine] = useState<number | null>(null)
+  const notesMirrorRef = useRef<HTMLSpanElement>(null)
+  const findNotesLine = () => {
+    const el = notesRef.current
+    const mirror = notesMirrorRef.current
+    if (!el || !mirror || document.activeElement !== el) return setNotesLine(null)
+    mirror.textContent = el.value.slice(0, el.selectionEnd)
+    const mark = document.createElement('span')
+    mark.textContent = '\u200b'
+    mirror.appendChild(mark)
+    // (By its middle: the handwriting's taller than its lines, so its top
+    // edge rides up into the line above.)
+    const mid = mark.offsetTop + mark.offsetHeight / 2
+    setNotesLine(Math.max(0, Math.floor((mid - NOTES_DROP) / 22)))
+    mirror.textContent = ''
+  }
+  const findNotesLineRef = useRef(findNotesLine)
+  findNotesLineRef.current = findNotesLine
+  useLayoutEffect(() => {
+    findNotesLineRef.current()
+  }, [notes])
+  // (The caret moved some other way — dragged, say: still followed.)
+  useEffect(() => {
+    const onSelection = () => {
+      if (document.activeElement === notesRef.current) findNotesLineRef.current()
+    }
+    document.addEventListener('selectionchange', onSelection)
+    return () => document.removeEventListener('selectionchange', onSelection)
+  }, [])
   const caretTo = useRef<number | null>(null)
   const onNotesClick = (e: ReactMouseEvent<HTMLTextAreaElement>) => {
     const el = e.currentTarget
@@ -1773,16 +1803,39 @@ const RecipeCardBack = forwardRef<
           </label>
           <label className="block">
             <span className={label}>Notes</span>
-            <textarea
-              ref={notesRef}
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              onClick={onNotesClick}
-              rows={NOTES_MIN_LINES}
-              placeholder="Prep tips, substitutions…"
-              autoComplete="off"
-              className="paper-lines block w-full resize-none overflow-hidden bg-transparent pt-[3px] pr-1 leading-[22px] focus:outline-none"
-            />
+            <span className="relative block">
+              {/* The line being written on, tinted as a field is (the caret
+                  dips below its line's rule, so it's hard to tell which line
+                  it's on by itself): the room above its rule. */}
+              {notesLine !== null && (
+                <span
+                  aria-hidden
+                  className="pointer-events-none absolute inset-x-0 bg-kraft/15"
+                  style={{ top: notesLine * 22, height: 21 }}
+                />
+              )}
+              {/* (The writing up to the caret, laid out as in the field, to
+                  find the line the caret's on — wrapped lines and all.) */}
+              <span
+                ref={notesMirrorRef}
+                aria-hidden
+                className="pointer-events-none invisible absolute inset-x-0 top-0 whitespace-pre-wrap break-words pt-[3px] pr-1 leading-[22px]"
+              />
+              <textarea
+                ref={notesRef}
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                onClick={onNotesClick}
+                onSelect={findNotesLine}
+                onFocus={findNotesLine}
+                onBlur={() => setNotesLine(null)}
+                rows={NOTES_MIN_LINES}
+                placeholder="Prep tips, substitutions…"
+                autoComplete="off"
+                // (Over the tint: the rules drawn on it, the writing clear.)
+                className="paper-lines relative block w-full resize-none overflow-hidden bg-transparent pt-[3px] pr-1 leading-[22px] focus:outline-none"
+              />
+            </span>
           </label>
         </div>
       </div>
