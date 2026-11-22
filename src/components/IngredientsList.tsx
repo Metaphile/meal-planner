@@ -134,6 +134,9 @@ function IngredientLine({
   const counted =
     !!have && (needed ? need !== undefined : have.amount !== undefined)
   const line = { name: ing.name, unit: ing.unit }
+  // Ticked (enough on hand): crossed off — by hand, or (typed) struck
+  // through. (Not short: that's still to see to.)
+  const struck = checkable && !!have && !short ? (hand ? 'struck' : 'line-through') : ''
   return (
     <li
       className={`${type.line} flex gap-2.5 border-b border-line-blue pt-1.5 pb-1 last:border-b-0`}
@@ -164,7 +167,7 @@ function IngredientLine({
               needed ? '' : 'opacity-50'
             }`}
           >
-            <OneLine text={ing.name} centred={false} />
+            <OneLine text={ing.name} centred={false} textClass={struck} />
           </span>
           {counted ? (
             // Ticked: how much there is, of how much is needed — "3 of 4
@@ -174,10 +177,12 @@ function IngredientLine({
                 short ? 'text-danger' : type.soft
               } ${needed ? '' : 'opacity-50'}`}
             >
-              {round(have.amount ?? 0)}
-              {needed && need !== undefined ? ` of ${need}` : ''}
-              {ing.unit && ' '}
-              <Unit>{ing.unit}</Unit>
+              <span className={struck}>
+                {round(have.amount ?? 0)}
+                {needed && need !== undefined ? ` of ${need}` : ''}
+                {ing.unit && ' '}
+                <Unit>{ing.unit}</Unit>
+              </span>
             </span>
           ) : (
             <span
@@ -185,16 +190,20 @@ function IngredientLine({
                 needed ? '' : 'opacity-50'
               }`}
             >
-              {needed ? (
-                <Amount
-                  quantity={
-                    ing.quantity === undefined ? undefined : round(ing.quantity)
-                  }
-                  unit={ing.unit}
-                />
-              ) : (
-                <Unit>{ing.unit}</Unit>
-              )}
+              <span className={struck}>
+                {needed ? (
+                  <Amount
+                    quantity={
+                      ing.quantity === undefined
+                        ? undefined
+                        : round(ing.quantity)
+                    }
+                    unit={ing.unit}
+                  />
+                ) : (
+                  <Unit>{ing.unit}</Unit>
+                )}
+              </span>
             </span>
           )}
         </div>

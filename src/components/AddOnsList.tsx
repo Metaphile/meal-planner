@@ -122,6 +122,7 @@ function AddOnLine({ addon, canEdit }: { addon: AddOn; canEdit: boolean }) {
         onChange={(have) => update(addon.id, { have: have || undefined })}
         className="items-center"
       />
+      <div className="relative min-w-0">
       <input
         value={addOnText(addon)}
         // (Written as one: an amount and unit kept apart by an older
@@ -136,8 +137,21 @@ function AddOnLine({ addon, canEdit }: { addon: AddOn; canEdit: boolean }) {
         readOnly={!canEdit}
         aria-label="Item"
         autoComplete="off"
-        className={CELL}
+        className={`${CELL} w-full`}
       />
+      {/* Ticked: crossed off — a line drawn through its words (a field's
+          writing can't be: drawn over it, on the same words laid out the
+          same way, unseen). */}
+      {addon.have && (
+        <div
+          aria-hidden
+          className={`${CELL} pointer-events-none absolute inset-0 flex items-center overflow-hidden whitespace-pre text-transparent`}
+          style={{ '--strike': 'var(--color-pen)' } as React.CSSProperties}
+        >
+          <span className="struck">{addOnText(addon)}</span>
+        </div>
+      )}
+      </div>
     </div>
   )
 }

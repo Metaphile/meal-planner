@@ -26,10 +26,13 @@ export function OneLine({
   text,
   centred = true,
   panY = true,
+  textClass = '',
 }: {
   text: string
   centred?: boolean
   panY?: boolean
+  /** For the writing itself (crossed off, say: see `.struck`). */
+  textClass?: string
 }) {
   const boxRef = useRef<HTMLSpanElement>(null)
   const textRef = useRef<HTMLSpanElement>(null)
@@ -120,14 +123,14 @@ export function OneLine({
           ref={trackRef}
           className="-mx-[0.25em] inline-block px-[0.25em] will-change-transform"
         >
-          <span ref={textRef} className="whitespace-nowrap">
+          <span ref={textRef} className={`whitespace-nowrap ${textClass}`}>
             {text}
           </span>
         </span>
       ) : (
         <span
           ref={textRef}
-          className="relative whitespace-nowrap"
+          className={`relative whitespace-nowrap ${textClass}`}
           style={{ left: shift }}
         >
           {text}

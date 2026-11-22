@@ -250,6 +250,19 @@ body {
   .handwritten textarea {
     font-size: inherit;
   }
+  /* Crossed off by hand: a line in its ink through the middle of its small
+     letters. (Drawn, not a line-through: the browser puts that by the
+     font's own figures, off the middle of the handwriting's letters. The
+     handwriting's x-height is centred 60% of the way down the box its
+     letters are set in — whatever its size — so the line's there, as thick
+     as its pen strokes.) */
+  .struck {
+    background: linear-gradient(
+        var(--strike, currentColor),
+        var(--strike, currentColor)
+      )
+      no-repeat 0 60% / 100% 0.075em;
+  }
   .handwritten ::placeholder {
     color: var(--color-pencil);
     opacity: 1;
