@@ -821,7 +821,10 @@ export default function RecipesPage() {
     const card = cardEl(k)
     for (const el of [card, wrap, card?.querySelector('.rolodex-dim')])
       el?.getAnimations().forEach((a) => a.cancel())
-    if (card) card.style.opacity = ''
+    if (card) {
+      card.style.opacity = ''
+      card.style.willChange = ''
+    }
     if (wrap) {
       wrap.style.clipPath = SLOT_CLIP
       delete wrap.dataset.free
@@ -835,6 +838,7 @@ export default function RecipesPage() {
     const card = cardEl(k)
     if (!wrap || !card) return
     card.style.opacity = ''
+    card.style.willChange = ''
     card.animate([{ opacity: 0 }, { opacity: 0 }], {
       duration: 1,
       fill: 'forwards',
@@ -897,6 +901,9 @@ export default function RecipesPage() {
       backInSlot(i)
       const ci = cardEl(i)
       if (ci) ci.style.opacity = '0'
+      // (Each on a layer of its own while they fade: fading, a card not on
+      // one is drawn again, every frame.)
+      for (const el of [ci, cardEl(j)]) if (el) el.style.willChange = 'opacity'
       // (Both see-through as they fade: what's behind each shows.)
       const seeThrough = [seeBehind(i), seeBehind(j)].filter(
         (el): el is HTMLDivElement => !!el,
@@ -908,7 +915,9 @@ export default function RecipesPage() {
         SCALE
       s = swipe.current = { dir, i, j, from, to, seeThrough }
     }
-    drum!.set(s.from + (s.to - s.from) * p)
+    // (Moved, not set: once a frame at most, and no layout forced — see
+    // DrumScroll.move. Set at the end, in undoSwipe or stepCard.)
+    drum!.move(s.from + (s.to - s.from) * p)
     const ci = cardEl(s.i)
     const cj = cardEl(s.j)
     if (ci) ci.style.opacity = String(p)
@@ -935,6 +944,7 @@ export default function RecipesPage() {
     const s = swipe.current
     if (!s) return
     swipe.current = null
+    drumRef.current?.set(s.to)
     for (const el of s.seeThrough) el.style.clipPath = SLOT_CLIP
     backInSlot(s.i)
     const it = items[s.j]

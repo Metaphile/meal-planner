@@ -26,6 +26,11 @@ export interface DrumScroll {
   get(): number
   /** Jump to a position, stopping any motion. */
   set(pos: number): void
+  /** Move to a position, stopping any motion — one of many in a row
+   *  (following something else frame by frame): painted once per frame,
+   *  and the native scroll offset left alone (writing it forces a layout,
+   *  every time). `set` once at the end, to bring that into step. */
+  move(pos: number): void
   /** Glide to a position (eased); resolves when done or interrupted. */
   animateTo(pos: number, ms: number): Promise<void>
   /** The far end. If the drum is now past it, it springs back. */
@@ -304,6 +309,10 @@ export function createDrumScroll(
       stop()
       emit(p)
       syncNative()
+    },
+    move(p) {
+      stop()
+      emit(p, false)
     },
     animateTo(to, ms) {
       stop()

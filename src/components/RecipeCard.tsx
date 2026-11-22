@@ -3055,14 +3055,15 @@ export function CardDetail({
   }
   const reportSlideRef = useRef(reportSlide)
   reportSlideRef.current = reportSlide
-  /** While `anim` slides the cards, report how far each frame. */
+  /** While `anim` slides the cards from `fromX` to `toX`, report how far
+   *  each frame — from its own clock (its eased progress), not read back
+   *  from the page (which would make it work out its styles every frame). */
   const followRaf = useRef(0)
-  const follow = (anim: Animation) => {
+  const follow = (anim: Animation, fromX: number, toX: number) => {
     cancelAnimationFrame(followRaf.current)
-    const card = cardRef.current!
     const tick = () => {
-      const t = getComputedStyle(card).transform
-      reportSlide(t === 'none' ? 0 : new DOMMatrix(t).e)
+      const p = anim.effect?.getComputedTiming().progress
+      reportSlide(p == null ? toX : fromX + (toX - fromX) * p)
       if (anim.playState === 'running')
         followRaf.current = requestAnimationFrame(tick)
     }
@@ -3096,7 +3097,7 @@ export function CardDetail({
       duration: ms,
       easing: `cubic-bezier(0.3, ${(0.3 * k).toFixed(3)}, 0.35, 1)`,
     })
-    follow(anim)
+    follow(anim, fromX, toX)
     anim.onfinish = () => {
       cancelAnimationFrame(followRaf.current)
       // The one beside it, in its place, becomes the card in hand (all in
@@ -3113,7 +3114,7 @@ export function CardDetail({
   /** Let go short of swiping it away: back to its place. */
   const springBack = (fromX: number) => {
     const anim = animateAll(fromX, 0, { duration: 240, easing: EASE_OUT })
-    follow(anim)
+    follow(anim, fromX, 0)
     anim.onfinish = () => {
       cancelAnimationFrame(followRaf.current)
       slideAll(0)
