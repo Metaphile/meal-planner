@@ -65,6 +65,11 @@ function IngredientLine({ ing }: { ing: Ingredient }) {
   )
 }
 
+/** A heading on a card (a section's, Notes): larger than the lines under
+ *  it, smaller than the title — still one ruled line high. (1.1em: 25px in
+ *  the rolodex, 26px in hand; titles are 28 and 29.) */
+const HEADING = 'text-[1.1em] font-semibold text-[#8a8170]'
+
 /** Ingredient lines that can show on a peeking card (more than fit). */
 const PEEK_LINES = 16
 
@@ -90,9 +95,9 @@ function CardBody({ recipe, peek }: { recipe: Recipe; peek: boolean }) {
           const lines = s.ingredients.slice(0, Math.max(0, room - gap - head))
           room -= gap + head + lines.length
           return (
-            <section key={si} className={gap ? 'mt-[22px]' : ''}>
+            <section key={si} className={gap ? 'mt-[var(--rule)]' : ''}>
               {heads[si] && (
-                <div className="font-semibold text-[#8a8170]">{heads[si]}</div>
+                <div className={HEADING}>{heads[si]}</div>
               )}
               <ul>
                 {lines.map((ing, i) => (
@@ -105,15 +110,15 @@ function CardBody({ recipe, peek }: { recipe: Recipe; peek: boolean }) {
       )}
       {/* (Peeking, below what can show: not drawn.) */}
       {!peek && recipe.tags.length > 0 && (
-        <p className="mt-[22px] text-[#8a8170]">
+        <p className="mt-[var(--rule)] text-[#8a8170]">
           {recipe.tags.join(' · ')}
         </p>
       )}
       {!peek && recipe.notes && (
         <>
-          <div className="h-[22px]" />
-          <div className="font-semibold text-[#8a8170]">Notes</div>
-          <p className="whitespace-pre-wrap pb-[22px]">{recipe.notes}</p>
+          <div className="h-[var(--rule)]" />
+          <div className={HEADING}>Notes</div>
+          <p className="whitespace-pre-wrap pb-[var(--rule)]">{recipe.notes}</p>
         </>
       )}
       {!peek && <FavoritedBy recipeId={recipe.id} gap={!recipe.notes} />}
@@ -130,7 +135,7 @@ function FavoritedBy({ recipeId, gap }: { recipeId: string; gap: boolean }) {
   if (!names) return null
   return (
     <p
-      className={`flex items-center gap-1.5 text-[#8a8170] ${gap ? 'mt-[22px]' : ''}`}
+      className={`flex items-center gap-1.5 text-[#8a8170] ${gap ? 'mt-[var(--rule)]' : ''}`}
     >
       <span className="sr-only">Favorite of</span>
       {/* (Others' stars: no outline, as in the header — so a little larger,
@@ -214,8 +219,8 @@ export const RecipeCard = forwardRef<HTMLDivElement, CardProps>(
             // Written by hand, sitting on the rules (3px down to meet them).
             // (Room inside its right edge for the handwriting, whose letters
             // reach past their own width — an amount ends flush against it.)
-            className={`paper-lines font-hand mb-2 ml-5 mr-4 min-h-0 flex-1 pt-[3px] pr-1 ${
-              large ? 'text-[22px]' : 'text-[21px]'
+            className={`paper-lines font-hand mb-2 ml-5 mr-4 min-h-0 flex-1 pt-[3px] pr-1 [--rule:24px] ${
+              large ? 'text-[24px]' : 'text-[23px]'
             } ${
               scrollable ? 'scroll-y no-scrollbar' : 'overflow-hidden'
             }`}

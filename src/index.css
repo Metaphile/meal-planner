@@ -209,13 +209,14 @@ body {
   .paper-rule {
     border-bottom: 1.5px solid var(--color-rule-red);
   }
-  /* Faint blue ruled lines; text set at 22px line-height sits on them. */
+  /* Faint blue ruled lines, --rule apart (22px unless set); text set at that
+     line-height sits on them. */
   .paper-lines {
-    line-height: 22px;
+    line-height: var(--rule, 22px);
     background-image: repeating-linear-gradient(
       to bottom,
-      transparent 0 21px,
-      var(--color-line-blue) 21px 22px
+      transparent 0 calc(var(--rule, 22px) - 1px),
+      var(--color-line-blue) calc(var(--rule, 22px) - 1px) var(--rule, 22px)
     );
     background-attachment: local;
   }
