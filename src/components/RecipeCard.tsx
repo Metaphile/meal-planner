@@ -37,6 +37,12 @@ import { ConfirmDialog } from './ui'
 import { arcThrough, sampleTimes, type Arc } from '../lib/arc'
 import { useWakeLock } from '../lib/wakeLock'
 import { loadDraft, saveDraft as keepDraft, type RecipeText } from '../lib/draft'
+import {
+  forgetDialog,
+  keepDialog,
+  keptDialog,
+  useKeptDialog,
+} from '../lib/dialogs'
 import { DAY, bool, isObj, num, onLeave, save, type Slice } from '../lib/uiState'
 
 /**
@@ -1473,6 +1479,9 @@ const RecipeCardBack = forwardRef<
     /** Keep the draft on the device as it's written (and take it up again,
      *  if one was kept for this recipe): it outlives leaving the app. */
     remember?: boolean
+    /** Taken up as it was left (the app opened again): any dialog it had
+     *  open is open again. */
+    resumed?: boolean
   } & HTMLAttributes<HTMLDivElement>
 >(function RecipeCardBack(
   {
@@ -1485,6 +1494,7 @@ const RecipeCardBack = forwardRef<
     saveDraftRef,
     conflictRef,
     remember = false,
+    resumed = false,
     className = '',
     style,
     ...rest
@@ -1520,8 +1530,16 @@ const RecipeCardBack = forwardRef<
   const [tagsText, setTagsText] = useState(
     kept?.tagsText ?? recipe.tags.join(', '),
   )
-  const [confirmingDelete, setConfirmingDelete] = useState(false)
-  const [confirmingOverwrite, setConfirmingOverwrite] = useState(false)
+  // (Kept on the device, if the edit is: the app opened again, it's still
+  // asking.)
+  const [confirmingDelete, setConfirmingDelete] = useKeptDialog(
+    remember ? `card:delete:${recipe.id}` : null,
+    resumed,
+  )
+  const [confirmingOverwrite, setConfirmingOverwrite] = useKeptDialog(
+    remember ? `card:overwrite:${recipe.id}` : null,
+    resumed,
+  )
   // Kept as it's written. (Forgotten by the card in hand once editing's
   // over: saved, or the changes let go.)
   useEffect(() => {
@@ -1852,6 +1870,10 @@ const HAND_PADDING = {
  *  room enough either side for the slivers of the cards beside it.) */
 const HAND_GROW = 0
 
+/** Leaving the back with changes, to go on to: turning it back over, or
+ *  putting it away. */
+type Discarding = 'cancel' | 'putAway'
+
 /** The card in hand, as kept on the device (see CardDetail's `remember`). */
 export interface Hand {
   recipeId: string
@@ -2047,8 +2069,27 @@ export function CardDetail({
   const editingRef = useRef(onBack)
   const unsaved = useRef(isNew) // a new card not yet saved
   const changed = useRef(false) // its back says something different
-  // Leaving the back, waiting on "Discard changes?".
-  const [discarding, setDiscarding] = useState<null | (() => void)>(null)
+  // Leaving the back, waiting on "Discard changes?" — then going on as you
+  // were: turning it back over ('cancel') or putting it away ('putAway').
+  // (Kept on the device: the app opened again, it's still asking.)
+  const discardId = (k: Discarding) => `card:discard:${k}:${recipe.id}`
+  const [discarding, setDiscardingState] = useState<Discarding | null>(() => {
+    if (!remember || !resume) return null
+    const kept = keptDialog()
+    return (['cancel', 'putAway'] as const).find((k) => kept === discardId(k)) ?? null
+  })
+  // (Asking again on opening: once more, once its back's drawn — what it
+  // says, and whether it can be saved, are only known then.)
+  const [, redraw] = useState(0)
+  useLayoutEffect(() => {
+    if (discarding) redraw(1) // (before it's drawn)
+  }, [])
+  const setDiscarding = (k: Discarding | null) => {
+    setDiscardingState(k)
+    if (!remember) return
+    if (k) keepDialog(discardId(k))
+    else if (discarding) forgetDialog(discardId(discarding))
+  }
   const saveDraft = useRef<(() => void) | null>(null)
   const conflict = useRef(false) // someone else has changed it meanwhile
   const discardingRef = useRef(false)
@@ -2415,6 +2456,7 @@ export function CardDetail({
       if (closing.current) {
         save(HAND, null)
         keepDraft(null)
+        if (keptDialog()?.startsWith('card:')) keepDialog(null)
       } else keepHandRef.current()
     }
   }, [])
@@ -2603,13 +2645,19 @@ export function CardDetail({
   }
   // Leaving the back: straight away if the draft is unchanged, else once
   // you've agreed to lose the changes.
-  const leave = (go: () => void) => {
-    if (changed.current) setDiscarding(() => go)
-    else go()
+  const goOn = (k: Discarding) =>
+    k === 'cancel'
+      ? unsaved.current
+        ? letGo()
+        : flipRefFn.current(false)
+      : putAwayRef.current()
+  const leave = (k: Discarding) => {
+    if (changed.current) setDiscarding(k)
+    else goOn(k)
   }
   // Cancel: turn back over (or let a new card go).
   const cancel = () =>
-    leave(() => (unsaved.current ? letGo() : flipRefFn.current(false)))
+    leave('cancel')
   // Put away from the back, as it is (no turning it over first: it fades
   // away as the card in the box drops back in) — from `fromY` below its
   // place, coasting on at `v`, if it was pulled down.
@@ -2933,7 +2981,7 @@ export function CardDetail({
         return
       }
       // (Turned over with changes: it springs back while you decide.)
-      if (far) leaveRef.current(() => putAwayRef.current())
+      if (far) leaveRef.current('putAway')
       card.animate(
         [
           { transform: card.style.transform, opacity: card.style.opacity },
@@ -3083,7 +3131,7 @@ export function CardDetail({
         onClick={(e) => {
           if (cardRef.current?.contains(e.target as Node)) return
           if (closing.current || flipping.current) return
-          if (editingRef.current) leave(() => putAway())
+          if (editingRef.current) leave('putAway')
           else close()
         }}
       >
@@ -3141,6 +3189,7 @@ export function CardDetail({
                   saveDraftRef={saveDraft}
                   conflictRef={conflict}
                   remember={remember}
+                  resumed={!!resume}
                   onSaved={() => {
                     unsaved.current = false
                     unedit()
@@ -3177,7 +3226,7 @@ export function CardDetail({
           cancelLabel="Keep editing"
           onConfirm={() => {
             setDiscarding(null)
-            discarding()
+            goOn(discarding)
           }}
           onCancel={() => setDiscarding(null)}
           // Or keep the changes, then go on as you were going (turned back
@@ -3190,7 +3239,7 @@ export function CardDetail({
                   unsaved.current = false
                   changed.current = false
                   setDiscarding(null)
-                  discarding()
+                  goOn(discarding)
                 }
               : undefined
           }

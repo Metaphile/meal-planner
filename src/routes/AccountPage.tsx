@@ -20,6 +20,7 @@ import {
 } from '../components/ui'
 import { isIOS, isInstalled, useInstallPrompt } from '../lib/install'
 import { copyText } from '../lib/clipboard'
+import { useKeptDialog } from '../lib/dialogs'
 
 const ACCESS_LABEL: Record<Access, string> = {
   writer: 'Writer',
@@ -271,7 +272,10 @@ function MemberRow({
   const [open, setOpen] = useState(false)
   const [link, setLink] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
-  const [confirming, setConfirming] = useState(false)
+  // (Kept on the device: the app opened again, it's still asking.)
+  const [confirming, setConfirming] = useKeptDialog(
+    `account:remove:${member.id}`,
+  )
   const [error, setError] = useState<string | null>(null)
 
   const run = async (f: () => Promise<void>, fail: string) => {
