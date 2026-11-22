@@ -113,7 +113,9 @@ function IngredientLine({
           }
         />
       )}
-      <div className="min-w-0 flex-1">
+      {/* (Ticked, but no wanted recipe calls for it: dimmed — on hand, not
+          needed. Its box isn't: it can still be unticked.) */}
+      <div className={`min-w-0 flex-1 ${needed ? '' : 'opacity-50'}`}>
         {/* Ticked (with an amount to count), the counter takes the place of
             the quantity: "− [have] of need unit +", or without a recipe
             calling for it, "− [have] unit +". */}
