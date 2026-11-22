@@ -23,9 +23,9 @@ import {
 } from '../store/selectors'
 import { useAuth } from '../auth/AuthProvider'
 import {
-  UNTITLED_SECTION,
   allIngredients,
   sectionLabels,
+  hasAnything,
   sectionsOf,
   type Ingredient,
   type Recipe,
@@ -549,6 +549,12 @@ function WantCount({
   )
 }
 
+/** A new section's, before there is one: no heading, one empty line. */
+const NEW_GROUP: Group = { title: '', rows: [{ name: '' }] }
+
+/** A section's heading, before one's written: it needn't be. */
+const HEADING_HINT = 'Heading (optional)'
+
 /** Units offered for an ingredient, in a fixed order (so they're always where
  *  you left them); any others your recipes use follow. */
 export const COMMON_UNITS = [
@@ -809,8 +815,9 @@ const tidyGroups = (gs: Group[]) =>
 
 /**
  * A recipe's sections as written on the back of its card: crossed-out
- * sections gone (every line in them with them), crossed-out and empty lines
- * left off. The first section kept is the recipe's first (its `ingredients`
+ * sections gone (every line in them with them), crossed-out lines left off,
+ * and lines with nothing on them (one with only an amount, or only a unit,
+ * is kept). The first section kept is the recipe's first (its `ingredients`
  * and `ingredientsTitle`) — whichever it is: cross out the first, and the
  * next takes its place. (Crossed out, every one: a first section with
  * nothing in it, as every recipe has.) Every other section kept stays,
@@ -823,7 +830,7 @@ export function sectionsFromGroups(
     rows
       .filter((i) => !i.struck)
       .map(({ struck: _, ...i }) => ({ ...i, name: i.name.trim() }))
-      .filter((i) => i.name.length > 0)
+      .filter(hasAnything)
   const [first, ...rest] = groups.filter((g) => !g.struck)
   const sections = rest.map((g) => ({
     title: g.title.trim(),
@@ -1103,7 +1110,7 @@ function dragRow(
     // (Headed for a new section: "Add section…" reads as it'll be named.)
     if (addField)
       addField.placeholder =
-        target === add ? (els[add].dataset.newLabel ?? UNTITLED_SECTION) : addHint
+        target === add ? (els[add].dataset.newLabel ?? HEADING_HINT) : addHint
     els.forEach((el, k) => {
       if (k === o) return
       const shift =
@@ -1188,6 +1195,16 @@ function IngredientTable({
   // "Add section…" being written in (nothing yet): shown as a section's
   // title already.
   const [addingSection, setAddingSection] = useState(false)
+  // (…till a tap lands anywhere else.)
+  const addRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!addingSection) return
+    const onDown = (e: PointerEvent) => {
+      if (!addRef.current?.contains(e.target as Node)) setAddingSection(false)
+    }
+    document.addEventListener('pointerdown', onDown, true)
+    return () => document.removeEventListener('pointerdown', onDown, true)
+  }, [addingSection])
   // (A title just written in "Add section…", rubbed out before anything's
   // written under it: back to "Add section…" — undone, not left an empty
   // section.)
@@ -1206,17 +1223,38 @@ function IngredientTable({
     }
     set(groups.map((y, i) => (i === g ? { ...y, title } : y)))
   }
-  const update = (g: number, r: number, patch: Partial<Row>) =>
-    set(
-      groups.map((x, i) =>
-        i === g
-          ? {
-              ...x,
-              rows: x.rows.map((row, j) => (j === r ? { ...row, ...patch } : row)),
-            }
-          : x,
-      ),
+  const update = (g: number, r: number, patch: Partial<Row>) => {
+    // (The line under "Add section…": written on, it's a new section —
+    // untitled, this its first line. A new "Add section…" below, not being
+    // written in.)
+    if (g === groups.length) {
+      setAddingSection(false)
+      return set([...groups, { title: '', rows: [{ name: '', ...patch }] }])
+    }
+    const next = groups.map((x, i) =>
+      i === g
+        ? {
+            ...x,
+            rows: x.rows.map((row, j) => (j === r ? { ...row, ...patch } : row)),
+          }
+        : x,
     )
+    // (The last section, untitled, its lines all rubbed out again — just
+    // made, from "Add section…": back to that, still being written in.)
+    const was = groups[g]
+    if (
+      g > 0 &&
+      g === groups.length - 1 &&
+      !was.title.trim() &&
+      !was.struck &&
+      was.rows.some((x) => !blank(x)) &&
+      next[g].rows.every(blank)
+    ) {
+      setAddingSection(true)
+      return set(groups.slice(0, -1))
+    }
+    set(next)
+  }
   // (Moving a line: from where it was to just before another — see dragRow.
   // Only into the draft: nothing's kept until Save.)
   const moveRow = (
@@ -1232,15 +1270,6 @@ function IngredientTable({
     gs[to.g].rows.splice(at, 0, row)
     set(gs)
   }
-  // (What each untitled section's called, as the card will call it once
-  // saved: the crossed-out ones gone — called nothing — the rest numbered
-  // without them. And what a new one, dragged into being at the end, would
-  // be.)
-  const kept = groups.filter((x) => !x.struck).map((x) => x.title)
-  const keptLabels = sectionLabels(kept)
-  let k = 0
-  const labels = groups.map((x) => (x.struck ? null : keptLabels[k++]))
-  const newLabel = sectionLabels([...kept, ''])[kept.length]
   // Return on a line with something on it: on to the next line (the one
   // below in its section — at the end, its "Add ingredient…"), to write it.
   const toNextLine = (e: ReactKeyboardEvent<HTMLInputElement>, row: Row) => {
@@ -1315,6 +1344,101 @@ function IngredientTable({
     />
   )
 
+  // An ingredient line, `i` in section `g`. (Under "Add section…" being
+  // written in, a line for the new section's first ingredient, `g` past the
+  // last: built just as the line it'll become, so writing on it — making
+  // the section — keeps the caret where it is.)
+  const lineRow = (g: number, group: Group, i: number, row: Row) => {
+      const spare = i === group.rows.length - 1 && blank(row)
+      // (In a crossed-out section: struck with it, and fixed — though
+      // its own mark is kept for if the section's brought back.)
+      const struck = row.struck || group.struck
+      if (spare && group.struck) return null
+      return (
+        <div
+          key={i}
+          role="row"
+          data-g={g}
+          data-i={i}
+          className={`${cols} relative items-center border-b border-line-blue`}
+        >
+          {spare ? (
+            <span />
+          ) : (
+            <span
+              role="button"
+              aria-label={`Move ${row.name || 'ingredient'}`}
+              data-drag-handle
+              onPointerDown={(e) => dragRow(e, (to) => moveRow({ g, i }, to))}
+              className={grip}
+            >
+              <GripIcon />
+            </span>
+          )}
+          <input
+            value={row.name}
+            onChange={(e) => update(g, i, { name: e.target.value })}
+            onKeyDown={(e) => toNextLine(e, row)}
+            enterKeyHint="next"
+            readOnly={struck}
+            // (Crossed out: no hint — it's going.)
+            placeholder={
+              struck ? '' : spare ? 'Add ingredient…' : 'Ingredient'
+            }
+            // (No "name" in the label: Safari would offer to AutoFill a
+            // contact.)
+            aria-label="Ingredient"
+            autoComplete="off"
+            className={`${cell} pr-1`}
+          />
+          <QuantityInput
+            value={row.quantity}
+            onChange={(quantity) => update(g, i, { quantity })}
+            onKeyDown={(e) => toNextLine(e, row)}
+            enterKeyHint="next"
+            placeholder=""
+            readOnly={struck}
+            // (Fitted to its figures, set against the cell's right: so
+            // the last one's stroke isn't cut off — see QuantityInput.
+            // The cell's padding less the room past the figures, so
+            // they end where they did. Tinted, being written in, as a
+            // field is: the whole cell.)
+            fitClassName={`${cell} ${rule} flex justify-end pr-px focus-within:bg-kraft/15`}
+            className="h-full min-w-[4px] bg-transparent p-0 text-left focus:outline-none"
+          />
+          <UnitCell
+            value={row.unit}
+            onChange={(unit) => update(g, i, { unit })}
+            units={units}
+            disabled={struck}
+            className={`${cell} ${rule} pl-1.5`}
+          />
+          {spare || group.struck ? (
+            <span />
+          ) : row.struck ? (
+            <button
+              type="button"
+              onClick={() => update(g, i, { struck: false })}
+              aria-label={`Bring back ${row.name || 'ingredient'}`}
+              className={MARK_BUTTON}
+            >
+              <RowMark kind="restore" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => update(g, i, { struck: true })}
+              aria-label={`Cross out ${row.name || 'ingredient'}`}
+              className={MARK_BUTTON}
+            >
+              <RowMark kind="cross" />
+            </button>
+          )}
+          {struck && stroke}
+        </div>
+      )
+  }
+
   return (
     <div role="table" aria-label="Ingredients">
       {[...groups, null].map((group, g) =>
@@ -1323,14 +1447,30 @@ function IngredientTable({
           // a line to write its first ingredient on). (Built like a
           // section's title row — a cell where the grip goes, then the
           // field — in the next section's place: see titleField.)
-          <div key={`t${g}`} role="rowgroup" className="relative mt-3">
+          <div
+            key={`t${g}`}
+            role="rowgroup"
+            ref={addRef}
+            className="relative mt-3"
+            // (Being written in — its heading, or the line under it: going
+            // from one to the other, it stays open. Focus going elsewhere,
+            // it closes; and a tap anywhere else — see addRef — as on iOS a
+            // tap on a button, like a unit's, takes no focus, so leaving the
+            // field for it can't be told from leaving altogether.)
+            onFocus={() => setAddingSection(true)}
+            onBlur={(e) => {
+              const to = e.relatedTarget as Node | null
+              if (to && !e.currentTarget.contains(to)) setAddingSection(false)
+            }}
+          >
             {/* (Tapped into, before anything's written: already laid out as
-                a section's title — its column heads beside it — as it will
-                be once it's one.) */}
+                a section — its column heads beside its heading, a line under
+                it for its first ingredient — as it will be once it's one;
+                no grips yet: there's nothing to move.) */}
             <div
               role="row"
               data-new-section={g}
-              data-new-label={newLabel ?? undefined}
+              data-new-label={HEADING_HINT}
               className={`${
                 addingSection ? cols : 'grid grid-cols-[1rem_minmax(0,1fr)]'
               } items-end border-b border-line-blue`}
@@ -1346,12 +1486,7 @@ function IngredientTable({
                     set([...groups, { title: t, rows: [] }])
                   },
                   // (Being written in: what's written here is its heading.)
-                  addingSection ? 'Heading' : 'Add section…',
-                  false,
-                  {
-                    onFocus: () => setAddingSection(true),
-                    onBlur: () => setAddingSection(false),
-                  },
+                  addingSection ? HEADING_HINT : 'Add section…',
                 )}
               </div>
               {addingSection && (
@@ -1366,6 +1501,9 @@ function IngredientTable({
                 </>
               )}
             </div>
+            {addingSection
+              ? [lineRow(g, NEW_GROUP, 0, NEW_GROUP.rows[0])]
+              : []}
           </div>
         ) : (
         <div
@@ -1397,10 +1535,9 @@ function IngredientTable({
               {titleField(
                 group.title,
                 (t) => setTitle(g, t),
-                // (Untitled: what it'll be called — or, the only one, that a
-                // title's optional. Crossed out, untitled: nothing — it's
-                // going, it'll be called nothing.)
-                group.struck ? '' : (labels[g] ?? 'Heading (optional)'),
+                // (Untitled: that a heading's optional. Crossed out: no hint —
+                // it's going.)
+                group.struck ? '' : HEADING_HINT,
                 group.struck,
               )}
             </div>
@@ -1425,96 +1562,7 @@ function IngredientTable({
             </button>
             {group.struck && stroke}
           </div>
-          {group.rows.map((row, i) => {
-            const spare = i === group.rows.length - 1 && blank(row)
-            // (In a crossed-out section: struck with it, and fixed — though
-            // its own mark is kept for if the section's brought back.)
-            const struck = row.struck || group.struck
-            if (spare && group.struck) return null
-            return (
-              <div
-                key={i}
-                role="row"
-                data-g={g}
-                data-i={i}
-                className={`${cols} relative items-center border-b border-line-blue`}
-              >
-                {spare ? (
-                  <span />
-                ) : (
-                  <span
-                    role="button"
-                    aria-label={`Move ${row.name || 'ingredient'}`}
-                    data-drag-handle
-                    onPointerDown={(e) => dragRow(e, (to) => moveRow({ g, i }, to))}
-                    className={grip}
-                  >
-                    <GripIcon />
-                  </span>
-                )}
-                <input
-                  value={row.name}
-                  onChange={(e) => update(g, i, { name: e.target.value })}
-                  onKeyDown={(e) => toNextLine(e, row)}
-                  enterKeyHint="next"
-                  readOnly={struck}
-                  // (Crossed out: no hint — it's going.)
-                  placeholder={
-                    struck ? '' : spare ? 'Add ingredient…' : 'Ingredient'
-                  }
-                  // (No "name" in the label: Safari would offer to AutoFill a
-                  // contact.)
-                  aria-label="Ingredient"
-                  autoComplete="off"
-                  className={`${cell} pr-1`}
-                />
-                <QuantityInput
-                  value={row.quantity}
-                  onChange={(quantity) => update(g, i, { quantity })}
-                  onKeyDown={(e) => toNextLine(e, row)}
-                  enterKeyHint="next"
-                  placeholder=""
-                  readOnly={struck}
-                  // (Fitted to its figures, set against the cell's right: so
-                  // the last one's stroke isn't cut off — see QuantityInput.
-                  // The cell's padding less the room past the figures, so
-                  // they end where they did. Tinted, being written in, as a
-                  // field is: the whole cell.)
-                  fitClassName={`${cell} ${rule} flex justify-end pr-px focus-within:bg-kraft/15`}
-                  className="h-full min-w-[4px] bg-transparent p-0 text-left focus:outline-none"
-                />
-                <UnitCell
-                  value={row.unit}
-                  onChange={(unit) => update(g, i, { unit })}
-                  units={units}
-                  disabled={struck}
-                  className={`${cell} ${rule} pl-1.5`}
-                />
-                {spare || group.struck ? (
-                  <span />
-                ) : row.struck ? (
-                  <button
-                    type="button"
-                    onClick={() => update(g, i, { struck: false })}
-                    aria-label={`Bring back ${row.name || 'ingredient'}`}
-                    className={MARK_BUTTON}
-                  >
-                    <RowMark kind="restore" />
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => update(g, i, { struck: true })}
-                    aria-label={`Cross out ${row.name || 'ingredient'}`}
-                    className={MARK_BUTTON}
-                  >
-                    <RowMark kind="cross" />
-                  </button>
-                )}
-                {struck && stroke}
-              </div>
-            )
-          })}
+          {group.rows.map((row, i) => lineRow(g, group, i, row))}
         </div>
         ),
       )}
@@ -1554,7 +1602,7 @@ const sameText = (a: RecipeText, b: RecipeText) => {
       ].map((s) => [
         s.title.trim(),
         s.ingredients
-          .filter((i) => i.name.trim())
+          .filter(hasAnything)
           .map((i) => [i.name.trim(), i.quantity ?? null, i.unit || null]),
       ]),
       (r.notes ?? '').trim(),

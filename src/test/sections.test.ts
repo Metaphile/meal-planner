@@ -7,17 +7,15 @@ describe('sectionLabels', () => {
     expect(sectionLabels(['Dough'])).toEqual(['Dough'])
     expect(sectionLabels(['Dough', 'Filling'])).toEqual(['Dough', 'Filling'])
   })
-  it('gives a lone untitled section no heading', () => {
+  it('gives an untitled section no heading — alone or among others', () => {
     expect(sectionLabels([''])).toEqual([null])
     expect(sectionLabels(['   '])).toEqual([null])
-  })
-  it('numbers an untitled section among others by its place', () => {
-    expect(sectionLabels(['', ''])).toEqual(['Section 1', 'Section 2'])
+    expect(sectionLabels(['', ''])).toEqual([null, null])
     expect(sectionLabels(['Dough', '', 'Glaze', ''])).toEqual([
       'Dough',
-      'Section 2',
+      null,
       'Glaze',
-      'Section 4',
+      null,
     ])
   })
 })
@@ -33,9 +31,27 @@ describe('sectionsOf', () => {
 describe('sections as written on the back of a card', () => {
   const g = (
     title: string,
-    rows: { name: string; struck?: boolean }[],
+    rows: { name: string; quantity?: number; unit?: string; struck?: boolean }[],
     struck?: boolean,
   ): Group => ({ title, rows, struck })
+
+  it('keeps a line with any part of it written — only a blank one goes', () => {
+    expect(
+      sectionsFromGroups([
+        g('', [
+          { name: '', unit: 'cup' },
+          { name: '', quantity: 2 },
+          { name: '  Salt  ' },
+          { name: '   ' },
+          { name: '' },
+        ]),
+      ]).ingredients,
+    ).toEqual([
+      { name: '', unit: 'cup' },
+      { name: '', quantity: 2 },
+      { name: 'Salt' },
+    ])
+  })
 
   it('crossing out the first section: the next takes its place', () => {
     expect(

@@ -179,6 +179,21 @@ describe('aggregateWanted', () => {
     ).toEqual([])
   })
 
+  it('adds up only lines that name something (one with only a unit is the card’s)', () => {
+    const r: Recipe = {
+      id: 'r-x',
+      title: 'X',
+      tags: [],
+      ingredients: [
+        { name: '', unit: 'cup' },
+        { name: '', quantity: 3 },
+        { name: 'Rice', quantity: 1, unit: 'cup' },
+      ],
+    }
+    const out = aggregateWanted([{ id: 'r-x', recipeId: 'r-x', count: 1 }], [r])
+    expect(out.map((l) => l.name)).toEqual(['Rice'])
+  })
+
   it('counts every section of a recipe, not just the first', () => {
     const crumble: Recipe = {
       id: 'r-crumble',

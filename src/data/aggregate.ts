@@ -1,6 +1,10 @@
 import type { Ingredient, PlanMeal, Recipe, Want } from './types'
 import { allIngredients, isWanted } from './types'
 
+/** A recipe's lines that name something to get (a line with only an amount
+ *  or a unit is kept on the card, but there's nothing to add up). */
+const shoppable = (r: Recipe) => allIngredients(r).filter((i) => i.name.trim())
+
 /** A line in the aggregated ingredients view. */
 export interface AggregatedIngredient {
   name: string
@@ -56,7 +60,7 @@ export function aggregateIngredients(
         if (component.kind === 'recipe') {
           const recipe = recipeById.get(component.recipeId)
           if (!recipe) continue
-          for (const ing of allIngredients(recipe)) add(ing, recipe.title, 1)
+          for (const ing of shoppable(recipe)) add(ing, recipe.title, 1)
         } else {
           // Simple item: tag it with its own name.
           add(component, component.name, 1)
@@ -83,7 +87,7 @@ export function aggregateWanted(
       if (!recipe) continue
       const times = Math.max(1, want.count)
       const source = times > 1 ? `${recipe.title} ×${times}` : recipe.title
-      for (const ing of allIngredients(recipe)) add(ing, source, times)
+      for (const ing of shoppable(recipe)) add(ing, source, times)
     }
   })
 }

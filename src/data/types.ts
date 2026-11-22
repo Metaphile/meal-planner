@@ -28,19 +28,18 @@ export interface IngredientSection {
   ingredients: Ingredient[]
 }
 
-/** What an untitled section is called where it needs a name (numbered). */
-export const UNTITLED_SECTION = 'Section'
-
 /**
  * Sections' headings, in order. Titles are optional: one that's given
- * always shows; untitled, a section has no heading if it's the only one
- * (`null`), and among others is "Section n" — n its place among all
- * the sections (the third is "Section 3", titled or not those before it).
+ * shows; untitled, a section has no heading (`null`) — set apart from the
+ * one before it only by the line left blank between them.
  */
 export const sectionLabels = (titles: string[]): (string | null)[] =>
-  titles.map(
-    (t, i) => t.trim() || (titles.length > 1 ? `${UNTITLED_SECTION} ${i + 1}` : null),
-  )
+  titles.map((t) => t.trim() || null)
+
+/** A line with anything on it — a name, an amount, a unit: any of them
+ *  will do (only a line with nothing at all is no line). */
+export const hasAnything = (i: Ingredient) =>
+  !!i.name.trim() || i.quantity !== undefined || !!i.unit
 
 /** A recipe's sections, the first included (titles as given: maybe none). */
 /** Units since renamed: whatever's written with the old name (by an
