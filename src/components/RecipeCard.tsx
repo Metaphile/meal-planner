@@ -866,26 +866,42 @@ const tidyGroups = (gs: Group[]) =>
   }))
 
 /**
- * The sections, but none with no heading and nothing in it — however it
- * came to be empty (its last line dragged away, rubbed out, …), it goes:
- * there's nothing to it. Not the one being written in, though (it goes
- * once it's left — see IngredientTable), nor the only one: every recipe
- * has a first section. (A titled one stays, empty or not.)
+ * The sections and lines, but none with nothing to it — however it came to
+ * be empty (a line's last word rubbed out with the unit picker, a section's
+ * last line dragged away, …), it goes. Not the one being written in, though
+ * (it goes once it's left — see IngredientTable), nor `keep` (a line just
+ * opened, to be written on next); nor a section's spare line at the end
+ * (where the next line's written), nor the only section: every recipe has a
+ * first section. (A titled section stays, empty or not.)
  */
-function withoutEmptySections(gs: Group[]): Group[] {
-  if (gs.length < 2) return gs
-  const here =
-    typeof document === 'undefined'
-      ? null
-      : document.activeElement?.closest('[data-gid]')?.getAttribute('data-gid')
-  const kept = gs.filter(
+function withoutEmpties(gs: Group[], keep?: number): Group[] {
+  const active =
+    typeof document === 'undefined' ? null : document.activeElement
+  const here = active?.closest('[data-gid]')?.getAttribute('data-gid')
+  const line = active?.closest('[data-rid]')?.getAttribute('data-rid')
+  const lines = gs.map((x) =>
+    x.rows.some((r, i) => blank(r) && i < x.rows.length - 1)
+      ? {
+          ...x,
+          rows: x.rows.filter(
+            (r, i) =>
+              !blank(r) ||
+              i === x.rows.length - 1 ||
+              r.rid === keep ||
+              (line != null && String(r.rid) === line),
+          ),
+        }
+      : x,
+  )
+  if (lines.length < 2) return lines
+  const kept = lines.filter(
     (x) =>
       x.struck ||
       x.title.trim() ||
       !x.rows.every(blank) ||
       (here != null && String(x.gid) === here),
   )
-  return kept.length ? kept : gs.slice(0, 1)
+  return kept.length ? kept : lines.slice(0, 1)
 }
 
 /**
@@ -1271,7 +1287,8 @@ function IngredientTable({
         if (row.unit && !COMMON_UNITS.includes(row.unit)) extra.add(row.unit)
     return [...COMMON_UNITS, ...[...extra].sort()]
   }, [recipes, groups])
-  const set = (gs: Group[]) => onChange(withoutEmptySections(tidyGroups(gs)))
+  const set = (gs: Group[], keep?: number) =>
+    onChange(withoutEmpties(tidyGroups(gs), keep))
   // The ids the next section made here will have, and its first line:
   // "Add section…" (and the line under it) carry them already, so writing
   // there — making the section — keeps the caret where it is.
@@ -1449,6 +1466,7 @@ function IngredientTable({
             ? { ...x, rows: [...rows.slice(0, i + 1), { name: '', rid }, ...rows.slice(i + 1)] }
             : x,
         ),
+        rid,
       )
     }
     if (next && blank(next)) focusLine()
@@ -1904,7 +1922,7 @@ const RecipeCardBack = forwardRef<
   const titleRef = useRef<HTMLInputElement>(null)
   const [titleFocused, setTitleFocused] = useState(false)
   const [groups, setGroups] = useState<Group[]>(() =>
-    withoutEmptySections(
+    withoutEmpties(
       tidyGroups(
         kept
           ? kept.groups
