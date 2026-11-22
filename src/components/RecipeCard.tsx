@@ -719,7 +719,7 @@ export function UnitCell({
 
 /** An ingredient line on the back of a card; a crossed-out one goes when
  *  the card is saved. */
-type Row = Ingredient & { struck?: boolean }
+export type Row = Ingredient & { struck?: boolean }
 
 const blank = (i: Row) =>
   !i.struck && !i.name.trim() && i.quantity === undefined && !i.unit
@@ -781,7 +781,7 @@ export function RowMark({ kind }: { kind: 'cross' | 'restore' }) {
  */
 /** A section as it's written on the back of a card: its title, its lines
  *  (one spare, empty, at the end to write the next on). */
-type Group = {
+export type Group = {
   title: string
   rows: Row[]
   /** Crossed out, to go (on Save) — and with it every line in it, whatever
@@ -794,6 +794,35 @@ type Group = {
  *  line. (Sections stand on their own, empty and untitled too.) */
 const tidyGroups = (gs: Group[]) =>
   gs.map((g) => ({ ...g, rows: withSpareLine(g.rows) }))
+
+/**
+ * A recipe's sections as written on the back of its card: crossed-out
+ * sections gone (every line in them with them), crossed-out and empty lines
+ * left off. The first section kept is the recipe's first (its `ingredients`
+ * and `ingredientsTitle`) — whichever it is: cross out the first, and the
+ * next takes its place. (Crossed out, every one: a first section with
+ * nothing in it, as every recipe has.) Every other section kept stays,
+ * titled or not, empty or not: sections stand on their own.
+ */
+export function sectionsFromGroups(
+  groups: Group[],
+): Pick<Recipe, 'ingredients' | 'ingredientsTitle' | 'sections'> {
+  const lines = (rows: Row[]) =>
+    rows
+      .filter((i) => !i.struck)
+      .map(({ struck: _, ...i }) => ({ ...i, name: i.name.trim() }))
+      .filter((i) => i.name.length > 0)
+  const [first, ...rest] = groups.filter((g) => !g.struck)
+  const sections = rest.map((g) => ({
+    title: g.title.trim(),
+    ingredients: lines(g.rows),
+  }))
+  return {
+    ingredients: first ? lines(first.rows) : [],
+    ingredientsTitle: first?.title.trim() || undefined,
+    sections: sections.length ? sections : undefined,
+  }
+}
 
 /**
  * Dragging a whole section by its title's grip: up or down, among the
@@ -1654,28 +1683,11 @@ const RecipeCardBack = forwardRef<
     caretTo.current = null
   }, [notes])
 
-  // The recipe as drafted (crossed-out and empty lines left off; and
-  // sections after the first left with no lines).
-  const lines = (rows: Row[]) =>
-    rows
-      .filter((i) => !i.struck)
-      .map(({ struck: _, ...i }) => ({ ...i, name: i.name.trim() }))
-      .filter((i) => i.name.length > 0)
-  // (A crossed-out section: none of its lines — and it goes, unless it's the
-  // first, which every recipe has: that's left untitled. Every other section
-  // is kept, titled or not, empty or not: sections stand on their own.)
-  const linesOf = (g: Group) => (g.struck ? [] : lines(g.rows))
-  const starterTitle = groups[0].struck ? '' : groups[0].title.trim()
-  const sections = groups
-    .slice(1)
-    .filter((g) => !g.struck)
-    .map((g) => ({ title: g.title.trim(), ingredients: linesOf(g) }))
+  // The recipe as drafted (see sectionsFromGroups).
   const draft = (): Recipe => ({
     ...recipe,
     title: title.trim(),
-    ingredients: linesOf(groups[0]),
-    ingredientsTitle: starterTitle || undefined,
-    sections: sections.length ? sections : undefined,
+    ...sectionsFromGroups(groups),
     notes: notes.trim() || undefined,
     tags: tagsText
       .split(',')
