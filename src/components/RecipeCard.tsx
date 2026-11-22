@@ -1737,17 +1737,18 @@ const STAND = 'cubic-bezier(0.4, 0, 0.2, 1)' // standing up off / back onto the 
 const pose = (dy: number) => `translate(0px, ${dy}px)`
 /** A card in hand (or one beside it) slid `dx` sideways. */
 const sideways = (dx: number) => `translate(${dx}px, 0px)`
-/** Between the card in hand and those either side of it (off the screen,
- *  till it's swiped). */
-const BESIDE_GAP = 14
+/** How much of the cards either side of the card in hand shows, at the
+ *  screen's edges — just a sliver, saying there's more to swipe to. */
+const BESIDE_PEEK = 5
 /** Room around a card in hand, in the layer it rests in (and so in those
  *  beside it). */
 const HAND_PADDING = {
   paddingTop: '12vh',
   paddingBottom: 'max(12vh, calc(var(--safe-bottom) + 32px))',
 }
-/** How much wider a card in hand is than its column, each side. */
-const HAND_GROW = 8
+/** How much wider a card in hand is than its column, each side. (None: just
+ *  room enough either side for the slivers of the cards beside it.) */
+const HAND_GROW = 0
 
 /** How a card comes out of the rolodex (or a pocket) into your hand:
  *  - 'arc': it slides up out of its slot and hands over, mid-flight, to the
@@ -2350,8 +2351,11 @@ export function CardDetail({
     for (const a of anims) if (a) a.startTime = now
     return anims[0]!
   }
+  // Between the card in hand and those either side of it: what's left of
+  // its margin once their slivers show.
+  const besideGap = Math.max(6, origin.left - HAND_GROW - BESIDE_PEEK)
   /** One card's width and the gap to the next, side by side. */
-  const pitch = () => (cardRef.current?.offsetWidth ?? 0) + BESIDE_GAP
+  const pitch = () => (cardRef.current?.offsetWidth ?? 0) + besideGap
 
   /**
    * Swiped sideways far enough (from `fromX`, at `v` px/ms): the cards slide
@@ -2679,46 +2683,49 @@ export function CardDetail({
       <div
         ref={shadeRef}
         className="absolute inset-0 bg-[rgb(20_24_22/0.55)]"
-      />
-      {/* The cards either side of it, just off the screen: swiped, they
-          slide in with it (each where it'll rest once it's in hand). */}
-      {step &&
-        ([
-          [prevRef, step.prev, -1],
-          [nextRef, step.next, 1],
-        ] as const).map(([ref, r, side]) => (
-          <div
-            key={side}
-            aria-hidden
-            className="pointer-events-none absolute inset-x-0 bottom-0 overflow-hidden"
-            style={{ top: origin.viewTop }}
-          >
-            <div className="flex min-h-full flex-col" style={HAND_PADDING}>
-              <div
-                ref={ref}
-                className="shrink-0"
-                style={{
-                  marginTop: 'auto',
-                  marginBottom: 'auto',
-                  marginLeft:
-                    origin.left -
-                    HAND_GROW +
-                    side * (origin.width + 2 * HAND_GROW + BESIDE_GAP),
-                  width: origin.width + 2 * HAND_GROW,
-                  willChange: 'transform',
-                }}
-              >
-                <RecipeCard
-                  recipe={r}
-                  large
-                  canEditPlan={canEditPlan}
-                  canEditRecipes={canEditRecipes}
-                  actions={frontActions(r)}
-                />
+      >
+        {/* The cards either side of it, a sliver of each at the screen's
+            edges: swiped, they slide in with it (each where it'll rest once
+            it's in hand). On the shade, they come and go with it; and
+            turned over to edit (no swiping then), they fade away. */}
+        {step &&
+          ([
+            [prevRef, step.prev, -1],
+            [nextRef, step.next, 1],
+          ] as const).map(([ref, r, side]) => (
+            <div
+              key={side}
+              aria-hidden
+              className="pointer-events-none absolute inset-x-0 bottom-0 overflow-hidden transition-opacity duration-200"
+              style={{ top: origin.viewTop, opacity: editing ? 0 : 1 }}
+            >
+              <div className="flex min-h-full flex-col" style={HAND_PADDING}>
+                <div
+                  ref={ref}
+                  className="shrink-0"
+                  style={{
+                    marginTop: 'auto',
+                    marginBottom: 'auto',
+                    marginLeft:
+                      origin.left -
+                      HAND_GROW +
+                      side * (origin.width + 2 * HAND_GROW + besideGap),
+                    width: origin.width + 2 * HAND_GROW,
+                    willChange: 'transform',
+                  }}
+                >
+                  <RecipeCard
+                    recipe={r}
+                    large
+                    canEditPlan={canEditPlan}
+                    canEditRecipes={canEditRecipes}
+                    actions={frontActions(r)}
+                  />
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          ))}
+      </div>
       {/* The card scrolls, whole, on the shade; tapping the shade (anywhere
           off the card) puts it back. This layer starts where the rolodex
           layer does (the top of the page), so a card flying above it is
