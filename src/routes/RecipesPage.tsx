@@ -12,15 +12,31 @@ import { useStore } from '../store/store'
 import { newId } from '../lib/id'
 import { createDrumScroll, type DrumScroll } from '../lib/drumScroll'
 import { useAuth } from '../auth/AuthProvider'
-import { PageHeader } from '../components/ui'
 import {
   CARD_H,
   CardDetail,
+  HAND,
   RecipeCard,
   PERSPECTIVE,
   StarIcon,
   type CardOrigin,
+  type Hand,
 } from '../components/RecipeCard'
+import { ConfirmDialog, PageHeader } from '../components/ui'
+import { draftWords, loadDraft, saveDraft } from '../lib/draft'
+import { copyText } from '../lib/clipboard'
+import {
+  DAY,
+  bool,
+  isObj,
+  load,
+  num,
+  onLeave,
+  save,
+  str,
+  strs,
+  type Slice,
+} from '../lib/uiState'
 import {
   allIngredients,
   favoriteKey,
@@ -255,8 +271,8 @@ function boundsOf(w: Wheel, items: Item[], faceFirst: boolean) {
   }
 }
 
-/** The box as it was left (on switching tabs), to come back to. */
-let leftAs: {
+/** The box as it was left, to come back to. */
+interface LeftAs {
   pos: number
   /** Where the whole box was before the search in progress. */
   beforeSearch: number | null
@@ -266,9 +282,39 @@ let leftAs: {
   favoritesOnly: boolean
   keptFavorites: ReadonlySet<string>
   kept: ReadonlySet<string>
-} | null = null
+}
+/** …kept on the device (leaving the app, or a new version of it, comes back
+ *  to it as it was). */
+const BOX: Slice<LeftAs> = {
+  key: 'rolodex',
+  version: 1,
+  maxAgeMs: DAY,
+  parse: (x) =>
+    isObj(x)
+      ? {
+          pos: num(x.pos) ?? 0,
+          beforeSearch: num(x.beforeSearch) ?? null,
+          searching: bool(x.searching),
+          query: str(x.query),
+          wantedOnly: bool(x.wantedOnly),
+          favoritesOnly: bool(x.favoritesOnly),
+          keptFavorites: new Set(strs(x.keptFavorites)),
+          kept: new Set(strs(x.kept)),
+        }
+      : null,
+}
+const keepBox = (b: LeftAs) =>
+  save(BOX, {
+    ...b,
+    keptFavorites: [...b.keptFavorites],
+    kept: [...b.kept],
+  } as unknown as LeftAs)
+/** (Kept here too, switching tabs: no need to read it back.) */
+let leftAs: LeftAs | null = null
 
 export default function RecipesPage() {
+  // The box as it was left: from switching tabs, or kept on the device.
+  const [left] = useState(() => leftAs ?? load(BOX))
   const recipes = useStore((s) => s.recipes)
   const { canWrite } = useAuth()
   const canEditRecipes = canWrite
@@ -276,17 +322,17 @@ export default function RecipesPage() {
 
   // Search narrows the rolodex to the cards that match (title, tag or
   // ingredient); the dividers stay, so it's still the same box.
-  const [searching, setSearching] = useState(leftAs?.searching ?? false)
-  const [query, setQuery] = useState(leftAs?.query ?? '')
+  const [searching, setSearching] = useState(left?.searching ?? false)
+  const [query, setQuery] = useState(left?.query ?? '')
   const q = query.trim().toLowerCase()
   // …and, ticked, to just the wanted recipes.
-  const [wantedOnly, setWantedOnly] = useState(leftAs?.wantedOnly ?? false)
+  const [wantedOnly, setWantedOnly] = useState(left?.wantedOnly ?? false)
   const wants = useStore((s) => s.wants)
   // The recipes wanted when it was ticked stay in the box until it's
   // unticked — unwanting one there doesn't whisk it away (and any wanted
   // since join them).
   const [kept, setKept] = useState<ReadonlySet<string>>(
-    () => leftAs?.kept ?? new Set(),
+    () => left?.kept ?? new Set(),
   )
   const toggleWantedOnly = () => {
     if (!wantedOnly)
@@ -306,10 +352,10 @@ export default function RecipesPage() {
     )
   }, [favorites, user])
   const [favoritesOnly, setFavoritesOnly] = useState(
-    leftAs?.favoritesOnly ?? false,
+    left?.favoritesOnly ?? false,
   )
   const [keptFavorites, setKeptFavorites] = useState<ReadonlySet<string>>(
-    () => leftAs?.keptFavorites ?? new Set(),
+    () => left?.keptFavorites ?? new Set(),
   )
   const toggleFavoritesOnly = () => {
     if (!favoritesOnly) setKeptFavorites(new Set(myFavorites))
@@ -376,6 +422,8 @@ export default function RecipesPage() {
     /** A new recipe, not yet in the box (it may never be). */
     isNew?: boolean
     origin: CardOrigin
+    /** Taken up as it was left (see `resumeHand`). */
+    resume?: Hand
   } | null>(null)
   const indexOf = (key: string) => items.findIndex((it) => it.key === key)
 
@@ -488,13 +536,22 @@ export default function RecipesPage() {
       dimension: () => layer.clientHeight,
     })
     drumRef.current = drum
-    return () => {
-      // Leaving (another tab): remember where the box was turned to.
+    // Leaving (another tab, or the app): remember where the box was turned
+    // to, and what it was narrowed to.
+    const keep = () => {
+      // (Not before it's been turned to where it was: nothing to keep yet.)
+      if (!placed.current) return
       leftAs = {
         ...leftStateRef.current,
         pos: drum.get(),
         beforeSearch: beforeSearch.current,
       }
+      keepBox(leftAs)
+    }
+    const stop = onLeave(keep)
+    return () => {
+      stop()
+      keep()
       drum.destroy()
       drumRef.current = null
     }
@@ -506,11 +563,12 @@ export default function RecipesPage() {
   // Start at the start (A near the top; a short box with its first recipe
   // facing you) — again for each search, and once the page is measured.
   const positionedFor = useRef<string | null>(null)
+  const placed = useRef(false) // turned to where it starts (or was left)
   // (Back from another tab: turned where it was left, once it's measured.)
-  const returnTo = useRef(leftAs?.pos)
+  const returnTo = useRef(left?.pos)
   // Where the whole box was turned to when a search narrowed it: the search
   // done (cancelled, or its text cleared), it goes back there.
-  const beforeSearch = useRef<number | null>(leftAs?.beforeSearch ?? null)
+  const beforeSearch = useRef<number | null>(left?.beforeSearch ?? null)
   const wasNarrowed = useRef(narrowed)
   useLayoutEffect(() => {
     const drum = drumRef.current
@@ -530,6 +588,7 @@ export default function RecipesPage() {
           beforeSearch.current = null
         } else drum?.set(bounds.initial * SCALE)
       }
+      if (measured && drum) placed.current = true
     }
     wasNarrowed.current = narrowed
     lastPose.current = []
@@ -682,7 +741,7 @@ export default function RecipesPage() {
   // stands up in place and slides out of its slot, then flies into view —
   // one continuous path. The foreground card mounts now and drives it all.
   const openCard = useCallback(
-    (index: number) => {
+    (index: number, resume?: Hand) => {
       const it = items[index]
       const wrap = itemEls.current[index]
       if (it.kind !== 'card' || !wrap || busy.current) return
@@ -691,7 +750,12 @@ export default function RecipesPage() {
       freeSlot(wrap)
       uncoverBehind(index)
       flushSync(() =>
-        setOpen({ key: it.key, recipe: it.recipe, origin: originOf(index) }),
+        setOpen({
+          key: it.key,
+          recipe: it.recipe,
+          origin: originOf(index),
+          resume,
+        }),
       )
     },
     [items, originOf],
@@ -892,12 +956,13 @@ export default function RecipesPage() {
   // A blank card: write a new recipe on it.
   // The blank card: a new card rises into view already turned over, to be
   // written on. (Saved, it's a recipe like any other, and goes into the box.)
-  const onNew = useCallback(() => {
+  const newCard = useCallback((id?: string) => {
     const layer = scrollRef.current
     if (!layer || busy.current) return
     busy.current = true
     const r = layer.getBoundingClientRect()
-    const draft: Recipe = { id: newId(), title: '', tags: [], ingredients: [] }
+    // (A new recipe left mid-edit keeps its id: its edit's kept by it.)
+    const draft: Recipe = { id: id ?? newId(), title: '', tags: [], ingredients: [] }
     lifted.current = draft.id
     const below = window.innerHeight + 24
     flushSync(() =>
@@ -919,6 +984,58 @@ export default function RecipesPage() {
       }),
     )
   }, [])
+
+  // The card that was in hand when the app was left (or a new version of it
+  // put in place) — or, kept longer, an edit never saved: taken out again,
+  // as it was, once the box is ready.
+  const [resumeHand] = useState<Hand | null>(() => {
+    const hand = load(HAND)
+    if (hand) return hand
+    const kept = loadDraft()
+    return kept && 'draft' in kept
+      ? {
+          recipeId: kept.draft.recipeId,
+          isNew: kept.draft.isNew,
+          scroll: 0,
+          editing: true,
+        }
+      : null
+  })
+  // An edit kept that can't be taken up: its words, to copy out.
+  const [lostDraft, setLostDraft] = useState<{
+    words: string
+    why: 'update' | 'gone'
+  } | null>(() => {
+    const kept = loadDraft()
+    return kept && 'unreadable' in kept
+      ? { words: kept.unreadable, why: 'update' }
+      : null
+  })
+  const resumed = useRef(false)
+  useEffect(() => {
+    if (resumed.current || !(pageH > 0 && headerH > 0)) return
+    resumed.current = true
+    if (!resumeHand) return
+    // (Next frame: taking a card out renders at once, not from in here.)
+    if (resumeHand.isNew && canEditRecipes) {
+      requestAnimationFrame(() => newCard(resumeHand.recipeId))
+      return
+    }
+    const i = indexOf(resumeHand.recipeId)
+    if (i >= 0) {
+      requestAnimationFrame(() => openCard(i, resumeHand))
+      return
+    }
+    // Not in the box (deleted meanwhile): nothing to take out — but an edit
+    // of it isn't lost.
+    save(HAND, null)
+    const kept = loadDraft()
+    if (kept && 'draft' in kept && kept.draft.recipeId === resumeHand.recipeId)
+      setLostDraft({ words: draftWords(kept.draft), why: 'gone' })
+  }, [pageH, headerH])
+
+  // (The blank card's tap: a new id.)
+  const onNew = useCallback(() => newCard(), [newCard])
 
   const setItemEl = useCallback((i: number, el: HTMLDivElement | null) => {
     itemEls.current[i] = el
@@ -1161,6 +1278,8 @@ export default function RecipesPage() {
           canEditRecipes={canEditRecipes}
           canEditPlan={canEditPlan}
           isNew={open.isNew}
+          remember
+          resume={open.resume}
           step={(() => {
             if (open.isNew) return undefined
             const at = indexOf(open.key)
@@ -1176,6 +1295,42 @@ export default function RecipesPage() {
               : undefined
           })()}
           onClosed={onClosed}
+        />
+      )}
+      {lostDraft !== null && (
+        <ConfirmDialog
+          title="Unsaved edit"
+          message={
+            <>
+              An edit you hadn’t saved couldn’t be reopened
+              {lostDraft.why === 'gone'
+                ? ' (its recipe is gone)'
+                : ' after the app was updated'}
+              . Here’s what you’d written:
+              <textarea
+                readOnly
+                value={lostDraft.words}
+                rows={6}
+                className="mt-3 block w-full resize-none rounded border border-border bg-transparent p-2 text-sm"
+                onFocus={(e) => e.currentTarget.select()}
+              />
+            </>
+          }
+          confirmLabel="Discard"
+          onConfirm={() => {
+            saveDraft(null)
+            setLostDraft(null)
+          }}
+          cancelLabel="Later"
+          onCancel={() => setLostDraft(null)}
+          saveLabel="Copy"
+          onSave={() => {
+            void copyText(lostDraft.words).then((ok) => {
+              if (!ok) return
+              saveDraft(null)
+              setLostDraft(null)
+            })
+          }}
         />
       )}
     </div>

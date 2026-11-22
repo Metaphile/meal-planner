@@ -35,6 +35,8 @@ import { OneLine } from './OneLine'
 import { ConfirmDialog } from './ui'
 import { arcThrough, sampleTimes, type Arc } from '../lib/arc'
 import { useWakeLock } from '../lib/wakeLock'
+import { loadDraft, saveDraft as keepDraft, type RecipeText } from '../lib/draft'
+import { DAY, bool, isObj, num, onLeave, save, type Slice } from '../lib/uiState'
 
 /**
  * Paper recipe cards for the Recipes rolodex.
@@ -1403,10 +1405,15 @@ if (typeof document !== 'undefined') void document.fonts?.load('22px Caveat')
 const NOTES_MIN_LINES = 6
 const NOTES_DROP = 3
 
-type RecipeText = Pick<
-  Recipe,
-  'title' | 'ingredients' | 'ingredientsTitle' | 'sections' | 'notes' | 'tags'
->
+/** What a recipe says (its words, nothing else). */
+const textOf = (r: RecipeText): RecipeText => ({
+  title: r.title,
+  ingredients: r.ingredients,
+  ingredientsTitle: r.ingredientsTitle,
+  sections: r.sections,
+  notes: r.notes,
+  tags: r.tags,
+})
 /** What a recipe says, ignoring blank lines and stray spaces (to tell
  *  whether a draft says anything different). */
 const sameText = (a: RecipeText, b: RecipeText) => {
@@ -1447,6 +1454,12 @@ const RecipeCardBack = forwardRef<
      *  where the card goes next is the caller's); none while it can't be
      *  saved (no title). */
     saveDraftRef?: MutableRefObject<(() => void) | null>
+    /** Kept current: whether someone else has changed the recipe since its
+     *  editing began (saving would write over that). */
+    conflictRef?: MutableRefObject<boolean>
+    /** Keep the draft on the device as it's written (and take it up again,
+     *  if one was kept for this recipe): it outlives leaving the app. */
+    remember?: boolean
   } & HTMLAttributes<HTMLDivElement>
 >(function RecipeCardBack(
   {
@@ -1457,6 +1470,8 @@ const RecipeCardBack = forwardRef<
     onDeleted,
     changedRef,
     saveDraftRef,
+    conflictRef,
+    remember = false,
     className = '',
     style,
     ...rest
@@ -1465,18 +1480,41 @@ const RecipeCardBack = forwardRef<
 ) {
   const upsertRecipe = useStore((s) => s.upsertRecipe)
   const deleteRecipe = useStore((s) => s.deleteRecipe)
-  const [title, setTitle] = useState(recipe.title)
+  // An edit of this recipe kept from before (the app left, or a new version
+  // put in place, mid-edit): taken up where it was.
+  const [kept] = useState(() => {
+    if (!remember) return null
+    const k = loadDraft()
+    return k && 'draft' in k && k.draft.recipeId === recipe.id ? k.draft : null
+  })
+  // What the recipe said when its editing began.
+  const [base] = useState<RecipeText>(() => kept?.base ?? textOf(recipe))
+  const [title, setTitle] = useState(kept?.title ?? recipe.title)
   const titleTapIn = useRef(false)
   const titleRef = useRef<HTMLInputElement>(null)
   const [titleFocused, setTitleFocused] = useState(false)
   const [groups, setGroups] = useState<Group[]>(() =>
     tidyGroups(
-      sectionsOf(recipe).map((s) => ({ title: s.title, rows: s.ingredients })),
+      kept
+        ? kept.groups
+        : sectionsOf(recipe).map((s) => ({
+            title: s.title,
+            rows: s.ingredients,
+          })),
     ),
   )
-  const [notes, setNotes] = useState(recipe.notes ?? '')
-  const [tagsText, setTagsText] = useState(recipe.tags.join(', '))
+  const [notes, setNotes] = useState(kept?.notes ?? recipe.notes ?? '')
+  const [tagsText, setTagsText] = useState(
+    kept?.tagsText ?? recipe.tags.join(', '),
+  )
   const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [confirmingOverwrite, setConfirmingOverwrite] = useState(false)
+  // Kept as it's written. (Forgotten by the card in hand once editing's
+  // over: saved, or the changes let go.)
+  useEffect(() => {
+    if (remember)
+      keepDraft({ recipeId: recipe.id, isNew, base, title, tagsText, notes, groups })
+  }, [remember, recipe.id, isNew, base, title, tagsText, notes, groups])
 
   // Notes grow a ruled line at a time as you write, so they never scroll.
   // (The writing is set NOTES_DROP lower than the rules, to sit on them.)
@@ -1526,7 +1564,13 @@ const RecipeCardBack = forwardRef<
     changedRef.current =
       !sameText(draft(), recipe) || groups.some((g) => g.struck)
 
+  // Someone else has saved a change to it since its editing began: saving
+  // now writes over theirs. (A new recipe has no one else's.)
+  const conflict = !isNew && !sameText(base, recipe)
+  if (conflictRef) conflictRef.current = conflict
   const save = () => {
+    if (conflict && !confirmingOverwrite) return setConfirmingOverwrite(true)
+    setConfirmingOverwrite(false)
     upsertRecipe(draft())
     onSaved()
   }
@@ -1690,6 +1734,23 @@ const RecipeCardBack = forwardRef<
           />,
           document.body,
         )}
+      {confirmingOverwrite &&
+        createPortal(
+          <ConfirmDialog
+            title="Overwrite changes?"
+            message={
+              <>
+                Someone else has changed “{recipe.title}” since you started
+                editing it. Saving will replace their changes with yours.
+              </>
+            }
+            confirmLabel="Save anyway"
+            cancelLabel="Keep editing"
+            onConfirm={save}
+            onCancel={() => setConfirmingOverwrite(false)}
+          />,
+          document.body,
+        )}
     </div>
   )
 })
@@ -1758,6 +1819,29 @@ const HAND_PADDING = {
 /** How much wider a card in hand is than its column, each side. (None: just
  *  room enough either side for the slivers of the cards beside it.) */
 const HAND_GROW = 0
+
+/** The card in hand, as kept on the device (see CardDetail's `remember`). */
+export interface Hand {
+  recipeId: string
+  /** A new recipe, never saved (its edit's kept as a draft). */
+  isNew: boolean
+  scroll: number
+  editing: boolean
+}
+export const HAND: Slice<Hand> = {
+  key: 'hand',
+  version: 1,
+  maxAgeMs: DAY,
+  parse: (x) =>
+    isObj(x) && typeof x.recipeId === 'string'
+      ? {
+          recipeId: x.recipeId,
+          isNew: bool(x.isNew),
+          scroll: num(x.scroll) ?? 0,
+          editing: bool(x.editing),
+        }
+      : null,
+}
 
 /** How a card comes out of the rolodex (or a pocket) into your hand:
  *  - 'arc': it slides up out of its slot and hands over, mid-flight, to the
@@ -1835,6 +1919,8 @@ export function CardDetail({
   renderActions,
   isNew = false,
   step,
+  remember = false,
+  resume,
   onClosed,
 }: {
   recipe: Recipe
@@ -1858,6 +1944,13 @@ export function CardDetail({
    *  box (just off the screen, sliding in as it's swiped), and taking one in
    *  hand instead — `dir` 1 the next, -1 the one before (`recipe` then
    *  changes under this card). */
+  /** Keep it on the device — which card's in hand, how far down it's
+   *  scrolled, whether it's turned over to edit (and the edit itself) — so
+   *  leaving the app, or a new version of it, comes back to it. Forgotten
+   *  once it's put away. */
+  remember?: boolean
+  /** Taken up as it was kept: how far down, and whether turned over. */
+  resume?: { scroll: number; editing: boolean }
   step?: {
     prev: Recipe
     next: Recipe
@@ -1913,16 +2006,19 @@ export function CardDetail({
   const flipRef = useRef<HTMLDivElement>(null) // turns over
   const frontRef = useRef<HTMLDivElement>(null)
   const backRef = useRef<HTMLDivElement>(null)
-  const [editing, setEditing] = useState(isNew) // the back is there
+  // (Comes out already turned over: a new card, or one left mid-edit.)
+  const onBack = isNew || !!resume?.editing
+  const [editing, setEditing] = useState(onBack) // the back is there
   const [facing, setFacing] = useState<'front' | 'back'>(
-    isNew ? 'back' : 'front',
+    onBack ? 'back' : 'front',
   )
-  const editingRef = useRef(isNew)
+  const editingRef = useRef(onBack)
   const unsaved = useRef(isNew) // a new card not yet saved
   const changed = useRef(false) // its back says something different
   // Leaving the back, waiting on "Discard changes?".
   const [discarding, setDiscarding] = useState<null | (() => void)>(null)
   const saveDraft = useRef<(() => void) | null>(null)
+  const conflict = useRef(false) // someone else has changed it meanwhile
   const discardingRef = useRef(false)
   discardingRef.current = !!discarding
   const flipping = useRef(false)
@@ -2206,7 +2302,10 @@ export function CardDetail({
   useLayoutEffect(() => {
     const card = cardRef.current!
     // A new card arrives turned over, drawn flat (its front hidden).
-    if (isNew && frontRef.current) frontRef.current.style.visibility = 'hidden'
+    if (onBack && frontRef.current) frontRef.current.style.visibility = 'hidden'
+    // (Left scrolled: as it was.)
+    if (resume?.scroll && scrollRef.current)
+      scrollRef.current.scrollTop = resume.scroll
     // Measure the resting card with no animation applied (StrictMode re-runs
     // this effect in dev while the first one is already in flight).
     card.getAnimations().forEach((x) => x.cancel())
@@ -2241,6 +2340,48 @@ export function CardDetail({
         el?.getAnimations().forEach((x) => x.cancel())
     }
   }, [])
+
+  // Kept on the device as it changes (see `remember`): which card, how far
+  // down, whether turned over. Put away, it's forgotten — and any edit with
+  // it; taken away otherwise (another tab), it's kept, to come back to.
+  const scrolled = useRef(resume?.scroll ?? 0)
+  const keepHand = () => {
+    if (!remember || closing.current) return
+    save(HAND, {
+      recipeId: shown.id,
+      isNew: isNew && unsaved.current,
+      scroll: scrolled.current,
+      editing: editingRef.current,
+    })
+  }
+  const keepHandRef = useRef(keepHand)
+  keepHandRef.current = keepHand
+  useEffect(() => {
+    keepHand()
+  }, [shown.id, editing])
+  useEffect(() => {
+    if (!remember) return
+    const sc = scrollRef.current!
+    const onScroll = () => {
+      scrolled.current = sc.scrollTop
+    }
+    sc.addEventListener('scroll', onScroll, { passive: true })
+    const stop = onLeave(() => keepHandRef.current())
+    return () => {
+      sc.removeEventListener('scroll', onScroll)
+      stop()
+      if (closing.current) {
+        save(HAND, null)
+        keepDraft(null)
+      } else keepHandRef.current()
+    }
+  }, [])
+  // Editing over (saved, or the changes let go): the edit's no longer kept.
+  const wasEditing = useRef(onBack)
+  useEffect(() => {
+    if (remember && wasEditing.current && !editing) keepDraft(null)
+    wasEditing.current = editing
+  }, [editing])
 
   // Put back: fly from where it is now (after any scrolling or drag) back
   // into its slot.
@@ -2956,6 +3097,8 @@ export function CardDetail({
                   onCancel={cancel}
                   changedRef={changed}
                   saveDraftRef={saveDraft}
+                  conflictRef={conflict}
+                  remember={remember}
                   onSaved={() => {
                     unsaved.current = false
                     unedit()
@@ -2981,7 +3124,11 @@ export function CardDetail({
             unsaved.current ? (
               <>It hasn’t been saved.</>
             ) : (
-              <>Your changes to “{shown.title}” haven’t been saved.</>
+              <>
+                Your changes to “{shown.title}” haven’t been saved.
+                {conflict.current &&
+                  ' (Someone else has changed it since you started: saving will replace their changes with yours.)'}
+              </>
             )
           }
           confirmLabel="Discard"

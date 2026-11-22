@@ -6,6 +6,7 @@ import {
   type ReactNode,
 } from 'react'
 import { pb } from './pb'
+import { clearAll } from '../lib/uiState'
 
 /** A group member's access: a writer changes things (recipes, what's
  *  wanted, the ingredients on hand, add-ons) and manages the group; a reader
@@ -53,6 +54,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Mirror the SDK's auth store (persisted in localStorage) into React.
     const unsub = pb.authStore.onChange(() => {
       setUser(pb.authStore.isValid ? toUser(pb.authStore.record) : null)
+      // Signed out: what was on screen (and any unsaved edit) isn't kept for
+      // whoever signs in next.
+      if (!pb.authStore.isValid) clearAll()
     })
     // Validate / refresh an existing session on boot.
     ;(async () => {

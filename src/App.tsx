@@ -1,10 +1,17 @@
 import { Suspense, lazy, useEffect, useState } from 'react'
-import { Navigate, Route, Routes, useNavigate } from 'react-router-dom'
+import {
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+} from 'react-router-dom'
 import { GhostButton, PrimaryButton, TextInput } from './components/ui'
 import { inviteCodeOf } from './lib/install'
 import { TabBar } from './components/TabBar'
 import { useStore } from './store/store'
 import { useAuth } from './auth/AuthProvider'
+import { DAY, load, save, type Slice } from './lib/uiState'
 
 // Route-level code splitting keeps the initial bundle (and time-to-interactive)
 // small — each tab's code loads on demand.
@@ -13,6 +20,25 @@ const MealPlanPage = lazy(() => import('./routes/MealPlanPage'))
 const IngredientsPage = lazy(() => import('./routes/IngredientsPage'))
 const AccountPage = lazy(() => import('./routes/AccountPage'))
 const InvitePage = lazy(() => import('./routes/InvitePage'))
+
+/** The tabs (and Meals, off the tab bar). */
+const TABS = ['/recipes', '/ingredients', '/account', '/plan']
+/** The tab you were on, kept on the device: the app opened again from the
+ *  Home Screen (it starts at /) — iOS having discarded it, or a new version
+ *  put in place — goes back to it. */
+const TAB: Slice<string> = {
+  key: 'tab',
+  version: 1,
+  maxAgeMs: DAY,
+  parse: (x) => (typeof x === 'string' && TABS.includes(x) ? x : null),
+}
+function KeepTab() {
+  const { pathname } = useLocation()
+  useEffect(() => {
+    if (TABS.includes(pathname)) save(TAB, pathname)
+  }, [pathname])
+  return null
+}
 
 export default function App() {
   const { ready, user } = useAuth()
@@ -37,12 +63,16 @@ export default function App() {
           <BootSkeleton />
         ) : (
           <Suspense fallback={<PageSpinner />}>
+            {user && <KeepTab />}
             <Routes>
               {/* Always available so an invite link works while signed out. */}
               <Route path="/invite" element={<InvitePage />} />
               {user ? (
                 <>
-                  <Route path="/" element={<Navigate to="/recipes" replace />} />
+                  <Route
+                    path="/"
+                    element={<Navigate to={load(TAB) ?? '/recipes'} replace />}
+                  />
                   <Route path="/recipes" element={<RecipesPage />} />
                   {/* (Recipes are written and edited on their cards now.) */}
                   <Route
