@@ -3,23 +3,18 @@ import { useStore } from '../store/store'
 import type { AddOn, Ingredient } from '../data/types'
 import { QuantityInput } from './QuantityInput'
 import { Tickbox } from './IngredientsList'
-import {
-  COMMON_UNITS,
-  EDIT_CLASS,
-  MARK_BUTTON,
-  RowMark,
-  UnitCell,
-} from './RecipeCard'
+import { COMMON_UNITS, UnitCell } from './RecipeCard'
 
-// The lines: a box to tick once it's got, the item, how much, its unit, and
-// × to take it off. (The box where the shopping list's are, before its
-// lines.)
-const COLS = 'grid grid-cols-[1.75rem_minmax(0,1fr)_3.25rem_4.25rem_1.75rem]'
+// The lines: a box to tick once it's got, the item, how much, and its unit.
+// (The box where the shopping list's are, before its lines.)
+const COLS = 'grid grid-cols-[1.75rem_minmax(0,1fr)_3.25rem_4.25rem]'
 const CELL =
   // (The middle of its lowercase letters the line's middle: a stroke
   // through them meets the ×. A field centres its writing in what its
   // padding leaves: padded below, it's 2px high.)
-  'h-[30px] min-w-0 bg-transparent pt-0 pb-[4px] leading-[24px] focus:bg-kraft/15 focus:outline-none'
+  // (Its height and line height: 30 and 24 — larger, on the shopping list:
+  // see AddOnsList.)
+  'h-[var(--cell-h,30px)] min-w-0 bg-transparent pt-0 pb-[4px] leading-[var(--cell-lead,24px)] focus:bg-kraft/15 focus:outline-none'
 const RULE = 'border-l border-line-blue'
 /** A quantity field fitted to its figures, in its cell. */
 const FITTED = 'h-full min-w-[4px] bg-transparent p-0 text-left focus:outline-none'
@@ -30,11 +25,11 @@ const FITTED = 'h-full min-w-[4px] bg-transparent p-0 text-left focus:outline-no
  * always an empty line at the end to write the next one on; it's added once
  * you press Enter or move off the line (with something written on it).
  *
- * Taking items off is two steps: × crosses a line out (↺ brings it back),
- * as many as you like; then Delete takes them off, or Cancel keeps them all.
  * Each can be ticked once it's got (on hand) — just ticked: there's nothing
- * to count it against. One with nothing left on it (no name, amount or
- * unit) goes — however it got that way — once it's not being written in.
+ * to count it against. Ticked, it's done with: Delete selected (there while
+ * any is ticked) takes off all the ticked ones. One with nothing left on it
+ * (no name, amount or unit) goes — however it got that way — once it's not
+ * being written in.
  */
 export function AddOnsList({
   canEdit,
@@ -46,18 +41,9 @@ export function AddOnsList({
 }) {
   const addons = useStore((s) => s.addons)
   const remove = useStore((s) => s.removeAddOn)
-  const [crossed, setCrossed] = useState<ReadonlySet<string>>(new Set())
-  // (Only lines still there: one taken off elsewhere is gone.)
-  const marked = addons.filter((a) => crossed.has(a.id))
-  const toggle = (id: string) =>
-    setCrossed((c) => {
-      const next = new Set(c)
-      if (!next.delete(id)) next.add(id)
-      return next
-    })
-  const deleteMarked = () => {
-    for (const a of marked) remove(a.id)
-    setCrossed(new Set())
+  const ticked = addons.filter((a) => a.have)
+  const deleteTicked = () => {
+    for (const a of ticked) remove(a.id)
   }
   const units = useMemo(() => {
     const extra = new Set<string>()
@@ -68,8 +54,11 @@ export function AddOnsList({
 
   return (
     <div
-      className={`font-hand text-[22px] ${
-        bare ? '' : 'paper-card notepad rounded-t-md px-4 pt-3 pb-3'
+      className={`font-hand ${
+        bare
+          ? // (On the shopping list: as large as its other lines.)
+            'text-[26px] [--cell-h:36px] [--cell-lead:30px]'
+          : 'paper-card notepad rounded-t-md px-4 pt-3 pb-3 text-[22px]'
       }`}
     >
       <div role="table" aria-label="Add-ons">
@@ -79,8 +68,6 @@ export function AddOnsList({
             addon={a}
             units={units}
             canEdit={canEdit}
-            crossed={crossed.has(a.id)}
-            onToggle={() => toggle(a.id)}
           />
         ))}
         {canEdit && <SpareLine units={units} />}
@@ -88,25 +75,16 @@ export function AddOnsList({
           <p className="py-1 text-center text-ink-faint">Nothing yet.</p>
         )}
       </div>
-      {marked.length > 0 && (
-        // (Printed, not written: they're buttons.)
-        // (Delete at the far left, Cancel at the right — as on a card's
-        // back.)
-        <div className="flex gap-2 pt-3 font-sans">
+      {canEdit && ticked.length > 0 && (
+        // (Printed, not written: it's a button. At the far left, as Delete
+        // is on a card's back.)
+        <div className="flex pt-3 font-sans">
           <button
             type="button"
-            onClick={deleteMarked}
+            onClick={deleteTicked}
             className="rounded-full bg-danger px-4 py-1.5 text-sm font-semibold leading-5 text-white transition active:scale-95"
           >
-            Delete
-          </button>
-          <span className="flex-1" />
-          <button
-            type="button"
-            onClick={() => setCrossed(new Set())}
-            className={EDIT_CLASS}
-          >
-            Cancel
+            Delete selected
           </button>
         </div>
       )}
@@ -118,15 +96,10 @@ function AddOnLine({
   addon,
   units,
   canEdit,
-  crossed,
-  onToggle,
 }: {
   addon: AddOn
   units: string[]
   canEdit: boolean
-  /** Crossed out, to be taken off (on Delete). */
-  crossed: boolean
-  onToggle: () => void
 }) {
   const update = useStore((s) => s.updateAddOn)
   const remove = useStore((s) => s.removeAddOn)
@@ -164,7 +137,7 @@ function AddOnLine({
     return () =>
       window.removeEventListener('pointerdown', onDown, { capture: true })
   })
-  const fixed = !canEdit || crossed
+  const fixed = !canEdit
   return (
     <div
       ref={rowRef}
@@ -213,31 +186,6 @@ function AddOnLine({
         disabled={fixed}
         className={`${CELL} ${RULE} pl-1.5`}
       />
-      {canEdit ? (
-        <button
-          type="button"
-          onClick={onToggle}
-          aria-pressed={crossed}
-          aria-label={
-            crossed
-              ? `Keep ${addon.name || 'item'}`
-              : `Cross out ${addon.name || 'item'}`
-          }
-          className={MARK_BUTTON}
-        >
-          <RowMark kind={crossed ? 'restore' : 'cross'} />
-        </button>
-      ) : (
-        <span />
-      )}
-      {crossed && (
-        // A pen stroke through the line.
-        <span
-          aria-hidden
-          className="pointer-events-none absolute left-[calc(1.75rem-2px)] right-8 top-[calc(50%-0.5px)] h-px rounded-full bg-ink"
-          style={{ transform: 'rotate(-0.5deg)' }}
-        />
-      )}
     </div>
   )
 }
@@ -292,7 +240,6 @@ function SpareLine({ units }: { units: string[] }) {
         placeholder="Unit"
         className={`${CELL} ${RULE} pl-1.5`}
       />
-      <span />
     </div>
   )
 }

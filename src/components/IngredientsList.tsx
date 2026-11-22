@@ -61,7 +61,7 @@ export function IngredientsList({
         <p
           className={
             bare
-              ? 'py-2 text-center leading-[26px] text-pencil'
+              ? 'py-2 text-[24px] leading-[28px] text-pencil'
               : 'paper-serif py-3 text-center italic text-ink-faint'
           }
         >
@@ -114,10 +114,10 @@ function IngredientLine({
   const type = hand
     ? {
         line: '',
-        name: 'text-[22px] leading-[26px]',
-        amount: 'text-[20px] leading-[26px]',
+        name: 'text-[26px] leading-[30px]',
+        amount: 'text-[23px] leading-[30px]',
         soft: '',
-        from: 'text-[16px] leading-[18px] text-pencil',
+        from: 'text-[18px] leading-[20px] text-pencil',
       }
     : {
         line: 'paper-serif',
