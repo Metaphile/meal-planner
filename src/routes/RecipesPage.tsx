@@ -1086,9 +1086,16 @@ export default function RecipesPage() {
           step={(() => {
             if (open.isNew) return undefined
             const at = indexOf(open.key)
-            const prev = recipeAt(besideOf(at, -1))
-            const next = recipeAt(besideOf(at, 1))
-            return prev && next ? { prev, next, go: stepCard } : undefined
+            const p = besideOf(at, -1)
+            const n = besideOf(at, 1)
+            const prev = recipeAt(p)
+            const next = recipeAt(n)
+            // (Two along: with only two cards, that's this one again.)
+            const before = recipeAt(besideOf(p, -1))
+            const after = recipeAt(besideOf(n, 1))
+            return prev && next && before && after
+              ? { prev, next, before, after, go: stepCard }
+              : undefined
           })()}
           onClosed={onClosed}
         />

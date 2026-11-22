@@ -1746,8 +1746,6 @@ const BESIDE_AWAY = 60
  *  and going (as it's put away). */
 const BESIDE_IN_MS = 650
 const BESIDE_OUT_MS = 750
-/** …and coming in, the new one on the far side, swiped to the next card. */
-const BESIDE_STEP_MS = 500
 /** How much sooner than the card in hand they're in place. */
 const BESIDE_LEAD_MS = 75
 const BESIDE_EASE = 'cubic-bezier(0.3, 0, 0.5, 1)'
@@ -1860,7 +1858,14 @@ export function CardDetail({
    *  box (just off the screen, sliding in as it's swiped), and taking one in
    *  hand instead — `dir` 1 the next, -1 the one before (`recipe` then
    *  changes under this card). */
-  step?: { prev: Recipe; next: Recipe; go: (dir: 1 | -1) => void }
+  step?: {
+    prev: Recipe
+    next: Recipe
+    /** The ones beyond those (two along: off the screen till swiped to). */
+    before: Recipe
+    after: Recipe
+    go: (dir: 1 | -1) => void
+  }
   onClosed: () => void
 }) {
   const stepRef = useRef(step)
@@ -1870,6 +1875,12 @@ export function CardDetail({
   // (Their layers: slid off and faded as it comes and goes.)
   const prevLayerRef = useRef<HTMLDivElement>(null)
   const nextLayerRef = useRef<HTMLDivElement>(null)
+  // And the cards beyond those, further off: swiped, the one coming next
+  // is already there, coming into view behind it.
+  const beforeRef = useRef<HTMLDivElement>(null)
+  const afterRef = useRef<HTMLDivElement>(null)
+  const beforeLayerRef = useRef<HTMLDivElement>(null)
+  const afterLayerRef = useRef<HTMLDivElement>(null)
   // How far they've gone (0: in place, 1: off the screen and faded).
   const besideGone = useRef(0)
   // How far down each card was scrolled, swiping from one to the next —
@@ -1884,7 +1895,12 @@ export function CardDetail({
       prevLayerRef.current.scrollTop = scrolls.current.get(step.prev.id) ?? 0
     if (nextLayerRef.current)
       nextLayerRef.current.scrollTop = scrolls.current.get(step.next.id) ?? 0
-  }, [step?.prev.id, step?.next.id])
+    if (beforeLayerRef.current)
+      beforeLayerRef.current.scrollTop =
+        scrolls.current.get(step.before.id) ?? 0
+    if (afterLayerRef.current)
+      afterLayerRef.current.scrollTop = scrolls.current.get(step.after.id) ?? 0
+  }, [step?.prev.id, step?.next.id, step?.before.id, step?.after.id])
   // In hand, you're cooking from it: the screen stays on till it's put back.
   useWakeLock()
   // Show the recipe as it is now (it may be edited while in hand).
@@ -2424,17 +2440,25 @@ export function CardDetail({
   const leaveRef = useRef(leave)
   leaveRef.current = leave
 
+  /** The card in hand and those beside it (and beyond), side by side. */
+  const stripCards = () => [
+    cardRef.current,
+    prevRef.current,
+    nextRef.current,
+    beforeRef.current,
+    afterRef.current,
+  ]
   /** Slide the card in hand, and the cards either side of it, `dx` along
    *  (inline: an animation of the slide overrides it while it runs). */
   const slideAll = (dx: number) => {
     const t = dx ? sideways(dx) : ''
-    for (const el of [cardRef.current, prevRef.current, nextRef.current])
+    for (const el of stripCards())
       if (el) el.style.transform = t
   }
   const animateAll = (fromX: number, toX: number, opts: KeyframeAnimationOptions) => {
     slideAll(toX)
     const frames = [{ transform: sideways(fromX) }, { transform: sideways(toX) }]
-    const anims = [cardRef.current, prevRef.current, nextRef.current].map(
+    const anims = stripCards().map(
       (el) => el?.animate(frames, opts),
     )
     // Same clock, to the frame.
@@ -2479,16 +2503,9 @@ export function CardDetail({
       flushSync(() => stepRef.current?.go(dir))
       if (scrollRef.current)
         scrollRef.current.scrollTop = scrolls.current.get(into.id) ?? 0
-      for (const el of [card, prevRef.current, nextRef.current])
+      for (const el of stripCards())
         el?.getAnimations().forEach((a) => a.cancel())
       slideAll(0)
-      // The card now beside it on the far side is new: it slides in from
-      // off the screen, as they do when a card comes out (not just there).
-      const i = dir === 1 ? 1 : 0
-      ;(dir === 1 ? nextLayerRef : prevLayerRef).current?.animate(
-        [besideFrame(1)[i], besideFrame(0)[i]],
-        { duration: BESIDE_STEP_MS, easing: BESIDE_EASE, fill: 'backwards' },
-      )
       flipping.current = false
     }
   }
@@ -2621,7 +2638,7 @@ export function CardDetail({
           d.side = true
           window.getSelection()?.removeAllRanges()
           card.style.userSelect = 'none'
-          for (const el of [card, prevRef.current, nextRef.current])
+          for (const el of stripCards())
             el?.getAnimations().forEach((a) => a.finish())
         } else if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
           d.decided = true
@@ -2803,8 +2820,10 @@ export function CardDetail({
           style={{ opacity: editing ? 0 : 1 }}
         >
           {([
+            [beforeLayerRef, beforeRef, step.before, -2],
             [prevLayerRef, prevRef, step.prev, -1],
             [nextLayerRef, nextRef, step.next, 1],
+            [afterLayerRef, afterRef, step.after, 2],
           ] as const).map(([layerRef, ref, r, side]) => (
             <div
               key={side}
