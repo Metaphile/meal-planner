@@ -1742,6 +1742,11 @@ const sideways = (dx: number) => `translate(${dx}px, 0px)`
 const BESIDE_PEEK = 5
 /** How far they slide (off the screen, shadow and all) as it's put away. */
 const BESIDE_AWAY = 60
+/** …and how long that takes, coming in (once the card in hand starts
+ *  fading in) and going (as it's put away). */
+const BESIDE_IN_MS = 650
+const BESIDE_OUT_MS = 450
+const BESIDE_EASE = 'cubic-bezier(0.3, 0, 0.5, 1)'
 /** Room around a card in hand, in the layer it rests in (and so in those
  *  beside it). */
 const HAND_PADDING = {
@@ -1858,6 +1863,11 @@ export function CardDetail({
   stepRef.current = step
   const prevRef = useRef<HTMLDivElement>(null) // the card before it, off left
   const nextRef = useRef<HTMLDivElement>(null) // and after it, off right
+  // (Their layers: slid off and faded as it comes and goes.)
+  const prevLayerRef = useRef<HTMLDivElement>(null)
+  const nextLayerRef = useRef<HTMLDivElement>(null)
+  // How far they've gone (0: in place, 1: off the screen and faded).
+  const besideGone = useRef(0)
   // In hand, you're cooking from it: the screen stays on till it's put back.
   useWakeLock()
   // Show the recipe as it is now (it may be edited while in hand).
@@ -2179,6 +2189,9 @@ export function CardDetail({
     anim.onfinish = () => {
       if (!closing.current) anim.cancel()
     }
+    // The cards either side slide in from off the screen as it fades in.
+    besideGone.current = 1
+    void besideTo(0, BESIDE_IN_MS, BESIDE_EASE, rdxCard ? FADE_IN_DELAY_MS : 0)
     return () => {
       for (const el of [card, shadeRef.current])
         el?.getAnimations().forEach((x) => x.cancel())
@@ -2202,26 +2215,62 @@ export function CardDetail({
       dismiss(fromY, fromV)
       return
     }
-    besideAway()
+    const away = besideAway()
     const rdxCard = TAKE_OUT === 'lift' ? getRolodexCard() : undefined
     const anim = rdxCard
       ? liftFade(o, rdxCard, false, fromY, fromV)
       : fly(arcThrough(base + fromY, o.clearTop, o.slotTop), o, false, base)
-    anim.onfinish = () => onClosedRef.current()
+    // (Done once the cards beside it are gone too.)
+    anim.onfinish = () => void away.then(() => onClosedRef.current())
   }
-  /** Put away (back in its slot, or fading away): the cards either side of
-   *  it slide off the screen the way they are, as the shade they're on
-   *  fades — gathering speed, as if swept aside. */
-  const besideAway = () => {
-    for (const [el, side] of [
-      [prevRef.current, -1],
-      [nextRef.current, 1],
-    ] as const)
-      el?.animate(
-        [{ transform: sideways(0) }, { transform: sideways(side * BESIDE_AWAY) }],
-        { duration: FADE_MS, easing: 'cubic-bezier(0.4, 0, 1, 1)', fill: 'forwards' },
-      )
+  /** The cards either side of it, `p` of the way gone: slid off the screen
+   *  (each the way it is) and faded. */
+  const besideFrame = (p: number): Keyframe[] =>
+    [-1, 1].map((side) => ({
+      transform: sideways(side * p * BESIDE_AWAY),
+      opacity: 1 - p,
+    }))
+  const besideLayers = () =>
+    [prevLayerRef.current, nextLayerRef.current] as const
+  /** Set them `p` of the way gone (following a finger). */
+  const besideAt = (p: number) => {
+    besideGone.current = p
+    const frame = besideFrame(p)
+    besideLayers().forEach((el, i) => {
+      if (!el) return
+      el.style.transform = p ? String(frame[i].transform) : ''
+      el.style.opacity = p ? String(frame[i].opacity) : ''
+    })
   }
+  /** Move them from where they are to `p` of the way gone, over `ms`
+   *  (resolves when they're there). */
+  const besideTo = (p: number, ms: number, easing: string, delay = 0) => {
+    const from = besideFrame(besideGone.current)
+    const to = besideFrame(p)
+    besideAt(p)
+    const anims = besideLayers().map((el, i) =>
+      el?.animate([from[i], to[i]], {
+        duration: ms,
+        delay,
+        easing,
+        fill: 'backwards',
+      }),
+    )
+    return Promise.all(anims.map((a) => a?.finished.catch(() => {})))
+  }
+  /** Put away (back in its slot, or fading away): they slide off and fade
+   *  — from wherever pulling it down has got them to. */
+  const besideAtRef = useRef(besideAt)
+  besideAtRef.current = besideAt
+  const besideToRef = useRef(besideTo)
+  besideToRef.current = besideTo
+  const besideGoneRef = useRef(() => besideGone.current)
+  const besideAway = () =>
+    besideTo(
+      1,
+      BESIDE_OUT_MS * Math.max(0.4, 1 - besideGone.current),
+      BESIDE_EASE,
+    )
   const closeRef = useRef(close)
   closeRef.current = close
   const dismissRef = useRef<(fromY?: number, v?: number) => void>(() => {})
@@ -2232,7 +2281,7 @@ export function CardDetail({
   const dismiss = (fromY = 0, v = 0) => {
     if (closing.current) return
     closing.current = true
-    besideAway()
+    const away = besideAway()
     const card = cardRef.current!
     const shade = shadeRef.current!
     card.getAnimations().forEach((a) => a.cancel())
@@ -2248,7 +2297,7 @@ export function CardDetail({
       [{ opacity: Number(getComputedStyle(shade).opacity) }, { opacity: 0 }],
       { ...timing, easing: 'ease-in' },
     )
-    anim.onfinish = () => onClosedRef.current()
+    anim.onfinish = () => void away.then(() => onClosedRef.current())
   }
   dismissRef.current = dismiss
 
@@ -2568,8 +2617,10 @@ export function CardDetail({
       d.lastT = now
       d.dy = Math.max(0, dy)
       card.style.transform = pose(d.dy)
-      // It fades as you pull it, telling you it's on its way back.
+      // It fades as you pull it, telling you it's on its way back (and the
+      // cards beside it slide away: they're going too).
       card.style.opacity = String(1 - 0.65 * Math.min(1, d.dy / 280))
+      besideAtRef.current(Math.min(1, d.dy / 280))
       shade.style.opacity = String(1 - Math.min(0.7, d.dy / 450))
       return true
     }
@@ -2599,8 +2650,10 @@ export function CardDetail({
         else springBackRef.current(d.dx)
         return
       }
-      // Far enough, or a real downward flick (not just a twitch).
-      const far = d.dy > 110 || (d.v > 0.5 && d.dy > 40)
+      // Far enough, or a real downward flick (not just a twitch — nor a
+      // finger held still before letting go).
+      const flick = d.v > 0.5 && performance.now() - d.lastT <= 80
+      const far = d.dy > 110 || (flick && d.dy > 40)
       if (far && !editingRef.current) {
         // It carries on from the finger: never stopping dead, nor (held
         // still before letting go) flying off.
@@ -2625,6 +2678,7 @@ export function CardDetail({
       shade.animate([{ opacity: shade.style.opacity }, { opacity: 1 }], {
         duration: 220,
       })
+      if (besideGoneRef.current()) void besideToRef.current(0, 220, EASE_OUT)
       card.style.transform = ''
       card.style.opacity = ''
       shade.style.opacity = ''
@@ -2700,21 +2754,27 @@ export function CardDetail({
       <div
         ref={shadeRef}
         className="absolute inset-0 bg-[rgb(20_24_22/0.55)]"
-      >
-        {/* The cards either side of it, a sliver of each at the screen's
-            edges: swiped, they slide in with it (each where it'll rest once
-            it's in hand). On the shade, they come and go with it; and
-            turned over to edit (no swiping then), they fade away. */}
-        {step &&
-          ([
-            [prevRef, step.prev, -1],
-            [nextRef, step.next, 1],
-          ] as const).map(([ref, r, side]) => (
+      />
+      {/* The cards either side of it, a sliver of each at the screen's
+          edges: swiped, they slide in with it (each where it'll rest once
+          it's in hand). They slide in from off the screen as it comes out,
+          and away as it's put back (with it, as it's pulled down); turned
+          over to edit (no swiping then), they fade away. */}
+      {step && (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 transition-opacity duration-200"
+          style={{ opacity: editing ? 0 : 1 }}
+        >
+          {([
+            [prevLayerRef, prevRef, step.prev, -1],
+            [nextLayerRef, nextRef, step.next, 1],
+          ] as const).map(([layerRef, ref, r, side]) => (
             <div
               key={side}
-              aria-hidden
-              className="pointer-events-none absolute inset-x-0 bottom-0 overflow-hidden transition-opacity duration-200"
-              style={{ top: origin.viewTop, opacity: editing ? 0 : 1 }}
+              ref={layerRef}
+              className="absolute inset-x-0 bottom-0 overflow-hidden"
+              style={{ top: origin.viewTop, willChange: 'transform, opacity' }}
             >
               <div className="flex min-h-full flex-col" style={HAND_PADDING}>
                 <div
@@ -2742,7 +2802,8 @@ export function CardDetail({
               </div>
             </div>
           ))}
-      </div>
+        </div>
+      )}
       {/* The card scrolls, whole, on the shade; tapping the shade (anywhere
           off the card) puts it back. This layer starts where the rolodex
           layer does (the top of the page), so a card flying above it is
