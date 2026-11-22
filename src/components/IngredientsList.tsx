@@ -131,14 +131,10 @@ function IngredientLine({
   // Ticked at less than's needed now (needed more since): short.
   const short =
     !!have && need !== undefined && round(have.amount ?? 0) < need
-  // Ticked, with an amount of its own to tell: on hand by itself, or not
-  // just what's needed. (Just what's needed — "6 of 6" — it says only what's
-  // needed, as unticked: "6".)
-  const counted =
-    !!have &&
-    (needed
-      ? need !== undefined && round(have.amount ?? 0) !== need
-      : have.amount !== undefined)
+  // Ticked, with an amount of its own to tell: short of what's needed, or
+  // on hand by itself. (Enough, it says only what's needed, as unticked:
+  // "6", not "6 of 6" — nor "8 of 6".)
+  const counted = !!have && (needed ? short : have.amount !== undefined)
   const line = { name: ing.name, unit: ing.unit }
   // Ticked (enough on hand): its name crossed off — by hand (see
   // `.struck`), or typed, struck through. Not its amount: how much there is
@@ -182,8 +178,9 @@ function IngredientLine({
             <OneLine text={ing.name} centred={false} textClass={struck} />
           </span>
           {counted ? (
-            // Ticked: how much there is, of how much is needed — "3 of 4
-            // cup" (or, nothing calling for it, "3 cup").
+            // Short: how much there is, of how much is needed — "3 of 4
+            // cup". (Or, nothing calling for it, how much there is: "3
+            // cup".)
             <span
               className={`shrink-0 whitespace-nowrap ${type.amount} ${
                 short ? 'text-danger' : type.soft
