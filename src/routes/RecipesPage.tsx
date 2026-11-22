@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import {
   memo,
   useCallback,
@@ -116,7 +117,8 @@ const START_PHI = -28 * DEG
 // it (see boundsOf).
 const REACH_FIRST_CARD_PHI = -12 * DEG
 const REACH_LAST_PHI = 0
-/** Scrolled to the end of the list, this much room is left below it. */
+/** Scrolled to the end of the list, this much room is left below it (and
+ *  the iPhone's home indicator's room besides: see boundsOf). */
 const LIST_ROOM = 24
 
 /** A card on the wheel is trimmed at its rod (the rest is behind the cards
@@ -270,6 +272,8 @@ function boundsOf(
   faceFirst: boolean,
   stageH: number,
   listH: number,
+  /** Room the screen keeps at its foot (the home indicator's). */
+  footRoom = 0,
 ) {
   if (items.length === 0) return { first: 0, max: 0, initial: 0, turn: 0 }
   // (From the first divider; the first item's is so much less.)
@@ -295,7 +299,10 @@ function boundsOf(
   // (Past the turning, how far there is to slide down the list.)
   const below =
     last.kind === 'list'
-      ? Math.max(0, w.front - rodOffset(last) + listH + LIST_ROOM - stageH)
+      ? Math.max(
+          0,
+          w.front - rodOffset(last) + listH + LIST_ROOM + footRoom - stageH,
+        )
       : 0
   if (down <= up)
     // Too short to turn: as it is at the end.
@@ -455,6 +462,9 @@ export default function RecipesPage() {
   // itself sits below the header, and no resting card ever reaches up into it.
   const [pageH, setPageH] = useState(0)
   const [headerH, setHeaderH] = useState(0)
+  // The room the screen keeps at its foot (the iPhone's home indicator).
+  const [footH, setFootH] = useState(0)
+  const footRef = useRef<HTMLDivElement>(null)
   // The wheel's own units (the stage is drawn at SCALE).
   const headerU = headerH / SCALE
   const stageH = (pageH - headerH) / SCALE || 600
@@ -477,8 +487,8 @@ export default function RecipesPage() {
   const headerRef = useRef<HTMLDivElement>(null)
   const wheel = useMemo(() => fitWheel(stageH), [stageH])
   const bounds = useMemo(
-    () => boundsOf(wheel, items, narrowed, stageH, listH),
-    [wheel, items, narrowed, stageH, listH],
+    () => boundsOf(wheel, items, narrowed, stageH, listH, footH / SCALE),
+    [wheel, items, narrowed, stageH, listH, footH],
   )
   // The card in hand, by recipe id (editing it can move it to another
   // letter, or delete it, while it's out).
@@ -751,6 +761,7 @@ export default function RecipesPage() {
     const measure = () => {
       setPageH(scroller.clientHeight)
       setHeaderH(headerRef.current?.offsetHeight ?? 0)
+      setFootH(footRef.current?.offsetHeight ?? 0)
     }
     // (At once, before anything's drawn — so the box is turned to where it
     // was, and a card left in hand is back in it, from the first frame.)
@@ -1359,7 +1370,7 @@ export default function RecipesPage() {
         </header>
       ) : (
         <PageHeader
-          title="Recipes"
+          title="Meals"
           // (New recipes start on the blank card at the front of the box.)
           action={
             <div className="flex items-center gap-1">
@@ -1382,6 +1393,24 @@ export default function RecipesPage() {
                   <path d="m16 16 4.5 4.5" />
                 </svg>
               </button>
+              {/* Your account (and the group's), in the corner. */}
+              <Link
+                to="/account"
+                aria-label="Account"
+                className="grid h-9 w-9 place-items-center rounded-full text-ink-soft active:bg-black/5"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  className="h-[22px] w-[22px]"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.9"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-7 8a7 7 0 0 1 14 0" />
+                </svg>
+              </Link>
             </div>
           }
         />
@@ -1393,6 +1422,13 @@ export default function RecipesPage() {
     <div className="relative h-full">
       {/* An empty box is still a box: A–Z dividers and blank cards. */}
       <>
+        {/* (The room the screen keeps at its foot, to measure.) */}
+        <div
+          ref={footRef}
+          aria-hidden
+          className="pointer-events-none invisible absolute"
+          style={{ height: 'var(--safe-bottom)' }}
+        />
         {/* The rolodex's backdrop, below the header. */}
         <div
           className="absolute inset-x-0 bottom-0 bg-[#bac8c0]"

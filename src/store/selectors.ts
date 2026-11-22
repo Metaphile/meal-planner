@@ -31,7 +31,7 @@ export function useAggregatedIngredients(): AggregatedIngredient[] {
   })
 }
 
-/** The wanted recipes' ingredients (the Ingredients tab), memoized the same
+/** The wanted recipes' ingredients (the shopping list), memoized the same
  *  way. */
 let wantedCache: {
   wants: unknown

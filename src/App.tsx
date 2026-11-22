@@ -8,22 +8,22 @@ import {
 } from 'react-router-dom'
 import { GhostButton, PrimaryButton, TextInput } from './components/ui'
 import { inviteCodeOf } from './lib/install'
-import { TabBar } from './components/TabBar'
 import { useStore } from './store/store'
 import { useAuth } from './auth/AuthProvider'
 import { DAY, load, save, type Slice } from './lib/uiState'
 
 // Route-level code splitting keeps the initial bundle (and time-to-interactive)
-// small — each tab's code loads on demand.
+// small — each page's code loads on demand.
 const RecipesPage = lazy(() => import('./routes/RecipesPage'))
 const MealPlanPage = lazy(() => import('./routes/MealPlanPage'))
-const IngredientsPage = lazy(() => import('./routes/IngredientsPage'))
 const AccountPage = lazy(() => import('./routes/AccountPage'))
 const InvitePage = lazy(() => import('./routes/InvitePage'))
 
-/** The tabs (and Meals, off the tab bar). */
-const TABS = ['/recipes', '/ingredients', '/account', '/plan']
-/** The tab you were on, kept on the device: the app opened again from the
+/** The pages (the recipe box — its shopping list at the back — Account,
+ *  and the old meal plan). There's no tab bar: Account is reached from the
+ *  box's corner. */
+const TABS = ['/recipes', '/account', '/plan']
+/** The page you were on, kept on the device: the app opened again from the
  *  Home Screen (it starts at /) — iOS having discarded it, or a new version
  *  put in place — goes back to it. */
 const TAB: Slice<string> = {
@@ -82,7 +82,11 @@ export default function App() {
                   {/* (Meals is off the tab bar: recipes are wanted on their
                       cards now. Still here at its address for the moment.) */}
                   <Route path="/plan" element={<MealPlanPage />} />
-                  <Route path="/ingredients" element={<IngredientsPage />} />
+                  {/* (The shopping list is at the back of the box now.) */}
+                  <Route
+                    path="/ingredients"
+                    element={<Navigate to="/recipes" replace />}
+                  />
                   <Route path="/account" element={<AccountPage />} />
                   {/* Old paths. (The group is managed on Account now.) */}
                   <Route
@@ -106,7 +110,6 @@ export default function App() {
           </Suspense>
         )}
       </main>
-      {user && <TabBar />}
       {/* The top of the screen, kept clear (on an iPhone, from the Home
           Screen: under the blur iOS puts just below the status bar): the
           counter, solid, over everything — a card lifting out of the box

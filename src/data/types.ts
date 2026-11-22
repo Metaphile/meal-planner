@@ -122,7 +122,7 @@ export interface Want {
 export const isWanted = (w: Want) => w.wanted !== false
 
 /** Something wanted that isn't from a recipe ("milk", "2 bags of ice"):
- *  listed under Add-ons on the Ingredients tab, in the order added. */
+ *  listed under Add-ons on the shopping list, in the order added. */
 export interface AddOn extends Ingredient {
   id: string
   position: number

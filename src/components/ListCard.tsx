@@ -10,7 +10,7 @@ import { CARD_H } from './RecipeCard'
  * written by hand like the back of a card being edited — with everything
  * the wanted recipes call for (each as many times over as it's wanted),
  * added up — ticked off as it's on hand — then Add-ons: anything else
- * wanted, written in by hand. (What the Ingredients tab shows.)
+ * wanted, written in by hand.
  *
  * It's not taken out: it's worked on right there in the box. Turned all the
  * way to the back, it stands facing you, and scrolling on carries on down it

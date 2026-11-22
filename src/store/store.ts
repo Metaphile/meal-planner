@@ -28,9 +28,9 @@ interface AppState {
   plan: PlanMeal[]
   /** Recipes wanted (and how many times): they make the Ingredients list. */
   wants: Want[]
-  /** Other things wanted (Add-ons on the Ingredients tab), in order. */
+  /** Other things wanted (Add-ons on the shopping list), in order. */
   addons: AddOn[]
-  /** Ingredients on hand (ticked on the Ingredients tab), by line key. */
+  /** Ingredients on hand (ticked on the shopping list), by line key. */
   haves: Have[]
   /** Everyone's favorite recipes. */
   favorites: Favorite[]

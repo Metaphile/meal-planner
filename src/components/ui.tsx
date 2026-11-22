@@ -4,15 +4,21 @@ import { useEffect, type ReactNode } from 'react'
 export function PageHeader({
   title,
   action,
+  back,
 }: {
   title: string
   action?: ReactNode
+  /** Before the title: a way back (e.g. to the recipe box). */
+  back?: ReactNode
 }) {
   return (
     <header className="flex shrink-0 items-center justify-between gap-3 bg-backdrop px-4 pt-2.5 pb-2 text-ink">
-      <h1 className="paper-serif min-w-0 truncate text-[27px] font-semibold leading-9 tracking-[0.2px]">
-        {title}
-      </h1>
+      <div className="flex min-w-0 items-center gap-1">
+        {back}
+        <h1 className="paper-serif min-w-0 truncate text-[27px] font-semibold leading-9 tracking-[0.2px]">
+          {title}
+        </h1>
+      </div>
       {action}
     </header>
   )

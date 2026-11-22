@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { useAuth, type Access } from '../auth/AuthProvider'
 import {
@@ -62,7 +63,29 @@ export default function AccountPage() {
   if (!user) return null
   return (
     <div className="flex h-full flex-col">
-      <PageHeader title="Account" />
+      <PageHeader
+        title="Account"
+        back={
+          // (No tab bar: back to the recipe box.)
+          <Link
+            to="/recipes"
+            aria-label="Back to Meals"
+            className="-ml-2 grid h-9 w-9 shrink-0 place-items-center rounded-full text-ink-soft active:bg-black/5"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              className="h-6 w-6"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="m15 5-7 7 7 7" />
+            </svg>
+          </Link>
+        }
+      />
       <div className="scroll-y flex-1 space-y-6 px-4 pt-3 pb-8">
         <section>
           <GroupTab />
