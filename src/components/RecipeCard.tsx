@@ -1828,7 +1828,8 @@ const RecipeCardBack = forwardRef<
               ref={titleMeasureRef}
               className="invisible absolute whitespace-pre text-[30px] font-semibold leading-[30px]"
             >
-              {title}
+              {/* (No title yet: past the hint, which is showing.) */}
+              {title || 'Recipe'}
             </span>
           </span>
           <input
