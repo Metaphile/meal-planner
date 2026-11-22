@@ -728,12 +728,20 @@ export default function RecipesPage() {
 
   /** The card `dir` along from item `from` (1: the next, -1: the one
    *  before) — as the box shows them now (searched, or only the wanted) —
-   *  or -1 if there's none that way. */
+   *  or -1 if it's the only one. */
   const besideOf = (from: number, dir: 1 | -1) => {
     if (from < 0) return -1
-    for (let j = from + dir; j >= 0 && j < items.length; j += dir)
-      if (items[j].kind === 'card') return j
+    const n = items.length
+    // (Round the end to the start, and back: the last is beside the first.)
+    for (let s = 1; s < n; s++) {
+      const j = (((from + dir * s) % n) + n) % n
+      if (items[j].kind === 'card') return j === from ? -1 : j
+    }
     return -1
+  }
+  const recipeAt = (j: number) => {
+    const it = items[j]
+    return it?.kind === 'card' ? it.recipe : undefined
   }
 
   // Swiped to the card beside the one in hand: that one is taken out of the
@@ -1075,14 +1083,13 @@ export default function RecipesPage() {
           canEditRecipes={canEditRecipes}
           canEditPlan={canEditPlan}
           isNew={open.isNew}
-          step={
-            open.isNew
-              ? undefined
-              : {
-                  has: (dir) => besideOf(indexOf(open.key), dir) >= 0,
-                  go: stepCard,
-                }
-          }
+          step={(() => {
+            if (open.isNew) return undefined
+            const at = indexOf(open.key)
+            const prev = recipeAt(besideOf(at, -1))
+            const next = recipeAt(besideOf(at, 1))
+            return prev && next ? { prev, next, go: stepCard } : undefined
+          })()}
           onClosed={onClosed}
         />
       )}

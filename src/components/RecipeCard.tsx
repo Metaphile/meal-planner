@@ -1735,12 +1735,17 @@ const EASE_OUT = 'cubic-bezier(0.2, 0.9, 0.25, 1)'
 const STAND = 'cubic-bezier(0.4, 0, 0.2, 1)' // standing up off / back onto the wheel
 
 const pose = (dy: number) => `translate(0px, ${dy}px)`
-/** A card in hand slid `dx` sideways (turning a little with it, as a card
- *  pushed along by a finger does). */
-const sideways = (dx: number) =>
-  `translate(${dx}px, 0px) rotate(${(dx * 0.012).toFixed(2)}deg)`
-/** The recipe beside it coming in, from off the screen to its place. */
-const STEP_IN_MS = 320
+/** A card in hand (or one beside it) slid `dx` sideways. */
+const sideways = (dx: number) => `translate(${dx}px, 0px)`
+/** Between the card in hand and those either side of it (off the screen,
+ *  till it's swiped). */
+const BESIDE_GAP = 14
+/** Room around a card in hand, in the layer it rests in (and so in those
+ *  beside it). */
+const HAND_PADDING = {
+  paddingTop: '12vh',
+  paddingBottom: 'max(12vh, calc(var(--safe-bottom) + 32px))',
+}
 /** How much wider a card in hand is than its column, each side. */
 const HAND_GROW = 8
 
@@ -1839,14 +1844,17 @@ export function CardDetail({
    *  to its (empty) back. Cancel lets it fall away; Save turns it to its
    *  front, a recipe like any other. */
   isNew?: boolean
-  /** Swiping it sideways (its front): the recipe beside it in the box —
-   *  `dir` 1 the next, -1 the one before. Whether there is one, and taking
-   *  that one in hand instead (`recipe` then changes under this card). */
-  step?: { has: (dir: 1 | -1) => boolean; go: (dir: 1 | -1) => void }
+  /** Swiping it sideways (its front): the recipes either side of it in the
+   *  box (just off the screen, sliding in as it's swiped), and taking one in
+   *  hand instead — `dir` 1 the next, -1 the one before (`recipe` then
+   *  changes under this card). */
+  step?: { prev: Recipe; next: Recipe; go: (dir: 1 | -1) => void }
   onClosed: () => void
 }) {
   const stepRef = useRef(step)
   stepRef.current = step
+  const prevRef = useRef<HTMLDivElement>(null) // the card before it, off left
+  const nextRef = useRef<HTMLDivElement>(null) // and after it, off right
   // In hand, you're cooking from it: the screen stays on till it's put back.
   useWakeLock()
   // Show the recipe as it is now (it may be edited while in hand).
@@ -2324,73 +2332,71 @@ export function CardDetail({
   const leaveRef = useRef(leave)
   leaveRef.current = leave
 
+  /** Slide the card in hand, and the cards either side of it, `dx` along
+   *  (inline: an animation of the slide overrides it while it runs). */
+  const slideAll = (dx: number) => {
+    const t = dx ? sideways(dx) : ''
+    for (const el of [cardRef.current, prevRef.current, nextRef.current])
+      if (el) el.style.transform = t
+  }
+  const animateAll = (fromX: number, toX: number, opts: KeyframeAnimationOptions) => {
+    slideAll(toX)
+    const frames = [{ transform: sideways(fromX) }, { transform: sideways(toX) }]
+    const anims = [cardRef.current, prevRef.current, nextRef.current].map(
+      (el) => el?.animate(frames, opts),
+    )
+    // Same clock, to the frame.
+    const now = document.timeline.currentTime
+    for (const a of anims) if (a) a.startTime = now
+    return anims[0]!
+  }
+  /** One card's width and the gap to the next, side by side. */
+  const pitch = () => (cardRef.current?.offsetWidth ?? 0) + BESIDE_GAP
+
   /**
-   * Swiped sideways far enough: it carries on off the screen that way (from
-   * `fromX`, at `v` px/ms), the recipe beside it is taken in hand, and comes
-   * in from the other side. (Nothing beside it that way: it springs back.)
+   * Swiped sideways far enough (from `fromX`, at `v` px/ms): the cards slide
+   * on together until the one beside it is in its place — then it's the
+   * card in hand. (The list wraps: the last is beside the first.)
    */
   const stepTo = (dir: 1 | -1, fromX = 0, v = 0) => {
     const card = cardRef.current!
     if (closing.current || flipping.current || editingRef.current) return
-    if (!stepRef.current?.has(dir)) {
-      if (fromX) springBack(fromX)
-      return
-    }
+    if (!stepRef.current) return
     flipping.current = true // (no taps, pulls or swipes till it's in)
     card.getAnimations().forEach((a) => a.finish())
-    // Its place with no transform: off the screen is past that edge.
-    const left = origin.left - HAND_GROW
-    const offLeft = -(left + card.offsetWidth + 24)
-    const offRight = window.innerWidth - left + 24
-    const outX = dir === 1 ? offLeft : offRight
-    const inX = dir === 1 ? offRight : offLeft
-    // Out the way it was going, never slowing: from the finger's speed (or
-    // from a standstill, for a key), picking up to clear the screen briskly.
-    const outPx = Math.abs(outX - fromX)
-    const outMs = Math.min(240, Math.max(130, outPx / 1.6))
-    const outAvg = outPx / outMs
-    // (Its curve's first slope is the finger's speed, its last the average.)
-    const k = Math.min(1, Math.abs(v) / outAvg)
-    card.style.transform = sideways(outX)
-    const out = card.animate(
-      [{ transform: sideways(fromX) }, { transform: sideways(outX) }],
-      {
-        duration: outMs,
-        easing: `cubic-bezier(0.33, ${(0.33 * k).toFixed(3)}, 0.67, 0.67)`,
-      },
-    )
-    out.onfinish = () => {
+    const toX = -dir * pitch()
+    const dist = Math.abs(toX - fromX)
+    const ms = Math.min(380, Math.max(200, dist / 1.4))
+    // Carrying on at the finger's speed (if it was going that way), easing
+    // into place. (From a standstill — a key — it eases out too.)
+    const along = Math.sign(v) === Math.sign(toX - fromX) ? Math.abs(v) : 0
+    const k = Math.min(3, along / (dist / ms))
+    const anim = animateAll(fromX, toX, {
+      duration: ms,
+      easing: `cubic-bezier(0.3, ${(0.3 * k).toFixed(3)}, 0.35, 1)`,
+    })
+    anim.onfinish = () => {
+      // The one beside it, in its place, becomes the card in hand (all in
+      // one frame: the cards and their places swap under the same picture).
       flushSync(() => stepRef.current?.go(dir))
       scrollRef.current?.scrollTo({ top: 0 })
-      card.style.transform = ''
-      // In at the speed it went out, easing into its place.
-      const inAvg = Math.abs(inX) / STEP_IN_MS
-      const k2 = Math.min(3, Math.max(1, outAvg / inAvg))
-      const back = card.animate(
-        [{ transform: sideways(inX) }, { transform: sideways(0) }],
-        {
-          duration: STEP_IN_MS,
-          easing: `cubic-bezier(0.25, ${(0.25 * k2).toFixed(3)}, 0.35, 1)`,
-        },
-      )
-      back.onfinish = () => {
-        flipping.current = false
-      }
+      for (const el of [card, prevRef.current, nextRef.current])
+        el?.getAnimations().forEach((a) => a.cancel())
+      slideAll(0)
+      flipping.current = false
     }
   }
   /** Let go short of swiping it away: back to its place. */
   const springBack = (fromX: number) => {
-    const card = cardRef.current!
-    card.style.transform = ''
-    card.animate([{ transform: sideways(fromX) }, { transform: sideways(0) }], {
-      duration: 220,
-      easing: EASE_OUT,
-    })
+    animateAll(fromX, 0, { duration: 240, easing: EASE_OUT }).onfinish = () =>
+      slideAll(0)
   }
   const stepToRef = useRef(stepTo)
   stepToRef.current = stepTo
   const springBackRef = useRef(springBack)
   springBackRef.current = springBack
+  const slideAllRef = useRef(slideAll)
+  slideAllRef.current = slideAll
 
   // Escape puts the card back (or, turned over, cancels the edit).
   useEffect(() => {
@@ -2509,7 +2515,8 @@ export function CardDetail({
           d.side = true
           window.getSelection()?.removeAllRanges()
           card.style.userSelect = 'none'
-          card.getAnimations().forEach((a) => a.finish())
+          for (const el of [card, prevRef.current, nextRef.current])
+            el?.getAnimations().forEach((a) => a.finish())
         } else if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
           d.decided = true
           return false
@@ -2529,9 +2536,8 @@ export function CardDetail({
         d.vx = 0.7 * stepV + 0.3 * d.vx
         d.lastX = x
         d.lastT = now
-        // (Nothing beside it that way: it gives only a little.)
-        d.dx = stepRef.current?.has(dx < 0 ? 1 : -1) ? dx : dx * 0.3
-        card.style.transform = sideways(d.dx)
+        d.dx = dx
+        slideAllRef.current(dx)
         return true
       }
       // (Smoothed: a single step is jittery.)
@@ -2567,8 +2573,8 @@ export function CardDetail({
         // Far enough, or flicked that way.
         const far =
           Math.abs(d.dx) > card.offsetWidth * 0.3 ||
-          (Math.abs(d.dx) > 30 && Math.abs(v) > 0.4 && Math.sign(v) === Math.sign(d.dx))
-        if (far && stepRef.current?.has(dir)) stepToRef.current(dir, d.dx, v)
+          (Math.abs(d.dx) > 20 && Math.abs(v) > 0.4 && Math.sign(v) === Math.sign(d.dx))
+        if (far) stepToRef.current(dir, d.dx, v)
         else springBackRef.current(d.dx)
         return
       }
@@ -2657,12 +2663,62 @@ export function CardDetail({
     return () => root.removeEventListener('touchmove', onTouchMove)
   }, [])
 
+  // A card's usual actions in hand: Edit, and how many times it's wanted.
+  // (A reader: nothing to do here — no footer at all.)
+  const frontActions = (r: Recipe) =>
+    canEditRecipes || canEditPlan ? (
+      <>
+        {canEditRecipes && <EditButton onEdit={edit} />}
+        <span className="flex-1" />
+        {canEditPlan && <WantCount recipeId={r.id} interactive />}
+      </>
+    ) : undefined
+
   return createPortal(
     <div ref={rootRef} className="fixed inset-0 z-50">
       <div
         ref={shadeRef}
         className="absolute inset-0 bg-[rgb(20_24_22/0.55)]"
       />
+      {/* The cards either side of it, just off the screen: swiped, they
+          slide in with it (each where it'll rest once it's in hand). */}
+      {step &&
+        ([
+          [prevRef, step.prev, -1],
+          [nextRef, step.next, 1],
+        ] as const).map(([ref, r, side]) => (
+          <div
+            key={side}
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 bottom-0 overflow-hidden"
+            style={{ top: origin.viewTop }}
+          >
+            <div className="flex min-h-full flex-col" style={HAND_PADDING}>
+              <div
+                ref={ref}
+                className="shrink-0"
+                style={{
+                  marginTop: 'auto',
+                  marginBottom: 'auto',
+                  marginLeft:
+                    origin.left -
+                    HAND_GROW +
+                    side * (origin.width + 2 * HAND_GROW + BESIDE_GAP),
+                  width: origin.width + 2 * HAND_GROW,
+                  willChange: 'transform',
+                }}
+              >
+                <RecipeCard
+                  recipe={r}
+                  large
+                  canEditPlan={canEditPlan}
+                  canEditRecipes={canEditRecipes}
+                  actions={frontActions(r)}
+                />
+              </div>
+            </div>
+          </div>
+        ))}
       {/* The card scrolls, whole, on the shade; tapping the shade (anywhere
           off the card) puts it back. This layer starts where the rolodex
           layer does (the top of the page), so a card flying above it is
@@ -2682,13 +2738,7 @@ export function CardDetail({
             turned over to write on, it sits near the top, so it doesn't
             creep up the screen as it grows). The switch happens edge-on,
             mid-turn, where it can't be seen. */}
-        <div
-          className="flex min-h-full flex-col"
-          style={{
-            paddingTop: '12vh',
-            paddingBottom: 'max(12vh, calc(var(--safe-bottom) + 32px))',
-          }}
-        >
+        <div className="flex min-h-full flex-col" style={HAND_PADDING}>
           <div
             ref={cardRef}
             // (The one place outside fields where text can be selected.)
@@ -2718,16 +2768,9 @@ export function CardDetail({
                 canEditPlan={canEditPlan}
                 canEditRecipes={canEditRecipes}
                 actions={
-                  renderActions ? (
-                    renderActions({ dismiss: () => dismiss(), edit })
-                  ) : canEditRecipes || canEditPlan ? (
-                    <>
-                      {canEditRecipes && <EditButton onEdit={edit} />}
-                      <span className="flex-1" />
-                      {canEditPlan && <WantCount recipeId={shown.id} interactive />}
-                    </>
-                  ) : // (A reader: nothing to do here — no footer at all.)
-                  undefined
+                  renderActions
+                    ? renderActions({ dismiss: () => dismiss(), edit })
+                    : frontActions(shown)
                 }
                 aria-hidden={facing === 'back' || undefined}
                 style={{
