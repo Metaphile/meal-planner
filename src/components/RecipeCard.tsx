@@ -3366,28 +3366,19 @@ export function CardDetail({
         return
       }
       // (Turned over with changes: it springs back while you decide.)
-      if (far) {
-        // Stopped short by "Discard changes?": caught as it went — it
-        // carries on a moment with the pull, then snaps back, past its
-        // place and back, like an elastic.
-        leaveRef.current('putAway')
-        const held = performance.now() - d.lastT > 80
-        card.animate(caught(d.dy, held ? 0 : d.v), {
-          duration: CAUGHT_MS,
-          easing: 'linear',
-        })
-        card.animate([{ opacity: card.style.opacity }, { opacity: 1 }], {
-          duration: 200,
-          easing: EASE_OUT,
-        })
-      } else
-        card.animate(
-          [
-            { transform: card.style.transform, opacity: card.style.opacity },
-            { transform: pose(0), opacity: 1 },
-          ],
-          { duration: 220, easing: EASE_OUT },
-        )
+      // Not pulled far enough — or stopped short by "Discard changes?": it
+      // springs back, caught like an elastic — on a moment with the pull,
+      // back past its place, and settling.
+      if (far) leaveRef.current('putAway')
+      const held = performance.now() - d.lastT > 80
+      card.animate(caught(d.dy, held ? 0 : d.v), {
+        duration: CAUGHT_MS,
+        easing: 'linear',
+      })
+      card.animate([{ opacity: card.style.opacity }, { opacity: 1 }], {
+        duration: 200,
+        easing: EASE_OUT,
+      })
       shade.animate([{ opacity: shade.style.opacity }, { opacity: 1 }], {
         duration: 220,
       })
