@@ -85,6 +85,8 @@ export function QuantityInput({
       inputMode="decimal"
       placeholder={placeholder}
       readOnly={readOnly}
+      // (Read only — a line crossed out: not tapped into, nor tabbed to.)
+      tabIndex={readOnly ? -1 : undefined}
       // Tapped into, what's there is selected, to type over. (After the tap
       // settles: iOS places the caret after focus, undoing an earlier
       // selection; and the click that follows mustn't put it back.)
@@ -102,7 +104,7 @@ export function QuantityInput({
       enterKeyHint={enterKeyHint}
       aria-label="Quantity"
       autoComplete="off"
-      className={className}
+      className={`${className} ${readOnly ? 'pointer-events-none' : ''}`}
       style={fitClassName === undefined ? undefined : { width }}
     />
   )
@@ -112,7 +114,7 @@ export function QuantityInput({
       className={fitClassName}
       // (A tap anywhere in the cell: into the field.)
       onClick={(e) => {
-        if (e.target === e.currentTarget) fieldRef.current?.focus()
+        if (e.target === e.currentTarget && !readOnly) fieldRef.current?.focus()
       }}
     >
       {field}

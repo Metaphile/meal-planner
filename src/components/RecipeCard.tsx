@@ -1316,8 +1316,13 @@ function IngredientTable({
   const toNextLine = (e: ReactKeyboardEvent<HTMLInputElement>, row: Row) => {
     if (e.key !== 'Enter' || blank(row)) return
     e.preventDefault()
+    // (Past crossed-out lines: they're not to be written in.)
     let next = e.currentTarget.closest('[role=row]')?.nextElementSibling
-    while (next && !(next as HTMLElement).dataset.g) next = next.nextElementSibling
+    while (
+      next &&
+      (!(next as HTMLElement).dataset.g || next.querySelector('input')?.readOnly)
+    )
+      next = next.nextElementSibling
     next?.querySelector('input')?.focus()
   }
   const setStruck = (g: number, struck: boolean) =>
@@ -1372,16 +1377,21 @@ function IngredientTable({
         e.preventDefault()
         e.currentTarget
           .closest('[role=rowgroup]')
-          ?.querySelector<HTMLInputElement>('[role=row][data-g] input')
+          ?.querySelector<HTMLInputElement>('[role=row][data-g] input:not([readonly])')
           ?.focus()
       }}
       enterKeyHint="next"
       readOnly={readOnly}
+      // (Crossed out: not to be written in — nor tapped into, nor tabbed
+      // to: a tap goes through it.)
+      tabIndex={readOnly ? -1 : undefined}
       placeholder={placeholder}
       aria-label="Section"
       autoComplete="off"
       autoCapitalize="words"
-      className={`${headClass} h-[34px] min-w-0 bg-transparent pt-0 pb-[4px] placeholder:font-normal placeholder:text-pencil focus:bg-kraft/15 focus:outline-none`}
+      className={`${headClass} h-[34px] min-w-0 bg-transparent pt-0 pb-[4px] placeholder:font-normal placeholder:text-pencil focus:bg-kraft/15 focus:outline-none ${
+        readOnly ? 'pointer-events-none' : ''
+      }`}
     />
   )
 
@@ -1422,12 +1432,15 @@ function IngredientTable({
             onKeyDown={(e) => toNextLine(e, row)}
             enterKeyHint="next"
             readOnly={struck}
+            // (Crossed out: not to be written in — nor tapped into, nor
+            // tabbed to: a tap goes through it.)
+            tabIndex={struck ? -1 : undefined}
             placeholder={spare ? 'Add ingredient…' : 'Ingredient'}
             // (No "name" in the label: Safari would offer to AutoFill a
             // contact.)
             aria-label="Ingredient"
             autoComplete="off"
-            className={`${cell} pr-1`}
+            className={`${cell} pr-1 ${struck ? 'pointer-events-none' : ''}`}
           />
           <QuantityInput
             value={row.quantity}
