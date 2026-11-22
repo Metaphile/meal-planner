@@ -1451,7 +1451,10 @@ function IngredientTable({
             disabled={struck}
             className={`${cell} ${rule} pl-1.5`}
           />
-          {spare || group.struck ? (
+          {/* (Its mark: none on the spare line, nor in a section crossed
+              out — nor on a line emptied: there's nothing to cross out, and
+              an empty line goes anyway, on Save.) */}
+          {spare || group.struck || blank(row) ? (
             <span />
           ) : row.struck ? (
             <button
