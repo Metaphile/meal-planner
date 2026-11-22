@@ -306,6 +306,9 @@ interface LeftAs {
   favoritesOnly: boolean
   keptFavorites: ReadonlySet<string>
   kept: ReadonlySet<string>
+  /** New recipes written while it was narrowed (in it whatever it's
+   *  narrowed to). */
+  made: ReadonlySet<string>
 }
 /** …kept on the device (leaving the app, or a new version of it, comes back
  *  to it as it was). */
@@ -326,6 +329,7 @@ const BOX: Slice<LeftAs> = {
           favoritesOnly: bool(x.favoritesOnly),
           keptFavorites: new Set(strs(x.keptFavorites)),
           kept: new Set(strs(x.kept)),
+          made: new Set(strs(x.made)),
         }
       : null,
 }
@@ -334,6 +338,7 @@ const keepBox = (b: LeftAs) =>
     ...b,
     keptFavorites: [...b.keptFavorites],
     kept: [...b.kept],
+    made: [...b.made],
   } as unknown as LeftAs)
 /** (Kept here too, switching tabs: no need to read it back.) */
 let leftAs: LeftAs | null = null
@@ -387,20 +392,27 @@ export default function RecipesPage() {
     if (!favoritesOnly) setKeptFavorites(new Set(myFavorites))
     setFavoritesOnly(!favoritesOnly)
   }
+  // A new recipe written while the box is narrowed is in it, whatever it's
+  // narrowed to (till it's not narrowed any more) — it's what you're making.
+  const [made, setMade] = useState<ReadonlySet<string>>(
+    () => left?.made ?? new Set(),
+  )
   const matches = useMemo(() => {
     const wanted = new Set(wants.filter(isWanted).map((w) => w.recipeId))
     return recipes.filter(
       (r) =>
-        (!wantedOnly || wanted.has(r.id) || kept.has(r.id)) &&
+        made.has(r.id) ||
+        ((!wantedOnly || wanted.has(r.id) || kept.has(r.id)) &&
         (!favoritesOnly ||
           myFavorites.has(r.id) ||
           keptFavorites.has(r.id)) &&
         (!q ||
           r.title.toLowerCase().includes(q) ||
           r.tags.some((t) => t.toLowerCase().includes(q)) ||
-          allIngredients(r).some((i) => i.name.toLowerCase().includes(q))),
+          allIngredients(r).some((i) => i.name.toLowerCase().includes(q)))),
     )
   }, [
+    made,
     recipes,
     q,
     wantedOnly,
@@ -412,6 +424,13 @@ export default function RecipesPage() {
   ])
   // Any narrowing at all: a search (it opens on its first match).
   const narrowed = !!q || wantedOnly || favoritesOnly
+  // (Narrowed or not any more: the new recipes made meanwhile are just
+  // recipes again.)
+  const madeWhile = useRef(narrowed)
+  if (madeWhile.current !== narrowed) {
+    madeWhile.current = narrowed
+    if (made.size) setMade(new Set())
+  }
   // The rolodex layer covers the whole page, header included (so a card
   // being taken out passes over the header rather than behind it); the wheel
   // itself sits below the header, and no resting card ever reaches up into it.
@@ -539,6 +558,7 @@ export default function RecipesPage() {
     kept,
     favoritesOnly,
     keptFavorites,
+    made,
   })
   leftStateRef.current = {
     searching,
@@ -547,6 +567,7 @@ export default function RecipesPage() {
     kept,
     favoritesOnly,
     keptFavorites,
+    made,
   }
   const paintRef = useRef(paint)
   paintRef.current = paint
@@ -1036,6 +1057,8 @@ export default function RecipesPage() {
     // (A new recipe left mid-edit keeps its id: its edit's kept by it.)
     const draft: Recipe = { id: id ?? newId(), title: '', tags: [], ingredients: [] }
     lifted.current = draft.id
+    // (The box narrowed: it'll be in it, once it's saved.)
+    if (madeWhile.current) setMade((m) => new Set(m).add(draft.id))
     const below = window.innerHeight + 24
     const next = {
       key: draft.id,
