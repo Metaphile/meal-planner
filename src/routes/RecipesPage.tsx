@@ -37,7 +37,7 @@ import {
   strs,
   type Slice,
 } from '../lib/uiState'
-import { LIST_CARD, LIST_KEY, ListCard } from '../components/ListCard'
+import { LIST_KEY, ListCard } from '../components/ListCard'
 import {
   allIngredients,
   favoriteKey,
@@ -111,10 +111,13 @@ const SPIN_MS = 260 // turning the drum to a tapped letter (max)
 const START_PHI = -28 * DEG
 // How far it can turn past that: down until the first recipe (or the blank
 // card, before A) is well below the tipped-back zone, where it's easy to
-// read; up until the last item (the list, behind the back of the box) faces
-// you, not leaning at the bottom.
+// read; up until the last item (the list, behind the back of the box) stands
+// at the front line, flat, facing you — where scrolling on carries on down
+// it (see boundsOf).
 const REACH_FIRST_CARD_PHI = -12 * DEG
-const REACH_LAST_PHI = 16 * DEG
+const REACH_LAST_PHI = 0
+/** Scrolled to the end of the list, this much room is left below it. */
+const LIST_ROOM = 24
 
 /** A card on the wheel is trimmed at its rod (the rest is behind the cards
  *  in front), with room above and to the sides for its shadow. (A clip-path,
@@ -256,9 +259,29 @@ const clamp = (v: number, lo: number, hi: number) =>
  *  - A shorter one moves within its slack, between those same two limits,
  *    and opens with its first recipe as near the front line (facing you) as
  *    that allows.
- *  Either way it can always give a little (springing back) past the ends. */
-function boundsOf(w: Wheel, items: Item[], faceFirst: boolean) {
-  if (items.length === 0) return { first: 0, max: 0, initial: 0 }
+ *  Either way it can always give a little (springing back) past the ends.
+ *
+ *  Turned as far as it goes (`turn`), the list stands flat at the front
+ *  line; past that the drum doesn't turn, but the list slides on up, as far
+ *  as there's more of it below the screen (`listH`, its height): `max`.
+ *  (Flat, it's carried up just as fast as turning carried it: one motion.) */
+function boundsOf(
+  w: Wheel,
+  items: Item[],
+  faceFirst: boolean,
+  stageH: number,
+  listH: number,
+) {
+  if (items.length === 0) return { first: 0, max: 0, initial: 0, turn: 0 }
+  const b = turning()
+  const last = items[items.length - 1]
+  const below =
+    last.kind === 'list'
+      ? Math.max(0, w.front - rodOffset(last) + listH + LIST_ROOM - stageH)
+      : 0
+  return { ...b, turn: b.max, max: b.max + below }
+
+  function turning() {
   // (From the first divider; the first item's is so much less.)
   const a = Math.max(0, items.findIndex((it) => it.kind === 'divider'))
   const rod0 = items[a].rod
@@ -297,6 +320,7 @@ function boundsOf(w: Wheel, items: Item[], faceFirst: boolean) {
     first: up,
     max: up - down,
     initial: up - clamp(faceOn, down, up),
+  }
   }
   }
 }
@@ -445,6 +469,8 @@ export default function RecipesPage() {
   // The wheel's own units (the stage is drawn at SCALE).
   const headerU = headerH / SCALE
   const stageH = (pageH - headerH) / SCALE || 600
+  // How long the list is (how far there is to scroll down it).
+  const [listH, setListH] = useState(0)
   const items = useMemo(
     () => layout(matches, canEditRecipes),
     [matches, canEditRecipes],
@@ -462,8 +488,8 @@ export default function RecipesPage() {
   const headerRef = useRef<HTMLDivElement>(null)
   const wheel = useMemo(() => fitWheel(stageH), [stageH])
   const bounds = useMemo(
-    () => boundsOf(wheel, items, narrowed),
-    [wheel, items, narrowed],
+    () => boundsOf(wheel, items, narrowed, stageH, listH),
+    [wheel, items, narrowed, stageH, listH],
   )
   // The card in hand, by recipe id (editing it can move it to another
   // letter, or delete it, while it's out).
@@ -494,7 +520,11 @@ export default function RecipesPage() {
     raf.current = 0
     const drum = drumRef.current
     if (!drum || items.length === 0) return
-    const st = drum.get()
+    // Past where it turns to, the drum stays put and the list slides on up.
+    const at = drum.get()
+    const turn = bounds.turn * SCALE
+    const st = Math.min(at, turn)
+    const slid = Math.max(0, at - turn) / SCALE
     for (let i = 0; i < items.length; i++) {
       const el = itemEls.current[i]
       if (!el) continue
@@ -517,7 +547,8 @@ export default function RecipesPage() {
       const phi = PHI_TOP + v / wheel.R
       const rodY = wheel.front + wheel.R * Math.sin(phi)
       const z = wheel.R * (Math.cos(phi) - 1)
-      const pose = `translate3d(0px, ${(headerU + rodY - rodOffset(items[i])).toFixed(1)}px, ${z.toFixed(1)}px) rotateX(${(-phi / DEG).toFixed(2)}deg)`
+      const up = items[i].kind === 'list' ? slid : 0
+      const pose = `translate3d(0px, ${(headerU + rodY - rodOffset(items[i]) - up).toFixed(1)}px, ${z.toFixed(1)}px) rotateX(${(-phi / DEG).toFixed(2)}deg)`
       if (lastPose.current[i] !== pose) {
         lastPose.current[i] = pose
         el.style.transform = pose
@@ -549,7 +580,7 @@ export default function RecipesPage() {
         el.style.zIndex = String(zi)
       }
     }
-  }, [items, wheel, rimPos, headerU])
+  }, [items, wheel, rimPos, headerU, bounds])
 
   const busy = useRef(false)
 
@@ -612,6 +643,17 @@ export default function RecipesPage() {
   useLayoutEffect(() => {
     drumRef.current?.setMax(bounds.max * SCALE)
   }, [bounds])
+  // (Measured as it's drawn, and again whenever it grows or shrinks.)
+  useLayoutEffect(() => {
+    const k = items.length - 1
+    const el = items[k]?.kind === 'list' ? cardEl(k) : undefined
+    if (!el) return
+    const measure = () => setListH(el.offsetHeight)
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [items])
 
   // Start at the start (A near the top; a short box with its first recipe
   // facing you) — again for each search, and once the page is measured.
@@ -625,7 +667,8 @@ export default function RecipesPage() {
   const wasNarrowed = useRef(narrowed)
   useLayoutEffect(() => {
     const drum = drumRef.current
-    const measured = pageH > 0 && headerH > 0
+    // (The list's length too: how far the box was scrolled down it.)
+    const measured = pageH > 0 && headerH > 0 && listH > 0
     const key = `${q}|${wantedOnly}|${favoritesOnly}|${measured}`
     const within = (p: number) => Math.min(Math.max(0, p), bounds.max * SCALE)
     if (positionedFor.current !== key) {
@@ -649,7 +692,7 @@ export default function RecipesPage() {
     lastShade.current = []
     shown.current = []
     paint()
-  }, [paint, q, wantedOnly, favoritesOnly, narrowed, pageH, headerH, bounds])
+  }, [paint, q, wantedOnly, favoritesOnly, narrowed, pageH, headerH, listH, bounds])
 
   useLayoutEffect(() => {
     const scroller = scrollRef.current
@@ -816,15 +859,14 @@ export default function RecipesPage() {
     (index: number, resume?: Hand) => {
       const it = items[index]
       const wrap = itemEls.current[index]
-      if ((it.kind !== 'card' && it.kind !== 'list') || !wrap || busy.current)
-        return
+      if (it.kind !== 'card' || !wrap || busy.current) return
       busy.current = true
       lifted.current = it.key
       freeSlot(wrap)
       uncoverBehind(index)
       const next = {
         key: it.key,
-        recipe: it.kind === 'card' ? it.recipe : LIST_CARD,
+        recipe: it.recipe,
         origin: originOf(index),
         resume,
       }
@@ -1381,13 +1423,8 @@ export default function RecipesPage() {
           isNew={open.isNew}
           remember
           resume={open.resume}
-          face={
-            open.key === LIST_KEY ? (
-              <ListCard canEdit={canEditPlan} />
-            ) : undefined
-          }
           step={(() => {
-            if (open.isNew || open.key === LIST_KEY) return undefined
+            if (open.isNew) return undefined
             const at = indexOf(open.key)
             const p = besideOf(at, -1)
             const n = besideOf(at, 1)
@@ -1583,24 +1620,12 @@ const RolodexItem = memo(function RolodexItem({
   }
 
   if (item.kind === 'list') {
+    // The shopping list, worked on right here: whole (nothing's in front of
+    // it to trim it to — it carries on down past the screen, to be
+    // scrolled up into view).
     return (
-      <div {...common}>
-        <ListCard
-          peekHeight={full ? undefined : PEEK_H}
-          canEdit={canEditPlan}
-          role="button"
-          tabIndex={0}
-          aria-label="Open the ingredients list"
-          className="cursor-pointer"
-          onClick={() => onOpen(index)}
-          onKeyDown={(e) => {
-            if (e.target !== e.currentTarget) return
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault()
-              onOpen(index)
-            }
-          }}
-        />
+      <div {...common} style={{ ...common.style, clipPath: 'none' }}>
+        <ListCard canEdit={canEditPlan} />
         {shadow}
       </div>
     )

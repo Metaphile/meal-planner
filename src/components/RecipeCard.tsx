@@ -2594,7 +2594,6 @@ export function CardDetail({
   step,
   remember = false,
   resume,
-  face,
   onClosed,
 }: {
   recipe: Recipe
@@ -2625,9 +2624,6 @@ export function CardDetail({
   remember?: boolean
   /** Taken up as it was kept: how far down, and whether turned over. */
   resume?: { scroll: number; editing: boolean }
-  /** Another kind of card in hand (the list): its face, in place of the
-   *  recipe's — and no back to turn over to. */
-  face?: ReactNode
   step?: {
     prev: Recipe
     next: Recipe
@@ -3802,9 +3798,6 @@ export function CardDetail({
               className="relative"
               style={{ transformStyle: 'preserve-3d' }}
             >
-              {face ? (
-                <div ref={frontRef}>{face}</div>
-              ) : (
               <RecipeCard
                 ref={frontRef}
                 recipe={shown}
@@ -3822,8 +3815,7 @@ export function CardDetail({
                   ...(facing === 'front' ? {} : OFF_LAYOUT),
                 }}
               />
-              )}
-              {editing && !face && (
+              {editing && (
                 <RecipeCardBack
                   ref={backRef}
                   recipe={shown}

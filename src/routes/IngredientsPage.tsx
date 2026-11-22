@@ -5,6 +5,7 @@ import { IngredientsList } from '../components/IngredientsList'
 import { useWantedIngredients } from '../store/selectors'
 import { AddOnsList } from '../components/AddOnsList'
 import { useAuth } from '../auth/AuthProvider'
+import { WantBoxPicture } from '../components/ListCard'
 
 /**
  * Ingredients: everything the wanted recipes call for (each as many times
@@ -12,18 +13,6 @@ import { useAuth } from '../auth/AuthProvider'
  * are wanted, and how many times, on their cards). Then Add-ons: anything
  * else wanted, written in by hand.
  */
-/** The box on a recipe card (empty, to be ticked), drawn inline in the
- *  text. */
-function WantBoxPicture() {
-  return (
-    <span
-      role="img"
-      aria-label="the box on a recipe card"
-      className="mx-0.5 inline-block h-[18px] w-[18px] rounded-[4px] border-[1.5px] border-[#c9bda4] bg-paper align-[-3px]"
-    />
-  )
-}
-
 /** How far down the page was, kept on the device: back from another tab,
  *  or the app opened again (discarded meanwhile, or a new version put in
  *  place), it's where it was. */
