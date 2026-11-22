@@ -665,6 +665,8 @@ export default function RecipesPage() {
   // done (cancelled, or its text cleared), it goes back there.
   const beforeSearch = useRef<number | null>(left?.beforeSearch ?? null)
   const wasNarrowed = useRef(narrowed)
+  // Where the drum stopped turning (the list at the front), as last placed.
+  const turnWas = useRef<number | null>(null)
   useLayoutEffect(() => {
     const drum = drumRef.current
     // (The list's length too: how far the box was scrolled down it.)
@@ -675,7 +677,20 @@ export default function RecipesPage() {
       positionedFor.current = key
       if (narrowed && !wasNarrowed.current && drum)
         beforeSearch.current = drum.get()
-      if (returnTo.current !== undefined && measured) {
+      // On the shopping list (it at the front, or scrolled down it): it
+      // stays just where it was, whatever the box behind it is narrowed to.
+      // (Measured from where the drum stops turning: that moves, as the box
+      // gets longer or shorter.)
+      const at = drum?.get() ?? 0
+      const onList =
+        placed.current &&
+        returnTo.current === undefined &&
+        turnWas.current !== null &&
+        at >= turnWas.current - 1
+      if (onList) {
+        drum?.set(within(bounds.turn * SCALE + Math.max(0, at - turnWas.current!)))
+        if (!narrowed) beforeSearch.current = null
+      } else if (returnTo.current !== undefined && measured) {
         drum?.set(within(returnTo.current))
         returnTo.current = undefined
       } else if (returnTo.current === undefined) {
@@ -687,6 +702,7 @@ export default function RecipesPage() {
       if (measured && drum) placed.current = true
     }
     wasNarrowed.current = narrowed
+    turnWas.current = bounds.turn * SCALE
     lastPose.current = []
     lastZ.current = []
     lastShade.current = []
