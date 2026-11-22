@@ -30,7 +30,8 @@ export function IngredientsList({
   checkable?: boolean
   /** May tick lines and change how much is on hand. */
   canEdit?: boolean
-  /** Written straight on what it's on (a card), not on a sheet of its own. */
+  /** Written by hand straight on what it's on (a card, as on its back —
+   *  scratch work), not typed on a sheet of its own. */
   bare?: boolean
 }) {
   const haves = useStore((s) => s.haves)
@@ -57,7 +58,13 @@ export function IngredientsList({
       className={bare ? '' : 'paper-card notepad rounded-t-md px-4 pt-2.5 pb-3'}
     >
       {lines.length === 0 ? (
-        <p className="paper-serif py-3 text-center italic text-ink-faint">
+        <p
+          className={
+            bare
+              ? 'py-2 text-center leading-[26px] text-pencil'
+              : 'paper-serif py-3 text-center italic text-ink-faint'
+          }
+        >
           {empty}
         </p>
       ) : (
@@ -73,6 +80,7 @@ export function IngredientsList({
                 needed={ing.sources.length > 0 || !checkable}
                 checkable={checkable}
                 canEdit={canEdit}
+                hand={bare}
               />
             )
           })}
@@ -89,6 +97,7 @@ function IngredientLine({
   needed,
   checkable,
   canEdit,
+  hand,
 }: {
   ing: AggregatedIngredient
   haveKey: string
@@ -97,8 +106,26 @@ function IngredientLine({
   needed: boolean
   checkable: boolean
   canEdit: boolean
+  /** Written by hand (see IngredientsList's `bare`). */
+  hand: boolean
 }) {
   const setHave = useStore((s) => s.setHave)
+  // Typed, or written by hand: its name, its amount, where it's from.
+  const type = hand
+    ? {
+        line: '',
+        name: 'text-[22px] leading-[26px]',
+        amount: 'text-[20px] leading-[26px]',
+        soft: '',
+        from: 'text-[16px] leading-[18px] text-pencil',
+      }
+    : {
+        line: 'paper-serif',
+        name: 'text-[17px]',
+        amount: 'text-base',
+        soft: 'text-ink-soft',
+        from: 'text-xs italic leading-[18px] text-ink-faint',
+      }
   const need = ing.quantity === undefined ? undefined : round(ing.quantity)
   // Have some but not enough: short.
   const short =
@@ -107,7 +134,9 @@ function IngredientLine({
   const counted =
     !!have && (needed ? need !== undefined : have.amount !== undefined)
   return (
-    <li className="paper-serif flex gap-2.5 border-b border-line-blue pt-1.5 pb-1 last:border-b-0">
+    <li
+      className={`${type.line} flex gap-2.5 border-b border-line-blue pt-1.5 pb-1 last:border-b-0`}
+    >
       {checkable && (
         <Tickbox
           state={!have ? 'off' : short ? 'short' : 'on'}
@@ -134,7 +163,7 @@ function IngredientLine({
               dimmed — on hand, not needed. Not its box or counter: they're
               still to use.) */}
           <span
-            className={`min-w-0 flex-1 text-[17px] ${short ? 'text-danger' : ''} ${
+            className={`min-w-0 flex-1 ${type.name} ${short ? 'text-danger' : ''} ${
               needed ? '' : 'opacity-50'
             }`}
           >
@@ -143,7 +172,7 @@ function IngredientLine({
           {counted && !canEdit ? (
             // (A reader: how much there is, written — no counter to use.)
             <span
-              className={`shrink-0 text-base ${short ? 'text-danger' : 'text-ink-soft'}`}
+              className={`shrink-0 ${type.amount} ${short ? 'text-danger' : type.soft}`}
             >
               <span className="font-semibold">{round(have.amount ?? 0)}</span>
               {needed && need !== undefined ? ` of ${need}` : ''}
@@ -160,7 +189,7 @@ function IngredientLine({
             />
           ) : (
             <span
-              className={`shrink-0 whitespace-nowrap text-base text-ink-soft ${
+              className={`shrink-0 whitespace-nowrap ${type.amount} ${type.soft} ${
                 needed ? '' : 'opacity-50'
               }`}
             >
@@ -179,7 +208,7 @@ function IngredientLine({
         </div>
         {(ing.sources.length > 0 || !needed) && (
           <div
-            className={`text-xs italic leading-[18px] text-ink-faint ${
+            className={`${type.from} ${
               needed ? '' : 'opacity-50'
             }`}
           >
@@ -283,7 +312,9 @@ function HaveCounter({
   const step =
     'grid h-7 w-8 place-items-center text-lg leading-none active:opacity-60 disabled:opacity-35'
   return (
-    <div className="flex shrink-0 items-center rounded-full border border-kraft-edge bg-brand text-[15px] text-on-brand">
+    // (A control, set like a card's want stepper — not handwritten, even on
+    // a handwritten list.)
+    <div className="paper-serif flex shrink-0 items-center rounded-full border border-kraft-edge bg-brand text-[15px] text-on-brand">
       <button
         type="button"
         aria-label={`Less ${unitName(unit)}`}

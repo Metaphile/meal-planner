@@ -5,7 +5,8 @@ import { IngredientsList } from './IngredientsList'
 import { CARD_H } from './RecipeCard'
 
 /**
- * The shopping list: a card at the back of the recipe box with everything
+ * The shopping list: a card at the back of the recipe box — scratch work,
+ * written by hand like the back of a card being edited — with everything
  * the wanted recipes call for (each as many times over as it's wanted),
  * added up — ticked off as it's on hand — then Add-ons: anything else
  * wanted, written in by hand. (What the Ingredients tab shows.)
@@ -44,16 +45,13 @@ export const ListCard = forwardRef<HTMLDivElement, Props>(function ListCard(
       className={`paper-card rolodex-card relative flex flex-col text-left ${className}`}
       style={{ minHeight: CARD_H, ...style }}
     >
-      <div className="relative flex min-h-0 flex-1 flex-col">
-        <div className="paper-frame" />
-        <div className="px-5 pt-3.5">
-          <div className="paper-rule pb-1.5">
-            <div className="font-hand text-center text-[28px] font-semibold leading-[25px] text-black">
-              Shopping list
-            </div>
-          </div>
+      {/* Scratch work, written by hand — like the back of a card (no frame,
+          the title underlined in the same pen). */}
+      <div className="handwritten relative flex flex-1 flex-col">
+        <div className="mx-5 mt-3.5 border-b-[1.5px] border-pen pb-0.5 text-center text-[30px] font-semibold leading-[30px]">
+          Shopping list
         </div>
-        <div className="min-h-0 flex-1 px-4 pt-1 pb-4">
+        <div className="mx-5 mt-2 mb-4 flex flex-col gap-4">
           <IngredientsList
             ingredients={ingredients}
             checkable
@@ -65,10 +63,12 @@ export const ListCard = forwardRef<HTMLDivElement, Props>(function ListCard(
               </>
             }
           />
-          <div className="font-hand mt-4 border-b border-line-blue pb-0.5 text-[25px] font-semibold leading-[26px] text-[#8a8170]">
-            Add-ons
+          <div>
+            <span className="block text-[22px] font-semibold leading-[26px]">
+              Add-ons
+            </span>
+            <AddOnsList canEdit={canEdit} bare />
           </div>
-          <AddOnsList canEdit={canEdit} bare />
         </div>
       </div>
       <span className="rolodex-dim" />
