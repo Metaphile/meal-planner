@@ -120,7 +120,11 @@ function AddOnLine({ addon, canEdit }: { addon: AddOn; canEdit: boolean }) {
         disabled={!canEdit}
         label={`Have ${addOnText(addon).trim() || 'item'}`}
         onChange={(have) => update(addon.id, { have: have || undefined })}
-        className="items-center"
+        // (Its box's middle on its words' small letters, as on the lines
+        // above: its target, as tall as the field's line — set 1px down in
+        // the field, centred in what its padding leaves — set on it and
+        // moved down 0.145em of the writing. See `.struck`.)
+        className="mt-[calc(1px+0.145*26px)] self-start"
       />
       <div className="relative min-w-0">
       <input
@@ -137,7 +141,7 @@ function AddOnLine({ addon, canEdit }: { addon: AddOn; canEdit: boolean }) {
         readOnly={!canEdit}
         aria-label="Item"
         autoComplete="off"
-        className={`${CELL} w-full`}
+        className={`${CELL} block w-full`}
       />
       {/* Ticked: crossed off — a line drawn through its words (a field's
           writing can't be: drawn over it, on the same words laid out the
@@ -148,7 +152,10 @@ function AddOnLine({ addon, canEdit }: { addon: AddOn; canEdit: boolean }) {
           className={`${CELL} pointer-events-none absolute inset-0 flex items-center overflow-hidden whitespace-pre text-transparent`}
           style={{ '--strike': 'var(--color-pen)' } as React.CSSProperties}
         >
-          <span className="struck">{addOnText(addon)}</span>
+          {/* (Its line, centred as the field's is; the words on it.) */}
+          <span>
+            <span className="struck">{addOnText(addon)}</span>
+          </span>
         </div>
       )}
       </div>

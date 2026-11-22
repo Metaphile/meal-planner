@@ -134,9 +134,14 @@ function IngredientLine({
   const counted =
     !!have && (needed ? need !== undefined : have.amount !== undefined)
   const line = { name: ing.name, unit: ing.unit }
-  // Ticked (enough on hand): crossed off — by hand, or (typed) struck
-  // through. (Not short: that's still to see to.)
-  const struck = checkable && !!have && !short ? (hand ? 'struck' : 'line-through') : ''
+  // Ticked (enough on hand): crossed off. (Not short: that's still to see
+  // to.) By hand, with one stroke through its name and amount — or, with
+  // no amount, its name; typed, struck through.
+  const crossed = checkable && !!have && !short
+  const amountShown =
+    counted || (needed ? ing.quantity !== undefined || !!ing.unit : !!ing.unit)
+  const stroke = crossed && hand && amountShown
+  const struck = !crossed || stroke ? '' : hand ? 'struck' : 'line-through'
   return (
     <li
       className={`${type.line} flex gap-2.5 border-b border-line-blue pt-1.5 pb-1 last:border-b-0`}
@@ -146,6 +151,10 @@ function IngredientLine({
           state={!have ? 'off' : short ? 'short' : 'on'}
           disabled={!canEdit}
           label={`Have ${ing.name}`}
+          // By hand: its box's middle on its name's small letters' (see
+          // `.struck`) — its target, as tall as the name's line, set on it
+          // and moved down 0.145em of the name.
+          className={hand ? 'mt-[calc(0.145*26px)] self-start' : undefined}
           // Empty: ticked (enough). Short: enough after all (ticked at
           // what's needed now). Ticked: unticked.
           onChange={() =>
@@ -156,7 +165,7 @@ function IngredientLine({
         />
       )}
       <div className="min-w-0 flex-1">
-        <div className="flex items-baseline justify-between gap-3">
+        <div className="relative flex items-baseline justify-between gap-3">
           {/* (Short of what's needed: the name in red too. Too long to fit
               beside its amount: cut off and feathered, swiped to read, like
               a card's title.) */}
@@ -205,6 +214,18 @@ function IngredientLine({
                 )}
               </span>
             </span>
+          )}
+          {stroke && (
+            // (One stroke from its name's start to its amount's end, through
+            // the name's small letters: its line's middle, 15px down, and
+            // 0.145em of the name below that. See `.struck`.)
+            <span
+              aria-hidden
+              className={`pointer-events-none absolute inset-x-0 h-[1.5px] bg-pen text-[26px] ${
+                needed ? '' : 'opacity-50'
+              }`}
+              style={{ top: 'calc(15px + 0.145em - 0.75px)' }}
+            />
           )}
         </div>
         {(ing.sources.length > 0 || !needed) && (
