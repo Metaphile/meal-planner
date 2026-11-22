@@ -1687,13 +1687,16 @@ const RecipeCardBack = forwardRef<
               *
             </span>
           )}
-          {/* (The title's width as written, to put the asterisk past it.) */}
-          <span
-            ref={titleMeasureRef}
-            aria-hidden
-            className="invisible absolute whitespace-pre text-[30px] font-semibold leading-[30px]"
-          >
-            {title}
+          {/* (The title's width as written, to put the asterisk past it —
+              measured in a box of no size, so a long one widens nothing:
+              the card would scroll sideways.) */}
+          <span aria-hidden className="pointer-events-none absolute h-0 w-0 overflow-hidden">
+            <span
+              ref={titleMeasureRef}
+              className="invisible absolute whitespace-pre text-[30px] font-semibold leading-[30px]"
+            >
+              {title}
+            </span>
           </span>
           <input
             ref={titleRef}
@@ -3171,7 +3174,8 @@ export function CardDetail({
           clipped at exactly the same edge in both. */}
       <div
         ref={scrollRef}
-        className="scroll-y no-scrollbar absolute inset-x-0 bottom-0"
+        // (Up and down only: a card in hand never scrolls sideways.)
+        className="scroll-y no-scrollbar absolute inset-x-0 bottom-0 overflow-x-hidden"
         style={{ top: origin.viewTop }}
         onClick={(e) => {
           if (cardRef.current?.contains(e.target as Node)) return
