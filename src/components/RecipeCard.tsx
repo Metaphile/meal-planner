@@ -612,14 +612,46 @@ export function UnitCell({
   const [menu, setMenu] = useState<null | 'above' | 'below'>(null)
   const [typing, setTyping] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
 
-  const toggle = () => {
-    if (menu) return setMenu(null)
-    const r = ref.current!.getBoundingClientRect()
+  /** Which side of its line the menu goes: below, if it fits there — in
+   *  what can be seen (above any keyboard) of the layer it's in, which
+   *  clips it — else whichever side has more room. */
+  const side = (): 'above' | 'below' => {
+    const el = ref.current!
+    const r = el.getBoundingClientRect()
     const vv = window.visualViewport // (the part above the keyboard)
-    const mid = r.top + r.height / 2 - (vv?.offsetTop ?? 0)
-    setMenu(mid > (vv?.height ?? window.innerHeight) / 2 ? 'above' : 'below')
+    let top = vv?.offsetTop ?? 0
+    let bottom = top + (vv?.height ?? window.innerHeight)
+    const layer = el.closest('.scroll-y')?.getBoundingClientRect()
+    if (layer) {
+      top = Math.max(top, layer.top)
+      bottom = Math.min(bottom, layer.bottom)
+    }
+    const need = (menuRef.current?.offsetHeight ?? 220) + 4
+    const below = bottom - r.bottom
+    const above = r.top - top
+    return below >= need || below >= above ? 'below' : 'above'
   }
+  const toggle = () => setMenu(menu ? null : side())
+  // Open, it goes where it fits — once it's drawn (its size known), and
+  // again as what can be seen changes: tapped from a field, the keyboard
+  // going away moves everything (the line ending up near the screen's
+  // foot, say, where the menu below it would be out of sight).
+  useLayoutEffect(() => {
+    if (!menu) return
+    const place = () => setMenu((m) => (m ? side() : m))
+    place()
+    const vv = window.visualViewport
+    vv?.addEventListener('resize', place)
+    vv?.addEventListener('scroll', place)
+    window.addEventListener('resize', place)
+    return () => {
+      vv?.removeEventListener('resize', place)
+      vv?.removeEventListener('scroll', place)
+      window.removeEventListener('resize', place)
+    }
+  }, [!!menu])
 
   // A tap anywhere else only closes the menu. (Scrolling makes no click, so
   // it leaves the menu open.)
@@ -685,6 +717,7 @@ export function UnitCell({
       </button>
       {menu && (
         <div
+          ref={menuRef}
           role="listbox"
           aria-label="Units"
           className={`paper-card absolute right-0 z-20 flex w-[15.5rem] flex-wrap gap-1.5 p-2.5 ${
