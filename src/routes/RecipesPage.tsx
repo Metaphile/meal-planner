@@ -252,19 +252,18 @@ const clamp = (v: number, lo: number, hi: number) =>
 /** Where the drum stops. The first item's rim distance is `first - pos`,
  *  for pos from 0 to `max` (worked out from the first divider: the blank
  *  card, if any, before it):
- *  - A box long enough to turn runs from its first recipe brought well down
- *    (into easy reading) to its last item brought well up. It opens at
- *    `initial`: with its first item near the top — or, for search results,
- *    its first match as near the front as the stops allow.
- *  - A shorter one moves within its slack, between those same two limits,
- *    and opens with its first recipe as near the front line (facing you) as
- *    that allows.
- *  Either way it can always give a little (springing back) past the ends.
- *
- *  Turned as far as it goes (`turn`), the list stands flat at the front
- *  line; past that the drum doesn't turn, but the list slides on up, as far
- *  as there's more of it below the screen (`listH`, its height): `max`.
- *  (Flat, it's carried up just as fast as turning carried it: one motion.) */
+ *  - It turns from its first recipe (or the blank card) brought well down
+ *    into easy reading, to the list standing flat at the front line
+ *    (`turn`). It opens at `initial`: with its first divider near the top —
+ *    or, for search results, its first match as near the front as the
+ *    stops allow.
+ *  - A box too short to need turning (everything in it in view, the list
+ *    at the front — a search with no matches, say) doesn't: it stands with
+ *    the list at the front (`turn` 0).
+ *  Past `turn`, the drum doesn't turn, but the list slides on up, as far as
+ *  there's more of it below the screen (`listH`, its height): `max`.
+ *  (Flat, it's carried up just as fast as turning carried it: one motion.)
+ *  Either way it can always give a little (springing back) past the ends. */
 function boundsOf(
   w: Wheel,
   items: Item[],
@@ -273,55 +272,45 @@ function boundsOf(
   listH: number,
 ) {
   if (items.length === 0) return { first: 0, max: 0, initial: 0, turn: 0 }
-  const b = turning()
-  const last = items[items.length - 1]
-  const below =
-    last.kind === 'list'
-      ? Math.max(0, w.front - rodOffset(last) + listH + LIST_ROOM - stageH)
-      : 0
-  return { ...b, turn: b.max, max: b.max + below }
-
-  function turning() {
   // (From the first divider; the first item's is so much less.)
   const a = Math.max(0, items.findIndex((it) => it.kind === 'divider'))
   const rod0 = items[a].rod
   const ahead = rod0 - items[0].rod // the blank card → the first divider
-  const b = bounds(rod0, ahead)
-  return { ...b, first: b.first - ahead }
-
-  function bounds(rod0: number, ahead: number) {
-  const span = items[items.length - 1].rod - rod0
+  const last = items[items.length - 1]
+  const span = last.rod - rod0
   const rim = (phi: number) => (phi - PHI_TOP) * w.R
   const home = rim(START_PHI) // the first divider, as the box opens
   const k = items.findIndex((it) => it.kind === 'card')
   const lead = k >= 0 ? items[k].rod - rod0 : 0 // first divider → first recipe
   // The first divider's rim distance (it grows down the screen) with the
   // box turned all the way down (to the start: the first recipe, or the
-  // blank card, in reach) and all the way up (to the end).
+  // blank card, in reach) and all the way up (to the end: the list at the
+  // front).
   const down = Math.max(
     home,
     rim(REACH_FIRST_CARD_PHI) - lead,
     ahead ? rim(REACH_FIRST_CARD_PHI) + ahead : 0,
   )
   const up = rim(REACH_LAST_PHI) - span
-  // The first item's rim distance that puts the first recipe at the front.
+  // (Past the turning, how far there is to slide down the list.)
+  const below =
+    last.kind === 'list'
+      ? Math.max(0, w.front - rodOffset(last) + listH + LIST_ROOM - stageH)
+      : 0
+  if (down <= up)
+    // Too short to turn: as it is at the end.
+    return { first: up - ahead, turn: 0, max: below, initial: 0 }
+  // The first divider's rim distance that puts the first recipe at the front.
   const faceOn = k >= 0 ? w.toFront - lead : home
-  if (down >= up) {
-    // Search results open with the first match as near the front as the
-    // stops allow; the whole box opens with its first item near the top.
-    const opening = faceFirst ? clamp(faceOn, up, down) : home
-    return {
-      first: down,
-      max: down - up,
-      initial: clamp(down - opening, 0, down - up),
-    }
-  }
+  // Search results open with the first match as near the front as the stops
+  // allow; the whole box opens with its first divider near the top.
+  const opening = faceFirst ? clamp(faceOn, up, down) : home
+  const turn = down - up
   return {
-    first: up,
-    max: up - down,
-    initial: up - clamp(faceOn, down, up),
-  }
-  }
+    first: down - ahead,
+    turn,
+    max: turn + below,
+    initial: clamp(down - opening, 0, turn),
   }
 }
 
@@ -667,6 +656,16 @@ export default function RecipesPage() {
   const wasNarrowed = useRef(narrowed)
   // Where the drum stopped turning (the list at the front), as last placed.
   const turnWas = useRef<number | null>(null)
+  // The last change of what the box is narrowed to: from what (`key`), and
+  // where it was turned to before and after. Changed straight back, the
+  // box not moved meanwhile, it goes back just where it was.
+  const lastChange = useRef<{ key: string; from: number; to: number } | null>(
+    null,
+  )
+  // Where the list was put (by scrolling — from where the drum stops
+  // turning), while the box is anchored to it: a box too short to hold it
+  // there puts it as near as it can, and one long enough again puts it back.
+  const listWant = useRef<number | null>(null)
   useLayoutEffect(() => {
     const drum = drumRef.current
     // (The list's length too: how far the box was scrolled down it.)
@@ -674,21 +673,52 @@ export default function RecipesPage() {
     const key = `${q}|${wantedOnly}|${favoritesOnly}|${measured}`
     const within = (p: number) => Math.min(Math.max(0, p), bounds.max * SCALE)
     if (positionedFor.current !== key) {
+      const keyWas = positionedFor.current
       positionedFor.current = key
       if (narrowed && !wasNarrowed.current && drum)
         beforeSearch.current = drum.get()
-      // On the shopping list (it at the front, or scrolled down it): it
-      // stays just where it was, whatever the box behind it is narrowed to.
-      // (Measured from where the drum stops turning: that moves, as the box
-      // gets longer or shorter.)
+      // Changed straight back (Wanted only, ticked and unticked again), the
+      // box not moved since: back just where it was — wherever that was.
+      const back = lastChange.current
+      // (Not moved since the last change: just as that left it.)
+      const still = !!drum && back !== null && Math.abs(drum.get() - back.to) < 1
+      const undo =
+        still &&
+        placed.current &&
+        returnTo.current === undefined &&
+        back!.key === key
+      // The shopping list in view (any of it — coming up the drum, at the
+      // front, or scrolled down): the box is anchored to it. It stays just
+      // where it was, whatever the box behind it is narrowed to — measured
+      // from where the drum stops turning (the list at the front), which
+      // moves as the box gets longer or shorter. (Only so far as the box
+      // allows: too short to hold it there, as near as it can.)
       const at = drum?.get() ?? 0
+      const k = items.length - 1
+      const listEl = items[k]?.kind === 'list' ? cardEl(k) : undefined
+      const layer = scrollRef.current
+      // (As last drawn — not yet redrawn for the new box. Its wrapper's
+      // hidden when it's off the drum's visible arc.)
+      const inView =
+        !!listEl &&
+        !!layer &&
+        listEl.parentElement?.style.visibility !== 'hidden' &&
+        listEl.getBoundingClientRect().top < layer.getBoundingClientRect().bottom
       const onList =
         placed.current &&
         returnTo.current === undefined &&
         turnWas.current !== null &&
-        at >= turnWas.current - 1
-      if (onList) {
-        drum?.set(within(bounds.turn * SCALE + Math.max(0, at - turnWas.current!)))
+        inView
+      if (undo) {
+        drum?.set(within(back!.from))
+        if (!narrowed) beforeSearch.current = null
+      } else if (onList) {
+        const want =
+          still && listWant.current !== null
+            ? listWant.current
+            : at - turnWas.current!
+        listWant.current = want
+        drum?.set(within(bounds.turn * SCALE + want))
         if (!narrowed) beforeSearch.current = null
       } else if (returnTo.current !== undefined && measured) {
         drum?.set(within(returnTo.current))
@@ -699,6 +729,11 @@ export default function RecipesPage() {
           beforeSearch.current = null
         } else drum?.set(bounds.initial * SCALE)
       }
+      if (!onList && !undo) listWant.current = null
+      lastChange.current =
+        placed.current && keyWas !== null && drum
+          ? { key: keyWas, from: at, to: drum.get() }
+          : null
       if (measured && drum) placed.current = true
     }
     wasNarrowed.current = narrowed
