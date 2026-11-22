@@ -20,7 +20,7 @@ const CELL =
  * one on; it's added once you press Enter or move off the line (with
  * something written on it).
  *
- * Each can be ticked once it's got. Ticked, it's done with: Reconcile (at
+ * Each can be ticked once it's got. Ticked, it's done with: Subtract selected (at
  * the foot of the list it's on) takes it off. One with nothing left on it
  * goes — however it got that way — once it's not being written in.
  */

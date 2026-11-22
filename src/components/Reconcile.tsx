@@ -5,8 +5,8 @@ import { useStore } from '../store/store'
 const round = (n: number) => Math.round(n * 100) / 100
 
 /**
- * Reconcile: square the list with what's been used (cooked, the shopping
- * put away) — everything ticked on it, at once:
+ * Subtract selected: square the list with what's been used (cooked, the
+ * shopping put away) — everything ticked on it, at once:
  * - a ticked add-on is taken off;
  * - a ticked line with no amount ("salt") is unticked;
  * - a ticked line with an amount: what's needed comes off what's on hand
@@ -36,7 +36,7 @@ export function ReconcileButton({
         onClick={() => reconcile(ingredients)}
         className="rounded-full border border-kraft-edge bg-brand px-4 py-1.5 text-sm font-semibold leading-5 text-on-brand transition active:scale-95"
       >
-        Reconcile
+        Subtract selected
       </button>
     </div>
   )
