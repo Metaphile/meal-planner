@@ -1111,6 +1111,9 @@ function IngredientTable({
     return [...COMMON_UNITS, ...[...extra].sort()]
   }, [recipes, groups])
   const set = (gs: Group[]) => onChange(tidyGroups(gs))
+  // "Add section…" being written in (nothing yet): shown as a section's
+  // title already.
+  const [addingSection, setAddingSection] = useState(false)
   // (A title just written in "Add section…", rubbed out before anything's
   // written under it: back to "Add section…" — undone, not left an empty
   // section.)
@@ -1122,8 +1125,11 @@ function IngredientTable({
       g === groups.length - 1 &&
       x.title !== '' &&
       x.rows.every(blank)
-    )
+    ) {
+      // (Still being written in: shown with its column heads, as before.)
+      setAddingSection(true)
       return set(groups.slice(0, -1))
+    }
     set(groups.map((y, i) => (i === g ? { ...y, title } : y)))
   }
   const update = (g: number, r: number, patch: Partial<Row>) =>
@@ -1211,10 +1217,12 @@ function IngredientTable({
     onTitle: (t: string) => void,
     placeholder: string,
     readOnly = false,
+    focusProps?: { onFocus: () => void; onBlur: () => void },
   ) => (
     <input
       value={value}
       onChange={(e) => onTitle(e.target.value)}
+      {...focusProps}
       // Return: on to the section's first line (its "Add ingredient…", if
       // it has none), to write it.
       onKeyDown={(e) => {
@@ -1244,20 +1252,46 @@ function IngredientTable({
           // section's title row — a cell where the grip goes, then the
           // field — in the next section's place: see titleField.)
           <div key={`t${g}`} role="rowgroup" className="relative mt-3">
+            {/* (Tapped into, before anything's written: already laid out as
+                a section's title — its column heads beside it — as it will
+                be once it's one.) */}
             <div
               role="row"
               data-new-section={g}
               data-new-label={newLabel ?? undefined}
-              className="grid grid-cols-[1rem_minmax(0,1fr)] items-end border-b border-line-blue"
+              className={`${
+                addingSection ? cols : 'grid grid-cols-[1rem_minmax(0,1fr)]'
+              } items-end border-b border-line-blue`}
             >
               <span />
               <div className="grid">
                 {titleField(
                   '',
-                  (t) => set([...groups, { title: t, rows: [] }]),
+                  (t) => {
+                    // (A section now, the field its title: a new "Add
+                    // section…" below, not being written in.)
+                    setAddingSection(false)
+                    set([...groups, { title: t, rows: [] }])
+                  },
                   'Add section…',
+                  false,
+                  {
+                    onFocus: () => setAddingSection(true),
+                    onBlur: () => setAddingSection(false),
+                  },
                 )}
               </div>
+              {addingSection && (
+                <>
+                  <span role="columnheader" className={`${headClass} pb-[6px] pr-1 text-right`}>
+                    Qty
+                  </span>
+                  <span role="columnheader" className={`${headClass} pb-[6px] pl-1.5`}>
+                    Unit
+                  </span>
+                  <span />
+                </>
+              )}
             </div>
           </div>
         ) : (
