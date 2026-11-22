@@ -18,6 +18,8 @@ const CELL =
   // padding leaves: padded below, it's 2px high.)
   'h-[30px] min-w-0 bg-transparent pt-0 pb-[4px] leading-[24px] focus:bg-kraft/15 focus:outline-none'
 const RULE = 'border-l border-line-blue'
+/** A quantity field fitted to its figures, in its cell. */
+const FITTED = 'h-full min-w-[4px] bg-transparent p-0 text-left focus:outline-none'
 
 /**
  * Add-ons: things wanted that aren't from a recipe, jotted down by hand on
@@ -127,7 +129,10 @@ function AddOnLine({
         onChange={(quantity) => set({ quantity })}
         placeholder=""
         readOnly={fixed}
-        className={`${CELL} ${RULE} pr-1 text-right`}
+        // (Fitted to its figures, so the last one's stroke isn't cut off —
+        // see QuantityInput.)
+        fitClassName={`${CELL} ${RULE} flex justify-end pr-px focus-within:bg-kraft/15`}
+        className={FITTED}
       />
       <UnitCell
         value={addon.unit}
@@ -200,7 +205,8 @@ function SpareLine({ units }: { units: string[] }) {
         value={draft.quantity}
         onChange={(quantity) => setDraft((d) => ({ ...d, quantity }))}
         placeholder="Qty"
-        className={`${CELL} ${RULE} pr-1 text-right placeholder:text-pencil`}
+        fitClassName={`${CELL} ${RULE} flex justify-end pr-px focus-within:bg-kraft/15`}
+        className={`${FITTED} placeholder:text-pencil`}
       />
       <UnitCell
         value={draft.unit}

@@ -1398,12 +1398,13 @@ function IngredientTable({
                   enterKeyHint="next"
                   placeholder=""
                   readOnly={struck}
-                  // (Set against the right, the last figure's stroke reaches
-                  // past its own width — the 7's top, say — and the field
-                  // cuts it off at its edge: a sliver of space after each
-                  // figure leaves room for it, and the padding's that much
-                  // less, so the figures end where they did.)
-                  className={`${cell} ${rule} pr-[2px] text-right tracking-[0.1em]`}
+                  // (Fitted to its figures, set against the cell's right: so
+                  // the last one's stroke isn't cut off — see QuantityInput.
+                  // The cell's padding less the room past the figures, so
+                  // they end where they did. Tinted, being written in, as a
+                  // field is: the whole cell.)
+                  fitClassName={`${cell} ${rule} flex justify-end pr-px focus-within:bg-kraft/15`}
+                  className="h-full min-w-[4px] bg-transparent p-0 text-left focus:outline-none"
                 />
                 <UnitCell
                   value={row.unit}
