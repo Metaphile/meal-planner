@@ -83,10 +83,13 @@ const HEADING = 'text-[1.1em] font-semibold text-[#8a8170]'
 const PEEK_LINES = 16
 
 function CardBody({ recipe, peek }: { recipe: Recipe; peek: boolean }) {
-  // Its sections, every one — empty, untitled ones too (a heading with
-  // nothing under it). Each headed as sectionLabels says: its title; else,
-  // among others, "Section n" by its place; else (the only one) none.
-  const sections = sectionsOf(recipe)
+  // Its sections — a titled one empty or not (a heading with nothing under
+  // it), but not one with no heading and nothing in it: there's nothing to
+  // show (older recipes may still have one). Each headed by its title, if
+  // it has one (see sectionLabels).
+  const sections = sectionsOf(recipe).filter(
+    (s) => s.title.trim() || s.ingredients.length,
+  )
   const heads = sectionLabels(sections.map((s) => s.title))
   // (Peeking: only as many lines as can show, headings included.)
   let room = peek ? PEEK_LINES : Infinity
@@ -806,9 +809,6 @@ export type Group = {
    *  each line's own mark (kept: brought back, the section's lines are as
    *  they were). */
   struck?: boolean
-  /** Made in this edit (not yet saved): untitled, with nothing in it kept,
-   *  it's not saved either — see sectionsFromGroups. */
-  fresh?: boolean
 }
 
 /** The groups as they should stand after a change: each with its spare
@@ -823,9 +823,9 @@ const tidyGroups = (gs: Group[]) =>
  * is kept). The first section kept is the recipe's first (its `ingredients`
  * and `ingredientsTitle`) — whichever it is: cross out the first, and the
  * next takes its place. (Crossed out, every one: a first section with
- * nothing in it, as every recipe has.) Every other section kept stays,
- * titled or not, empty or not: sections stand on their own — except one
- * made in this edit, untitled, with nothing in it kept.
+ * nothing in it, as every recipe has.) Every other section stays — but
+ * an untitled one with nothing in it kept goes: with no heading and no
+ * lines, there's nothing to it.
  */
 export function sectionsFromGroups(
   groups: Group[],
@@ -835,11 +835,10 @@ export function sectionsFromGroups(
       .filter((i) => !i.struck)
       .map(({ struck: _, ...i }) => ({ ...i, name: i.name.trim() }))
       .filter(hasAnything)
-  // (A section made in this edit, untitled, nothing in it kept — its only
-  // line crossed out, say: there's nothing to save. A section saved
-  // before stays, empty or not.)
+  // (A section with no heading and nothing in it kept — its only line
+  // crossed out, say — is nothing: it goes. With a heading, it stays.)
   const [first, ...rest] = groups.filter(
-    (g) => !g.struck && !(g.fresh && !g.title.trim() && !lines(g.rows).length),
+    (g) => !g.struck && (!!g.title.trim() || lines(g.rows).length > 0),
   )
   const sections = rest.map((g) => ({
     title: g.title.trim(),
@@ -1239,10 +1238,7 @@ function IngredientTable({
     // written in.)
     if (g === groups.length) {
       setAddingSection(false)
-      return set([
-        ...groups,
-        { title: '', rows: [{ name: '', ...patch }], fresh: true },
-      ])
+      return set([...groups, { title: '', rows: [{ name: '', ...patch }] }])
     }
     const next = groups.map((x, i) =>
       i === g
@@ -1277,7 +1273,7 @@ function IngredientTable({
     const gs = groups.map((x) => ({ ...x, rows: [...x.rows] }))
     const [row] = gs[from.g].rows.splice(from.i, 1)
     // (Onto "Add section…": a new section, untitled.)
-    if (to.g >= gs.length) gs.push({ title: '', rows: [], fresh: true })
+    if (to.g >= gs.length) gs.push({ title: '', rows: [] })
     const at = to.g === from.g && to.i > from.i ? to.i - 1 : to.i
     gs[to.g].rows.splice(at, 0, row)
     set(gs)
@@ -1506,7 +1502,7 @@ function IngredientTable({
                     // (A section now, the field its title: a new "Add
                     // section…" below, not being written in.)
                     setAddingSection(false)
-                    set([...groups, { title: t, rows: [], fresh: true }])
+                    set([...groups, { title: t, rows: [] }])
                   },
                   // (Being written in: what's written here is its heading.)
                   addingSection ? HEADING_HINT : 'Add section…',

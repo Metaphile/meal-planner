@@ -66,36 +66,34 @@ describe('sections as written on the back of a card', () => {
     })
   })
 
-  it('crossed-out sections and lines go; empty, untitled sections stay', () => {
+  it('crossed-out sections and lines go, and empty untitled sections', () => {
     expect(
       sectionsFromGroups([
+        g('', []),
         g('', [{ name: 'Apples' }, { name: 'Pears', struck: true }]),
         g('Gone', [{ name: 'Oats' }], true),
         g('', []),
+        g('Glaze', []),
       ]),
     ).toEqual({
       ingredients: [{ name: 'Apples' }],
       ingredientsTitle: undefined,
-      sections: [{ title: '', ingredients: [] }],
+      sections: [{ title: 'Glaze', ingredients: [] }],
     })
   })
 
-  it('a section made in this edit, untitled, its only line crossed out: not saved', () => {
-    const fresh = { ...g('', [{ name: 'Basil', struck: true }, { name: '' }]), fresh: true }
-    expect(sectionsFromGroups([g('', [{ name: 'Bread' }]), fresh])).toEqual({
+  it('an untitled section with nothing in it kept goes — its only line crossed out, say', () => {
+    const basil = g('', [{ name: 'Basil', struck: true }, { name: '' }])
+    expect(sectionsFromGroups([g('', [{ name: 'Bread' }]), basil])).toEqual({
       ingredients: [{ name: 'Bread' }],
       ingredientsTitle: undefined,
       sections: undefined,
     })
-    // (Titled, it's kept — empty or not. Saved before, it's kept too.)
+    // (With a heading, it stays, empty or not.)
     expect(
-      sectionsFromGroups([g('', [{ name: 'Bread' }]), { ...fresh, title: 'Herbs' }])
+      sectionsFromGroups([g('', [{ name: 'Bread' }]), { ...basil, title: 'Herbs' }])
         .sections,
     ).toEqual([{ title: 'Herbs', ingredients: [] }])
-    expect(
-      sectionsFromGroups([g('', [{ name: 'Bread' }]), { ...fresh, fresh: undefined }])
-        .sections,
-    ).toEqual([{ title: '', ingredients: [] }])
   })
 
   it('every section crossed out: one first section, with nothing in it', () => {
