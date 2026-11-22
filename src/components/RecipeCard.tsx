@@ -1578,6 +1578,14 @@ function IngredientTable({
     // so a stroke through them meets those. (A field centres its writing in
     // what its padding leaves: so, padded below, the writing's 2px high.)
     'h-[30px] min-w-0 bg-transparent pt-0 pb-[4px] leading-[24px] focus:bg-kraft/15 focus:outline-none'
+  // The amount and unit, set level with the name — the same height, and the
+  // middle of what its padding leaves where the name's is (13px down) — but
+  // with no room left over: what's left is just its line (24px), so the
+  // writing's put there however a browser places writing in a field, or in
+  // a button. (They differ: as built like the name, level in Chrome, they
+  // weren't in Safari.)
+  const exact =
+    'h-[30px] bg-transparent pt-px pb-[5px] leading-[24px] focus:outline-none'
   const rule = 'border-l border-line-blue'
   // A section's title, written in (a heading, across the whole line). Its
   // key is its place among the sections — and "Add section…" takes the next
@@ -1693,15 +1701,15 @@ function IngredientTable({
             // The cell's padding less the room past the figures, so
             // they end where they did. Tinted, being written in, as a
             // field is: the whole cell.)
-            fitClassName={`${cell} ${rule} flex justify-end pr-px focus-within:bg-kraft/15`}
-            className="h-full min-w-[4px] bg-transparent p-0 text-left focus:outline-none"
+            fitClassName={`h-[30px] min-w-0 ${rule} flex justify-end pr-px focus-within:bg-kraft/15`}
+            className={`${exact} block min-w-[4px] px-0 text-left`}
           />
           <UnitCell
             value={row.unit}
             onChange={(unit) => update(g, i, { unit })}
             units={units}
             disabled={struck}
-            className={`${cell} ${rule} pl-1.5`}
+            className={`${exact} ${rule} min-w-0 pl-1.5 focus:bg-kraft/15`}
           />
           {/* (Its mark: none on the spare line, nor in a section crossed
               out — nor on a line emptied: there's nothing to cross out, and
