@@ -1364,7 +1364,12 @@ function IngredientTable({
                   enterKeyHint="next"
                   placeholder=""
                   readOnly={struck}
-                  className={`${cell} ${rule} pr-1 text-right`}
+                  // (Set against the right, the last figure's stroke reaches
+                  // past its own width — the 7's top, say — and the field
+                  // cuts it off at its edge: a sliver of space after each
+                  // figure leaves room for it, and the padding's that much
+                  // less, so the figures end where they did.)
+                  className={`${cell} ${rule} pr-[2px] text-right tracking-[0.1em]`}
                 />
                 <UnitCell
                   value={row.unit}
