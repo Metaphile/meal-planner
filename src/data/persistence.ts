@@ -9,6 +9,7 @@ import type {
   Want,
 } from './types'
 import { seedData } from './seed'
+import { tidyRecipe } from './types'
 import { pb } from '../auth/pb'
 
 /**
@@ -31,7 +32,16 @@ export async function hydrate(): Promise<Dataset> {
       db.favorites.toArray(),
       db.people.toArray(),
     ])
-  return { recipes, plan, wants, addons, haves, favorites, people }
+  // (Read as this version writes them: see tidyRecipe.)
+  return {
+    recipes: recipes.map(tidyRecipe),
+    plan,
+    wants,
+    addons,
+    haves,
+    favorites,
+    people,
+  }
 }
 
 async function cacheReplaceAll(data: Dataset): Promise<void> {
@@ -80,7 +90,7 @@ async function remotePull(): Promise<Dataset> {
   idMap.clear()
   const recipes = recs.map((r) => {
     idMap.set(mapKey('recipes', r.key), r.id)
-    return r.data as Recipe
+    return tidyRecipe(r.data as Recipe)
   })
   const plan = plans.map((p) => {
     idMap.set(mapKey('plan', p.key), p.id)

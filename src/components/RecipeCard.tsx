@@ -572,6 +572,11 @@ export const COMMON_UNITS = [
   'pkg',
 ]
 
+/** Close any unit menu that's open (e.g. its card being put away). */
+export const CLOSE_PICKERS = 'meals:close-pickers'
+export const closePickers = () =>
+  document.dispatchEvent(new Event(CLOSE_PICKERS))
+
 /**
  * An ingredient's unit, picked rather than typed: tapping it opens a small
  * paper menu of units (no keyboard, so nothing for the phone to autofill).
@@ -623,11 +628,16 @@ export function UnitCell({
       e.stopPropagation()
       setMenu(null)
     }
+    // (And closed, the card it's on being put away — before "Discard
+    // changes?" asks: open still, the first tap there would only close it.)
+    const close = () => setMenu(null)
     document.addEventListener('mousedown', onMouseDown, true)
     document.addEventListener('click', onClick, true)
+    document.addEventListener(CLOSE_PICKERS, close)
     return () => {
       document.removeEventListener('mousedown', onMouseDown, true)
       document.removeEventListener('click', onClick, true)
+      document.removeEventListener(CLOSE_PICKERS, close)
     }
   }, [menu])
 
@@ -658,7 +668,9 @@ export function UnitCell({
         aria-haspopup="listbox"
         aria-expanded={!!menu}
         aria-label={value ? `Unit: ${value}` : 'Choose a unit'}
-        className={`${className} block w-full truncate text-left`}
+        // (Its menu open: tinted, as a field being written in is — the
+        // line it's choosing for.)
+        className={`${className} block w-full truncate text-left aria-expanded:bg-kraft/15`}
       >
         {value ?? (placeholder && <span className="text-pencil">{placeholder}</span>)}
       </button>
@@ -2812,6 +2824,8 @@ export function CardDetail({
         : flipRefFn.current(false)
       : putAwayRef.current()
   const leave = (k: Discarding) => {
+    // (Any unit menu open on it closes first: it's going.)
+    closePickers()
     if (changed.current) setDiscarding(k)
     else goOn(k)
   }

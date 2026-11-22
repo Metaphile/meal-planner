@@ -43,6 +43,33 @@ export const sectionLabels = (titles: string[]): (string | null)[] =>
   )
 
 /** A recipe's sections, the first included (titles as given: maybe none). */
+/** Units since renamed: whatever's written with the old name (by an
+ *  older version of the app) is read as the new one. */
+const RENAMED_UNITS: Record<string, string> = {
+  'heaping tbsp': 'tbsp heaping',
+}
+const tidyLines = (lines: Ingredient[]) =>
+  lines.map((i) =>
+    i.unit && RENAMED_UNITS[i.unit] ? { ...i, unit: RENAMED_UNITS[i.unit] } : i,
+  )
+/** A recipe as this version of the app writes it (renamed units read as
+ *  their names now) — for every recipe read in, from the device or the
+ *  server. */
+export function tidyRecipe(r: Recipe): Recipe {
+  if (
+    !allIngredients(r).some((i) => i.unit && RENAMED_UNITS[i.unit])
+  )
+    return r
+  return {
+    ...r,
+    ingredients: tidyLines(r.ingredients),
+    sections: r.sections?.map((s) => ({
+      ...s,
+      ingredients: tidyLines(s.ingredients),
+    })),
+  }
+}
+
 export const sectionsOf = (r: Recipe): IngredientSection[] => [
   { title: r.ingredientsTitle ?? '', ingredients: r.ingredients },
   ...(r.sections ?? []),
