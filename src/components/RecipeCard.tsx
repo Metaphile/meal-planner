@@ -360,13 +360,14 @@ function FavoriteStar({ recipeId }: { recipeId: string }) {
 /** Where others' stars sit, under yours: fanned out from it — the first
  *  other's to the left, tipped left, the second's mirroring it on the right
  *  — out far enough, and turned enough, to read as stars of their own (not
- *  a shadow of yours), yet partly under it. Smaller, just their fill, each
- *  fainter than the one before (the second barely there). Fixed: nothing
+ *  a shadow of yours), yet partly under it. Just their fill, each smaller
+ *  and fainter than the one before (the second small, barely there; set a
+ *  touch lower, its foot level with the first's). Fixed: nothing
  *  per recipe or person, so a stack of so many always looks the same — and
  *  the two, mirrored, look meant. */
 const STACKED = [
-  { x: -7.5, y: 2, turn: -16, scale: 0.8, opacity: 0.75 },
-  { x: 7.5, y: 2, turn: 16, scale: 0.8, opacity: 0.3 },
+  { x: -7.5, y: 2, turn: -16, scale: 0.82, opacity: 0.75 },
+  { x: 7.5, y: 2.5, turn: 16, scale: 0.66, opacity: 0.3 },
 ]
 
 /**
