@@ -821,7 +821,11 @@ export default function RecipesPage() {
     const card = cardEl(k)
     for (const el of [card, wrap, card?.querySelector('.rolodex-dim')])
       el?.getAnimations().forEach((a) => a.cancel())
-    if (card) card.style.opacity = ''
+    if (card) {
+      card.style.opacity = ''
+      card.style.maskImage = ''
+      card.style.removeProperty('-webkit-mask-image')
+    }
     if (wrap) {
       wrap.style.opacity = ''
       wrap.style.clipPath = SLOT_CLIP
@@ -836,6 +840,8 @@ export default function RecipesPage() {
     const card = cardEl(k)
     if (!wrap || !card) return
     card.style.opacity = ''
+    card.style.maskImage = ''
+    card.style.removeProperty('-webkit-mask-image')
     wrap.style.opacity = ''
     card.animate([{ opacity: 0 }, { opacity: 0 }], {
       duration: 1,
@@ -845,6 +851,8 @@ export default function RecipesPage() {
     freeSlot(wrap)
     uncoverBehind(k)
   }
+  /** Item `k`'s top, laid out flat along the rim. */
+  const topOf = (k: number) => items[k].rod - rodOffset(items[k])
   /** The card behind item `k` shown whole (under it, while it's
    *  see-through); returns it, to be trimmed again after. */
   const seeBehind = (k: number) => {
@@ -897,16 +905,11 @@ export default function RecipesPage() {
         uncovered.current = null
       }
       backInSlot(i)
-      // (They fade by their places on the wheel, not the cards themselves:
-      // a place is a layer of its own already — it's turned in 3D — so
-      // fading it is the compositor's alone; and it's what trims its card
-      // at the rod. A card given a layer of its own to fade on, inside its
-      // trimmed place, could show past the trim on iOS — its foot popping
-      // into view.)
-      const wi = itemEls.current[i]
-      if (wi) wi.style.opacity = '0'
-      // (Both see-through as they fade: what's behind each shows.)
-      const seeThrough = [seeBehind(i), seeBehind(j)].filter(
+      // (The one in front see-through as it fades: what's behind it shows —
+      // all of it, below where it's trimmed too, as it will with that one
+      // gone. Not behind the one behind: it's whole under the one in front,
+      // and only its strip fades — what's behind that is its own.)
+      const seeThrough = [seeBehind(Math.max(i, j))].filter(
         (el): el is HTMLDivElement => !!el,
       )
       repaintAll()
@@ -919,10 +922,35 @@ export default function RecipesPage() {
     // (Moved, not set: once a frame at most, and no layout forced — see
     // DrumScroll.move. Set at the end, in undoSwipe or stepCard.)
     drum!.move(s.from + (s.to - s.from) * p)
-    const wi = itemEls.current[s.i]
-    const wj = itemEls.current[s.j]
-    if (wi) wi.style.opacity = String(p)
-    if (wj) wj.style.opacity = String(1 - p)
+    // The two cross-fade so that, at every point, it's the one picture
+    // blended into the other. The one in front fades as a whole (by its
+    // place on the wheel: a layer already, so that's the compositor's
+    // alone). The one behind fades only where it shows past the one in
+    // front — its strip at the top; under the one in front it stays whole.
+    // (Both see-through there, what's behind them both would show through
+    // too, and the one behind would come in only at the very end — its
+    // foot popping into view.)
+    const rear = Math.min(s.i, s.j)
+    const front = Math.max(s.i, s.j)
+    const wf = itemEls.current[front]
+    if (wf) wf.style.opacity = String(front === s.i ? p : 1 - p)
+    const rc = cardEl(rear)
+    if (rc) {
+      const a = rear === s.i ? p : 1 - p
+      // (Where the next in front starts, down its face — as it falls on the
+      // screen: on the wheel, turned and seen in perspective, the gap
+      // between them isn't as laid out flat. Softened a little.)
+      const next = itemEls.current[rear + 1]
+      const r = rc.getBoundingClientRect()
+      const edge =
+        next && r.height > 0
+          ? ((next.getBoundingClientRect().top - r.top) / r.height) *
+            rc.offsetHeight
+          : topOf(rear + 1) - topOf(rear)
+      const mask = `linear-gradient(to bottom, rgb(0 0 0 / ${a}) ${edge - 6}px, #000 ${edge + 6}px)`
+      rc.style.maskImage = mask
+      rc.style.setProperty('-webkit-mask-image', mask)
+    }
   }
   /** Swiped back: the box as it was (the card in hand out of its slot
    *  again, the other in its own). */
