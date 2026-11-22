@@ -7,6 +7,7 @@ import {
   useState,
   type HTMLAttributes,
   type KeyboardEvent as ReactKeyboardEvent,
+  type MouseEvent as ReactMouseEvent,
   type MutableRefObject,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
@@ -1403,6 +1404,8 @@ function IngredientTable({
 if (typeof document !== 'undefined') void document.fonts?.load('22px Caveat')
 
 const NOTES_MIN_LINES = 6
+/** Ruled lines kept empty below the notes' last, to write further down on. */
+const NOTES_SPARE = 2
 const NOTES_DROP = 3
 
 /** What a recipe says (its words, nothing else). */
@@ -1433,6 +1436,16 @@ const sameText = (a: RecipeText, b: RecipeText) => {
       r.tags.map((t) => t.trim()).filter(Boolean),
     ])
   return key(a) === key(b)
+}
+
+/** How many ruled lines the writing in `el` (the notes) takes up, wrapped
+ *  lines and all. (Measured at no height: just the writing's.) */
+function notesLines(el: HTMLTextAreaElement) {
+  const h = el.style.height
+  el.style.height = '0px'
+  const lines = Math.max(1, Math.round((el.scrollHeight - NOTES_DROP) / 22))
+  el.style.height = h
+  return lines
 }
 
 /**
@@ -1522,12 +1535,30 @@ const RecipeCardBack = forwardRef<
   useLayoutEffect(() => {
     const el = notesRef.current
     if (!el) return
-    el.style.height = '0px'
-    const lines = Math.max(
-      NOTES_MIN_LINES,
-      Math.ceil((el.scrollHeight - NOTES_DROP) / 22),
+    el.style.height = `${
+      Math.max(NOTES_MIN_LINES, notesLines(el) + NOTES_SPARE) * 22 + NOTES_DROP
+    }px`
+  }, [notes])
+  // Tapped on an empty line below what's written: the writing goes on from
+  // that line, as on paper — the lines between left blank (no need to type
+  // them in first). (Blank lines left at the end go when it's saved.)
+  const caretTo = useRef<number | null>(null)
+  const onNotesClick = (e: ReactMouseEvent<HTMLTextAreaElement>) => {
+    const el = e.currentTarget
+    const line = Math.floor(
+      (e.clientY - el.getBoundingClientRect().top - NOTES_DROP) / 22,
     )
-    el.style.height = `${lines * 22 + NOTES_DROP}px`
+    const last = notesLines(el) - 1 // the line the writing ends on
+    if (line <= last) return
+    const value = el.value + '\n'.repeat(line - last)
+    caretTo.current = value.length
+    setNotes(value)
+  }
+  useLayoutEffect(() => {
+    const el = notesRef.current
+    if (!el || caretTo.current === null) return
+    el.setSelectionRange(caretTo.current, caretTo.current)
+    caretTo.current = null
   }, [notes])
 
   // The recipe as drafted (crossed-out and empty lines left off; and
@@ -1679,6 +1710,7 @@ const RecipeCardBack = forwardRef<
               ref={notesRef}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
+              onClick={onNotesClick}
               rows={NOTES_MIN_LINES}
               placeholder="Prep tips, substitutions…"
               autoComplete="off"
