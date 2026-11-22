@@ -1,6 +1,7 @@
 import {
   forwardRef,
   useEffect,
+  useId,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -305,7 +306,7 @@ function FavoriteStar({ recipeId }: { recipeId: string }) {
   // Others who've favorited it, under yours (two at most: enough to say a
   // recipe's liked; who, the foot of the card in hand says).
   const othersAll = useOthersFavorites(recipeId, user?.id)
-  const others = Math.min(STACKED.length, othersAll)
+  const others = Math.min(RINGS.length, othersAll)
   const setFavorite = useStore((s) => s.setFavorite)
   const starRef = useRef<HTMLSpanElement>(null)
   return (
@@ -332,23 +333,9 @@ function FavoriteStar({ recipeId }: { recipeId: string }) {
       style={{ width: STAR_ROOM + 16 }}
     >
       <span className="relative block">
-        {/* Others' stars, under yours: filled (they're favorites), faded
-            (not yours to change). See STACKED. */}
-        {STACKED.slice(0, others)
-          .map((s, i) => (
-            <span
-              key={i}
-              aria-hidden
-              className="pointer-events-none absolute inset-0 block"
-              style={{
-                transform: `translate(${s.x}px, ${s.y}px) rotate(${s.turn}deg) scale(${s.scale})`,
-                opacity: s.opacity,
-              }}
-            >
-              <StarIcon on outlined={false} size={22} />
-            </span>
-          ))
-          .reverse()}
+        {/* Others' favorites: outlines around yours, each further out
+            and fainter. See RINGS. */}
+        {others > 0 && <StarRings count={others} />}
         <span ref={starRef} className="relative block">
           <StarIcon on={on} size={22} />
         </span>
@@ -357,18 +344,71 @@ function FavoriteStar({ recipeId }: { recipeId: string }) {
   )
 }
 
-/** Where others' stars sit, under yours: fanned out from it — the first
- *  other's to the left, tipped left, the second's mirroring it on the right
- *  — out far enough, and turned enough, to read as stars of their own (not
- *  a shadow of yours), yet partly under it. Just their fill, each smaller
- *  and fainter than the one before (the second small, barely there; set a
- *  touch lower, its foot level with the first's). Fixed: nothing
- *  per recipe or person, so a stack of so many always looks the same — and
- *  the two, mirrored, look meant. */
-const STACKED = [
-  { x: -7.5, y: 2, turn: -16, scale: 0.82, opacity: 0.75 },
-  { x: 7.5, y: 2.5, turn: 16, scale: 0.66, opacity: 0.3 },
+/** Others' favorites, as outlines around your star — one for each (two
+ *  at most), nested: each its own way out from the star all round (traced
+ *  at that distance, its corners rounded), 1px, in the favorite's ink, and
+ *  fainter than the one inside it. Fixed: nothing per recipe or person, so
+ *  so many always looks the same. (Distances in px.) */
+const RINGS = [
+  { out: 2.2, opacity: 0.6 },
+  { out: 4.3, opacity: 0.25 },
 ]
+
+/** The outlines around a star (see RINGS): drawn behind it, over the same
+ *  box, reaching out past it. Each a band of the star's outline — traced
+ *  wider, less a narrower tracing — so it's just the line, nothing filled
+ *  inside it. */
+function StarRings({ count }: { count: number }) {
+  // (The masks' ids: unique on the page, and usable in url(#…).)
+  const id = useId().replace(/:/g, '')
+  const k = STAR_BOX.w / 22 // star units per px (the star's 22px wide)
+  const line = 1
+  return (
+    <svg
+      aria-hidden
+      viewBox={`${STAR_BOX.x} ${STAR_BOX.y} ${STAR_BOX.w} ${STAR_BOX.h}`}
+      className="pointer-events-none absolute inset-0 overflow-visible"
+      width="100%"
+      height="100%"
+    >
+      {RINGS.slice(0, count).map((r, i) => {
+        const band = (d: number, colour: string) => (
+          <path
+            d={STAR_PATH}
+            fill={colour}
+            stroke={colour}
+            strokeWidth={2 * d * k}
+            strokeLinejoin="round"
+          />
+        )
+        return (
+          <g key={i}>
+            <mask
+              id={`${id}-${i}`}
+              maskUnits="userSpaceOnUse"
+              x="-20"
+              y="-20"
+              width="64"
+              height="64"
+            >
+              {band(r.out + line / 2, 'white')}
+              {band(r.out - line / 2, 'black')}
+            </mask>
+            <rect
+              x="-20"
+              y="-20"
+              width="64"
+              height="64"
+              fill="var(--color-kraft-edge)"
+              opacity={r.opacity}
+              mask={`url(#${id}-${i})`}
+            />
+          </g>
+        )
+      })}
+    </svg>
+  )
+}
 
 /**
  * A star toggled by a tap: on, it pops — swelling with a little turn, and
@@ -397,6 +437,10 @@ function twinkle(el: HTMLElement | null, on: boolean) {
 /** px: the star's room in a card's title row — the Want box's width. */
 const STAR_ROOM = 18
 
+/** A five-pointed star (in its picture's units). */
+const STAR_PATH =
+  'M12 3.2l2.62 5.31 5.86.85-4.24 4.13 1 5.84L12 16.58l-5.24 2.75 1-5.84-4.24-4.13 5.86-.85z'
+
 /** The star's own bounds (its outline's, with room for the stroke): its
  *  picture is the star, no margin around it. */
 const STAR_BOX = { x: 2.62, y: 2.3, w: 18.76, h: 17.93 }
@@ -422,7 +466,7 @@ export function StarIcon({
       aria-hidden
     >
       <path
-        d="M12 3.2l2.62 5.31 5.86.85-4.24 4.13 1 5.84L12 16.58l-5.24 2.75 1-5.84-4.24-4.13 5.86-.85z"
+        d={STAR_PATH}
         fill={on ? 'var(--color-kraft)' : 'var(--color-paper)'}
         stroke={outlined ? 'currentColor' : 'none'}
         // (Drawn 1.5px wide whatever its size, like the Want box's border.)
