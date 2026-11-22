@@ -1618,18 +1618,25 @@ function IngredientTable({
             <span role="columnheader" className={`${headClass} pb-[6px] pl-1.5`}>
               Unit
             </span>
-            <button
-              type="button"
-              onClick={() => setStruck(g, !group.struck)}
-              aria-label={
-                group.struck
-                  ? `Bring back ${group.title || 'section'}`
-                  : `Cross out ${group.title || 'section'}`
-              }
-              className={`${MARK_BUTTON} self-center`}
-            >
-              <RowMark kind={group.struck ? 'restore' : 'cross'} />
-            </button>
+            {/* (Its mark — none on a section with no heading and nothing in
+                it: there's nothing to cross out, and it goes anyway, on
+                Save.) */}
+            {!group.struck && !group.title.trim() && group.rows.every(blank) ? (
+              <span />
+            ) : (
+              <button
+                type="button"
+                onClick={() => setStruck(g, !group.struck)}
+                aria-label={
+                  group.struck
+                    ? `Bring back ${group.title || 'section'}`
+                    : `Cross out ${group.title || 'section'}`
+                }
+                className={`${MARK_BUTTON} self-center`}
+              >
+                <RowMark kind={group.struck ? 'restore' : 'cross'} />
+              </button>
+            )}
             {group.struck && stroke}
           </div>
           {group.rows.map((row, i) => lineRow(g, group, i, row))}
