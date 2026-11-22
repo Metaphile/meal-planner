@@ -74,6 +74,9 @@ const SIDE = 16 // horizontal inset
  *  down to the next one's when the card in front is out (see
  *  uncoverBehind), with room to spare. Cards are drawn this far at most. */
 const PEEK_H = CARD_H + 2 * STRIP
+/** How far a card sinks into its slot, swiped away from (or rises from,
+ *  swiped back to): its slot's height — wholly below where it's trimmed. */
+const SINK_DEPTH = CARD_H
 /** Cards shaded as they tilt away from you (see paint). */
 const TILT_SHADE = false
 /** The cards in the box are a touch narrower than that column: NARROWER of
@@ -823,11 +826,10 @@ export default function RecipesPage() {
       el?.getAnimations().forEach((a) => a.cancel())
     if (card) {
       card.style.opacity = ''
-      card.style.maskImage = ''
-      card.style.removeProperty('-webkit-mask-image')
+      card.style.transform = ''
+      card.style.willChange = ''
     }
     if (wrap) {
-      wrap.style.opacity = ''
       wrap.style.clipPath = SLOT_CLIP
       delete wrap.dataset.free
     }
@@ -840,9 +842,8 @@ export default function RecipesPage() {
     const card = cardEl(k)
     if (!wrap || !card) return
     card.style.opacity = ''
-    card.style.maskImage = ''
-    card.style.removeProperty('-webkit-mask-image')
-    wrap.style.opacity = ''
+    card.style.transform = ''
+    card.style.willChange = ''
     card.animate([{ opacity: 0 }, { opacity: 0 }], {
       duration: 1,
       fill: 'forwards',
@@ -851,8 +852,6 @@ export default function RecipesPage() {
     freeSlot(wrap)
     uncoverBehind(k)
   }
-  /** Item `k`'s top, laid out flat along the rim. */
-  const topOf = (k: number) => items[k].rod - rodOffset(items[k])
   /** The card behind item `k` shown whole (under it, while it's
    *  see-through); returns it, to be trimmed again after. */
   const seeBehind = (k: number) => {
@@ -901,18 +900,22 @@ export default function RecipesPage() {
       const i = indexOf(open.key)
       const j = besideOf(i, dir)
       if (i < 0 || j < 0 || !drum) return
-      // The card in hand's slot: as in the box again, its card faded out.
+      // The card in hand's slot: as in the box again — its card sunk deep
+      // in it, out of sight (it rises as it's swiped back).
       if (uncovered.current) {
         uncovered.current.style.clipPath = SLOT_CLIP
         uncovered.current = null
       }
       backInSlot(i)
       setReturning(open.key)
-      // (The one in front see-through as it fades: what's behind it shows —
-      // all of it, below where it's trimmed too, as it will with that one
-      // gone. Not behind the one behind: it's whole under the one in front,
-      // and only its strip fades — what's behind that is its own.)
-      const seeThrough = [seeBehind(Math.max(i, j))].filter(
+      // (Each on a layer of its own as it moves: moved, a card not on one is
+      // drawn again, every frame.)
+      for (const el of [cardEl(i), cardEl(j)]) if (el) el.style.willChange = 'transform'
+      // (What's behind each shows — all of it, below where it's trimmed
+      // too: behind the one going, as it will with that one gone; behind
+      // the one coming back, as it did with that one out, till it's
+      // risen over it.)
+      const seeThrough = [seeBehind(i), seeBehind(j)].filter(
         (el): el is HTMLDivElement => !!el,
       )
       repaintAll()
@@ -925,35 +928,14 @@ export default function RecipesPage() {
     // (Moved, not set: once a frame at most, and no layout forced — see
     // DrumScroll.move. Set at the end, in undoSwipe or stepCard.)
     drum!.move(s.from + (s.to - s.from) * p)
-    // The two cross-fade so that, at every point, it's the one picture
-    // blended into the other. The one in front fades as a whole (by its
-    // place on the wheel: a layer already, so that's the compositor's
-    // alone). The one behind fades only where it shows past the one in
-    // front — its strip at the top; under the one in front it stays whole.
-    // (Both see-through there, what's behind them both would show through
-    // too, and the one behind would come in only at the very end — its
-    // foot popping into view.)
-    const rear = Math.min(s.i, s.j)
-    const front = Math.max(s.i, s.j)
-    const wf = itemEls.current[front]
-    if (wf) wf.style.opacity = String(front === s.i ? p : 1 - p)
-    const rc = cardEl(rear)
-    if (rc) {
-      const a = rear === s.i ? p : 1 - p
-      // (Where the next in front starts, down its face — as it falls on the
-      // screen: on the wheel, turned and seen in perspective, the gap
-      // between them isn't as laid out flat. Softened a little.)
-      const next = itemEls.current[rear + 1]
-      const r = rc.getBoundingClientRect()
-      const edge =
-        next && r.height > 0
-          ? ((next.getBoundingClientRect().top - r.top) / r.height) *
-            rc.offsetHeight
-          : topOf(rear + 1) - topOf(rear)
-      const mask = `linear-gradient(to bottom, rgb(0 0 0 / ${a}) ${edge - 6}px, #000 ${edge + 6}px)`
-      rc.style.maskImage = mask
-      rc.style.setProperty('-webkit-mask-image', mask)
-    }
+    // The one coming back rises up out of the depths of its slot into
+    // place; the one going sinks down into its own, out of sight — each by
+    // as far as it's been swiped. (A card sunk its slot's height is
+    // wholly below where its slot trims it.)
+    const ci = cardEl(s.i)
+    const cj = cardEl(s.j)
+    if (ci) ci.style.transform = `translateY(${(SINK_DEPTH * (1 - p)).toFixed(1)}px)`
+    if (cj) cj.style.transform = `translateY(${(SINK_DEPTH * p).toFixed(1)}px)`
   }
   /** Swiped back: the box as it was (the card in hand out of its slot
    *  again, the other in its own). */
