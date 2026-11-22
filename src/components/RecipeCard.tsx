@@ -1347,7 +1347,8 @@ function IngredientTable({
                     setAddingSection(false)
                     set([...groups, { title: t, rows: [] }])
                   },
-                  'Add section…',
+                  // (Being written in: what's written here is its heading.)
+                  addingSection ? 'Heading' : 'Add section…',
                   false,
                   {
                     onFocus: () => setAddingSection(true),
