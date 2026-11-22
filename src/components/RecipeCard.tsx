@@ -2666,6 +2666,10 @@ export function CardDetail({
   // shown that way beside it, and again in hand. (Forgotten once it's put
   // away: this card goes, and it with it.)
   const scrolls = useRef(new Map<string, number>())
+  // …and each side of it, turning it over and back (by recipe, then side):
+  // turned over again, it's scrolled as that side was left. (Forgotten,
+  // too, once it's put away.)
+  const sideScrolls = useRef(new Map<string, number>())
   useLayoutEffect(() => {
     if (!step) return
     // (Their layers lay them out just as the card in hand's does: scrolled
@@ -3204,6 +3208,9 @@ export function CardDetail({
     if (toBack === editingRef.current) return
     flipping.current = true
     const flipper = flipRef.current!
+    // (Where the side it's leaving was scrolled to, to come back to.)
+    const sideKey = (back: boolean) => `${shown.id}|${back ? 'back' : 'front'}`
+    sideScrolls.current.set(sideKey(!toBack), scrollRef.current?.scrollTop ?? 0)
     if (toBack) {
       editingRef.current = true
       flushSync(() => {
@@ -3239,6 +3246,11 @@ export function CardDetail({
         setFacing(toBack ? 'back' : 'front')
         if (!toBack) setBesideShown(true)
       })
+      // …and scrolled as that side was left, if it's been turned to before
+      // (edge-on, where the jump can't be seen).
+      const was = sideScrolls.current.get(sideKey(toBack))
+      if (was !== undefined && scrollRef.current)
+        scrollRef.current.scrollTop = was
       const second = flipper.animate(
         [
           { transform: `rotateY(${mid}deg)` },
