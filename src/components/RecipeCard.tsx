@@ -1608,24 +1608,27 @@ const textOf = (r: RecipeText): RecipeText => ({
   notes: r.notes,
   tags: r.tags,
 })
-/** What a recipe says, ignoring blank lines and stray spaces (to tell
- *  whether a draft says anything different). */
+/** What a recipe says, as saving would leave it — blank lines, stray
+ *  spaces and empty untitled sections set aside (to tell whether a draft
+ *  says anything different: whether saving would change anything). */
 const sameText = (a: RecipeText, b: RecipeText) => {
-  const key = (r: RecipeText) =>
-    JSON.stringify([
+  const key = (r: RecipeText) => {
+    const kept = sectionsFromGroups(
+      sectionsOf(r as Recipe).map((s) => ({ title: s.title, rows: s.ingredients })),
+    )
+    return JSON.stringify([
       r.title.trim(),
       [
-        { title: r.ingredientsTitle ?? '', ingredients: r.ingredients },
-        ...(r.sections ?? []),
+        { title: kept.ingredientsTitle ?? '', ingredients: kept.ingredients },
+        ...(kept.sections ?? []),
       ].map((s) => [
-        s.title.trim(),
-        s.ingredients
-          .filter(hasAnything)
-          .map((i) => [i.name.trim(), i.quantity ?? null, i.unit || null]),
+        s.title,
+        s.ingredients.map((i) => [i.name, i.quantity ?? null, i.unit || null]),
       ]),
       (r.notes ?? '').trim(),
       r.tags.map((t) => t.trim()).filter(Boolean),
     ])
+  }
   return key(a) === key(b)
 }
 
@@ -1809,9 +1812,10 @@ const RecipeCardBack = forwardRef<
       .map((t) => t.trim())
       .filter(Boolean),
   })
-  // Changed: says something different — or a section's crossed out (even
-  // an empty one, which saving wouldn't change: still, it's been marked).
-  const dirty = !sameText(draft(), recipe) || groups.some((g) => g.struck)
+  // Changed: saving would leave it saying something different. (Lines or
+  // sections crossed out that change nothing saved — a new section's, say —
+  // aren't a change.)
+  const dirty = !sameText(draft(), recipe)
   if (changedRef) changedRef.current = dirty
   // Where the asterisk goes: just past the end of the title (centred in its
   // box), or — the title filling the box — just past the box.
