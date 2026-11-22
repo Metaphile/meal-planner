@@ -1410,7 +1410,10 @@ function IngredientTable({
 if (typeof document !== 'undefined') void document.fonts?.load('22px Caveat')
 
 const NOTES_MIN_LINES = 6
-const NOTES_DROP = 3
+/** How far the notes' writing is set down from the top of its lines: so
+ *  little it stands a touch clear of each line's rule (resting right on it,
+ *  the caret dips below the rule, and looks wrong). */
+const NOTES_DROP = 0
 
 /** What a recipe says (its words, nothing else). */
 const textOf = (r: RecipeText): RecipeText => ({
@@ -1546,7 +1549,7 @@ const RecipeCardBack = forwardRef<
   }, [remember, recipe.id, isNew, base, title, tagsText, notes, groups])
 
   // Notes grow a ruled line at a time as you write, so they never scroll.
-  // (The writing is set NOTES_DROP lower than the rules, to sit on them.)
+  // (The writing is set NOTES_DROP down from the top of its lines.)
   const notesRef = useRef<HTMLTextAreaElement>(null)
   useLayoutEffect(() => {
     const el = notesRef.current
@@ -1819,7 +1822,8 @@ const RecipeCardBack = forwardRef<
               <span
                 ref={notesMirrorRef}
                 aria-hidden
-                className="pointer-events-none invisible absolute inset-x-0 top-0 whitespace-pre-wrap break-words pt-[3px] pr-1 leading-[22px]"
+                className="pointer-events-none invisible absolute inset-x-0 top-0 whitespace-pre-wrap break-words pr-1 leading-[22px]"
+                style={{ paddingTop: NOTES_DROP }}
               />
               <textarea
                 ref={notesRef}
@@ -1833,7 +1837,8 @@ const RecipeCardBack = forwardRef<
                 placeholder="Prep tips, substitutions…"
                 autoComplete="off"
                 // (Over the tint: the rules drawn on it, the writing clear.)
-                className="paper-lines relative block w-full resize-none overflow-hidden bg-transparent pt-[3px] pr-1 leading-[22px] focus:outline-none"
+                className="paper-lines relative block w-full resize-none overflow-hidden bg-transparent pr-1 leading-[22px] focus:outline-none"
+                style={{ paddingTop: NOTES_DROP }}
               />
             </span>
           </label>
