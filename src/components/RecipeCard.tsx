@@ -1233,15 +1233,13 @@ function IngredientTable({
     set(gs)
   }
   // (What each untitled section's called, as the card will call it once
-  // saved: the crossed-out ones gone, the rest numbered without them — a
-  // crossed-out one's just "Section". And what a new one, dragged into being
-  // at the end, would be.)
+  // saved: the crossed-out ones gone — called nothing — the rest numbered
+  // without them. And what a new one, dragged into being at the end, would
+  // be.)
   const kept = groups.filter((x) => !x.struck).map((x) => x.title)
   const keptLabels = sectionLabels(kept)
   let k = 0
-  const labels = groups.map((x) =>
-    x.struck ? x.title.trim() || UNTITLED_SECTION : keptLabels[k++],
-  )
+  const labels = groups.map((x) => (x.struck ? null : keptLabels[k++]))
   const newLabel = sectionLabels([...kept, ''])[kept.length]
   // Return on a line with something on it: on to the next line (the one
   // below in its section — at the end, its "Add ingredient…"), to write it.
@@ -1400,8 +1398,9 @@ function IngredientTable({
                 group.title,
                 (t) => setTitle(g, t),
                 // (Untitled: what it'll be called — or, the only one, that a
-                // title's optional.)
-                labels[g] ?? 'Heading (optional)',
+                // title's optional. Crossed out, untitled: nothing — it's
+                // going, it'll be called nothing.)
+                group.struck ? '' : (labels[g] ?? 'Heading (optional)'),
                 group.struck,
               )}
             </div>
