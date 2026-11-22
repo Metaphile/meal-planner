@@ -67,8 +67,6 @@ interface AppState {
     amount?: number,
     line?: { name: string; unit?: string },
   ) => void
-  /** How much of a ticked line is on hand (at least 0). */
-  setHaveAmount: (key: string, amount: number) => void
 
   // Favorites (the signed-in person's)
   setFavorite: (userId: string, recipeId: string, on: boolean) => void
@@ -230,19 +228,6 @@ export const useStore = create<AppState>((set, get) => ({
       set((s) => ({ haves: s.haves.filter((h) => h.id !== key) }))
       enqueueDelete('haves', key)
     }
-  },
-
-  setHaveAmount: (key, amount) => {
-    const n = Math.max(0, Math.round(amount * 1000) / 1000)
-    let updated: Have | undefined
-    set((s) => ({
-      haves: s.haves.map((h) => {
-        if (h.id !== key || h.amount === n) return h
-        updated = { ...h, amount: n }
-        return updated
-      }),
-    }))
-    if (updated) enqueuePut('haves', updated)
   },
 
   setFavorite: (userId, recipeId, on) => {

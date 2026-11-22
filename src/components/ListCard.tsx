@@ -2,7 +2,7 @@ import { forwardRef, type HTMLAttributes } from 'react'
 import { useWantedIngredients } from '../store/selectors'
 import { AddOnsList } from './AddOnsList'
 import { IngredientsList } from './IngredientsList'
-import { ReconcileButton } from './Reconcile'
+import { ClearSelectedButton } from './ClearSelected'
 import { CARD_H } from './RecipeCard'
 
 /**
@@ -67,7 +67,7 @@ export const ListCard = forwardRef<HTMLDivElement, Props>(function ListCard(
               Add-ons
             </span>
             <AddOnsList canEdit={canEdit} bare />
-            <ReconcileButton ingredients={ingredients} canEdit={canEdit} />
+            <ClearSelectedButton canEdit={canEdit} />
           </div>
         </div>
       </div>
