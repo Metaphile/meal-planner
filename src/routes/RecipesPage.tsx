@@ -114,6 +114,9 @@ const START_PHI = -28 * DEG
 // at the bottom.
 const REACH_FIRST_CARD_PHI = -12 * DEG
 const REACH_LAST_PHI = 16 * DEG
+/** Past that, as the shopping list slides on up, the box turns on — tipping
+ *  back ahead of the list, the cards above it — as far as this. */
+const LIST_TIP_PHI = -50 * DEG
 /** Scrolled to the end of the shopping list, this much room is left below
  *  it (and the iPhone's home indicator's room besides). */
 const LIST_ROOM = 24
@@ -522,6 +525,23 @@ export default function RecipesPage() {
     [items, bounds],
   )
 
+  /** Where the wheel is turned to (as a drum position) with the drum at
+   *  `at`: past the end of the turning — the shopping list sliding on up —
+   *  it turns on as it was, tipping back ahead of the list (the list, 1:1,
+   *  soon overtaking the back of the box, the cards before it leaning back
+   *  above it), till the back of the box is as far back as LIST_TIP_PHI. */
+  const wheelAt = useCallback(
+    (at: number) => {
+      const turn = bounds.turn * SCALE
+      if (at <= turn || items.length === 0) return at
+      const k = items.length - 1
+      const reach = items[k].rod - items[0].rod + bounds.first
+      const tipped = (reach - (LIST_TIP_PHI - PHI_TOP) * wheel.R) * SCALE
+      return Math.min(at, Math.max(turn, tipped))
+    },
+    [items, bounds, wheel],
+  )
+
   // Per frame: place every card on the wheel. Transform/opacity-only writes,
   // skipped when unchanged.
   const raf = useRef(0)
@@ -530,7 +550,8 @@ export default function RecipesPage() {
     raf.current = 0
     const drum = drumRef.current
     if (!drum || items.length === 0) return
-    // Past where it turns to, the drum stays put and the list slides on up.
+    // Past where it turns to, the list slides on up, the box tipping back
+    // ahead of it.
     const at = drum.get()
     const turn = bounds.turn * SCALE
     const st = Math.min(at, turn)
@@ -545,10 +566,12 @@ export default function RecipesPage() {
       const y = `translate3d(0px, ${top.toFixed(1)}px, 0px)`
       if (sheet.style.transform !== y) sheet.style.transform = y
     }
+    // (Past the turning, tipping on back ahead of the list.)
+    const tipped = wheelAt(at)
     for (let i = 0; i < items.length; i++) {
       const el = itemEls.current[i]
       if (!el) continue
-      const v = rimPos(i, st)
+      const v = rimPos(i, tipped)
       const on = v >= -wheel.overTop && v <= wheel.visible + wheel.underBottom
       // The card that's out isn't moved (its flight drives it) — but whether
       // its slot is on screen is kept up to date: putting it back drops it
@@ -599,7 +622,7 @@ export default function RecipesPage() {
         el.style.zIndex = String(zi)
       }
     }
-  }, [items, wheel, rimPos, headerU, bounds, listTopAt])
+  }, [items, wheel, rimPos, headerU, bounds, listTopAt, wheelAt])
 
   const busy = useRef(false)
 
@@ -816,7 +839,7 @@ export default function RecipesPage() {
    *  screen (where it stands upright when taken out). */
   const wheelSpot = useCallback(
     (index: number) => {
-      const st = drumRef.current!.get()
+      const st = wheelAt(drumRef.current!.get())
       const phi = PHI_TOP + rimPos(index, st) / wheel.R
       const rodY = wheel.front + wheel.R * Math.sin(phi)
       const z = wheel.R * (Math.cos(phi) - 1)
@@ -824,7 +847,7 @@ export default function RecipesPage() {
         wheel.front + ((rodY - wheel.front) * PERSPECTIVE) / (PERSPECTIVE - z)
       return { phi, rodY, z, rodOnScreen }
     },
-    [rimPos, wheel],
+    [rimPos, wheel, wheelAt],
   )
 
   // Where card `index` comes out (screen space): stood upright where it hangs,
@@ -919,7 +942,7 @@ export default function RecipesPage() {
     const o = originOf(i)
     if (shown.current[i]) return o
     // (Still out of sight — the box can't turn far enough: off toward it.)
-    const above = rimPos(i, drumRef.current?.get() ?? 0) < 0
+    const above = rimPos(i, wheelAt(drumRef.current?.get() ?? 0)) < 0
     const out = above ? o.viewTop - o.height - 24 : window.innerHeight + 24
     return {
       ...o,
