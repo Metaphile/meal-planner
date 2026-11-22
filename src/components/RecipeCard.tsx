@@ -215,7 +215,7 @@ export const RecipeCard = forwardRef<HTMLDivElement, CardProps>(
             <div className="paper-rule flex items-center gap-2 pb-1.5">
               <FavoriteStar recipeId={recipe.id} />
               <div
-                className={`font-hand min-w-0 flex-1 text-center font-semibold text-black ${
+                className={`font-hand min-w-0 flex-1 text-center font-semibold ${
                   large ? 'text-[29px] leading-[26px]' : 'text-[28px] leading-[25px]'
                 }`}
               >

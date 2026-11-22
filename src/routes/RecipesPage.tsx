@@ -99,8 +99,7 @@ const CAST_FADE = 28
 const DEG = Math.PI / 180
 const PHI_TOP = -72 * DEG
 const PHI_BOTTOM = 45 * DEG
-const SPIN_MS = 260 // turning the drum to a tapped letter (max)
-// Where the box opens (and a letter tab turns it to): the first item tipped
+// Where the box opens: the first item tipped
 // back a little, near the top (a tipped card's top only gets so close to the
 // top before it goes edge-on).
 const START_PHI = -28 * DEG
@@ -821,21 +820,14 @@ export default function RecipesPage() {
   const cardEl = (index: number) =>
     itemEls.current[index]?.firstElementChild as HTMLElement | undefined
 
-  /** Turn the drum so item `index` stands at the top (as the first item does
-   *  at the start), or as near as the ends allow. */
-  /** Where the drum stands with item `index` at the top. */
+  /** Where the drum stands with item `index` at the top (as the first item
+   *  does at the start), or as near as the ends allow. */
   const turnedTo = (index: number) => {
     const top = (START_PHI - PHI_TOP) * wheel.R
     return (
       clamp(items[index].rod - items[0].rod + bounds.first - top, 0, bounds.max) *
       SCALE
     )
-  }
-  const turnTo = (index: number) => {
-    const drum = drumRef.current!
-    const to = turnedTo(index)
-    const ms = Math.min(SPIN_MS, 120 + Math.abs(to - drum.get()) * 0.4)
-    return drum.animateTo(to, ms)
   }
 
   /** Card `index` on the wheel right now: its pose, and its rod's place on
@@ -1188,17 +1180,6 @@ export default function RecipesPage() {
     busy.current = false
   }, [items])
 
-  // Tapping a letter tab turns the drum to that letter.
-  const jumpTo = useCallback(
-    async (index: number) => {
-      if (busy.current) return
-      busy.current = true
-      await turnTo(index)
-      busy.current = false
-    },
-    [items, bounds],
-  )
-
   // A blank card: write a new recipe on it.
   // The blank card: a new card rises into view already turned over, to be
   // written on. (Saved, it's a recipe like any other, and goes into the box.)
@@ -1457,7 +1438,6 @@ export default function RecipesPage() {
                 canEditPlan={canEditPlan}
                 canEditRecipes={canEditRecipes}
                 onOpen={openCard}
-                onJump={jumpTo}
                 onNew={onNew}
               />
             ))}
@@ -1551,7 +1531,6 @@ const RolodexItem = memo(function RolodexItem({
   canEditPlan,
   canEditRecipes,
   onOpen,
-  onJump,
   onNew,
 }: {
   item: Item
@@ -1564,7 +1543,6 @@ const RolodexItem = memo(function RolodexItem({
   canEditPlan: boolean
   canEditRecipes: boolean
   onOpen: (i: number) => void
-  onJump: (i: number) => void
   onNew: () => void
 }) {
   const off = rodOffset(item)
@@ -1626,12 +1604,11 @@ const RolodexItem = memo(function RolodexItem({
         </div>
         {/* The tab reaches 1px into the divider, on top of it, so there's no
             line where they join; its shadow is clipped off at the bottom.
-            (The back of the box has no tab.) */}
+            (The back of the box has no tab.) Just a label: a tap on it does
+            nothing (nor goes through it to a card behind). */}
         {item.letter && (
-          <button
-            onClick={() => onJump(index)}
-            aria-label={`Jump to ${item.letter}`}
-            className="paper-divider rolodex-card paper-serif pointer-events-auto absolute top-0 grid place-items-center rounded-t-lg border-b-0 text-[15px] font-bold"
+          <div
+            className="paper-divider rolodex-card paper-serif pointer-events-auto absolute top-0 grid select-none place-items-center rounded-t-lg border-b-0 text-[15px] font-bold"
             style={{
               height: TAB_H + 1,
               width: TAB_W,
@@ -1641,7 +1618,7 @@ const RolodexItem = memo(function RolodexItem({
           >
             {item.letter}
             <span className="rolodex-dim" />
-          </button>
+          </div>
         )}
         {shadow}
       </div>
