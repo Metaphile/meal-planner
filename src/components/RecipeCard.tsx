@@ -2571,7 +2571,7 @@ function fadingAway(fromY: number, v: number, opacity: number): Keyframe[] {
   return frames
 }
 
-const LIFT_FADE_MS = 504 // …fading out as it goes (still fading once out of sight)
+const LIFT_FADE_MS = 380 // …fading out as it goes (gone before it's done lifting)
 const LIFT_FADE = 'cubic-bezier(0.5, 0, 0.75, 0)' // ease-in (quartic): barely fading at first, then quickly gone
 const LIFT_UP = 'cubic-bezier(0.32, 0, 0.67, 0)' // slow to start, gathering speed
 const DROP_IN = 'cubic-bezier(0.33, 1, 0.68, 1)' // the take-out's curve, reversed: fast, then settling
@@ -2930,7 +2930,7 @@ export function CardDetail({
           rdxCard.animate([{ opacity: 1 }, { opacity: 0 }], {
             ...lift,
             delay: SINK_MS,
-            duration: fadesWithSlide ? LIFT_MS : LIFT_FADE_MS,
+            duration: Math.min(LIFT_FADE_MS, LIFT_MS),
             easing: LIFT_FADE,
           }),
           card.animate(
