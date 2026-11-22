@@ -51,9 +51,9 @@ import {
  * tilt, height on screen and depth all follow from where it is around the
  * wheel: facing you at the front line, tipping back (and shrinking, and
  * shading) toward the top until it goes edge-on over it, leaning toward you
- * below. The drum turns between two stops: A standing at the top, and the
- * back of the box (and the blank card for a new recipe) resting near the
- * bottom.
+ * below. The drum turns between two stops: the blank card for a new recipe
+ * (in front of A) brought down into reach, and the back of the box resting
+ * near the bottom. It opens with A near the top.
  *
  * Touch turns the drum under its own iOS-style physics (`lib/drumScroll`):
  * drag, momentum, and a soft spring at the stops — even a box too short to
@@ -106,9 +106,10 @@ const SPIN_MS = 260 // turning the drum to a tapped letter (max)
 // back a little, near the top (a tipped card's top only gets so close to the
 // top before it goes edge-on).
 const START_PHI = -28 * DEG
-// How far it can turn past that: down until the first recipe is well below
-// the tipped-back zone, where it's easy to read; up until the last item (the
-// blank card, or the back of the box) faces you, not leaning at the bottom.
+// How far it can turn past that: down until the first recipe (or the blank
+// card, before A) is well below the tipped-back zone, where it's easy to
+// read; up until the last item (the back of the box) faces you, not leaning
+// at the bottom.
 const REACH_FIRST_CARD_PHI = -12 * DEG
 const REACH_LAST_PHI = 16 * DEG
 
@@ -125,7 +126,7 @@ const tabLeftFrac = (n: number) => ((n % 5) * 19 + 3) / 100
 type Item =
   | { kind: 'divider'; key: string; letter: string; n: number; rod: number }
   | { kind: 'card'; key: string; recipe: Recipe; rod: number }
-  /** The blank index card at the back of the box: write a new recipe. */
+  /** The blank index card at the front of the box: write a new recipe. */
   | { kind: 'blank'; key: string; rod: number }
 
 /** How far below an item's top its rod (where it hangs from the wheel) is. */
@@ -142,8 +143,9 @@ function letterOf(title: string): string {
   return c >= 'A' && c <= 'Z' ? c : '#'
 }
 
-/** Dividers (A–Z, plus # if needed) and cards, then the back of the box and
- *  (for those who can write recipes) a blank card behind it — with their
+/** (For those who can write recipes) a blank card at the front, then
+ *  dividers (A–Z, plus # if needed) and cards, then the back of the box —
+ *  with their
  *  rods' positions along the wheel's rim. Search results use the same box:
  *  every letter's divider stays, so missing cards show as empty dividers (and
  *  no matches at all, as a box of nothing but dividers). */
@@ -160,6 +162,12 @@ function layout(recipes: Recipe[], withBlank: boolean): Item[] {
 
   const items: Item[] = []
   let top = 0 // where each item's top edge would sit, laid out flat
+  // The blank card, before the first divider (out of the way: the box opens
+  // at A, and turns down to it).
+  if (withBlank) {
+    items.push({ kind: 'blank', key: 'blank', rod: top + CARD_H })
+    top += STRIP
+  }
   letters.forEach((letter, n) => {
     const group = byLetter.get(letter) ?? []
     items.push({ kind: 'divider', key: `div-${letter}`, letter, n, rod: 0 })
@@ -171,7 +179,7 @@ function layout(recipes: Recipe[], withBlank: boolean): Item[] {
     }
   })
   // The back of the box: a plain divider (no tab), so the last recipe has
-  // something in front of it, and the blank card isn't filed under Z.
+  // something in front of it.
   items.push({
     kind: 'divider',
     key: 'div-end',
@@ -179,8 +187,6 @@ function layout(recipes: Recipe[], withBlank: boolean): Item[] {
     n: 0,
     rod: top + TAB_H + CARD_H,
   })
-  top += DIVIDER_STRIP
-  if (withBlank) items.push({ kind: 'blank', key: 'blank', rod: top + CARD_H })
   return items
 }
 
@@ -234,7 +240,8 @@ const clamp = (v: number, lo: number, hi: number) =>
   Math.min(hi, Math.max(lo, v))
 
 /** Where the drum stops. The first item's rim distance is `first - pos`,
- *  for pos from 0 to `max`:
+ *  for pos from 0 to `max` (worked out from the first divider: the blank
+ *  card, if any, before it):
  *  - A box long enough to turn runs from its first recipe brought well down
  *    (into easy reading) to its last item brought well up. It opens at
  *    `initial`: with its first item near the top — or, for search results,
@@ -245,15 +252,27 @@ const clamp = (v: number, lo: number, hi: number) =>
  *  Either way it can always give a little (springing back) past the ends. */
 function boundsOf(w: Wheel, items: Item[], faceFirst: boolean) {
   if (items.length === 0) return { first: 0, max: 0, initial: 0 }
-  const rod0 = items[0].rod
+  // (From the first divider; the first item's is so much less.)
+  const a = Math.max(0, items.findIndex((it) => it.kind === 'divider'))
+  const rod0 = items[a].rod
+  const ahead = rod0 - items[0].rod // the blank card → the first divider
+  const b = bounds(rod0, ahead)
+  return { ...b, first: b.first - ahead }
+
+  function bounds(rod0: number, ahead: number) {
   const span = items[items.length - 1].rod - rod0
   const rim = (phi: number) => (phi - PHI_TOP) * w.R
-  const home = rim(START_PHI) // the first item, as the box opens
+  const home = rim(START_PHI) // the first divider, as the box opens
   const k = items.findIndex((it) => it.kind === 'card')
-  const lead = k >= 0 ? items[k].rod - rod0 : 0 // first item → first recipe
-  // The first item's rim distance (it grows down the screen) with the box
-  // turned all the way down (to the start) and all the way up (to the end).
-  const down = Math.max(home, rim(REACH_FIRST_CARD_PHI) - lead)
+  const lead = k >= 0 ? items[k].rod - rod0 : 0 // first divider → first recipe
+  // The first divider's rim distance (it grows down the screen) with the
+  // box turned all the way down (to the start: the first recipe, or the
+  // blank card, in reach) and all the way up (to the end).
+  const down = Math.max(
+    home,
+    rim(REACH_FIRST_CARD_PHI) - lead,
+    ahead ? rim(REACH_FIRST_CARD_PHI) + ahead : 0,
+  )
   const up = rim(REACH_LAST_PHI) - span
   // The first item's rim distance that puts the first recipe at the front.
   const faceOn = k >= 0 ? w.toFront - lead : home
@@ -271,6 +290,7 @@ function boundsOf(w: Wheel, items: Item[], faceFirst: boolean) {
     first: up,
     max: up - down,
     initial: up - clamp(faceOn, down, up),
+  }
   }
 }
 
@@ -290,7 +310,9 @@ interface LeftAs {
  *  to it as it was). */
 const BOX: Slice<LeftAs> = {
   key: 'rolodex',
-  version: 1,
+  // (2: the blank card moved to the front — a position kept before means
+  // somewhere else now.)
+  version: 2,
   maxAgeMs: DAY,
   parse: (x) =>
     isObj(x)
@@ -1214,7 +1236,7 @@ export default function RecipesPage() {
       ) : (
         <PageHeader
           title="Recipes"
-          // (New recipes start on the blank card at the back of the box.)
+          // (New recipes start on the blank card at the front of the box.)
           action={
             <div className="flex items-center gap-1">
               {favoritesOnlyStar}
@@ -1484,7 +1506,7 @@ const RolodexItem = memo(function RolodexItem({
   }
 
   if (item.kind === 'blank') {
-    // The blank index card at the back: ruled and framed, waiting for a
+    // The blank index card at the front: ruled and framed, waiting for a
     // recipe. (Only there for those who can write recipes.)
     return (
       <div {...common}>
