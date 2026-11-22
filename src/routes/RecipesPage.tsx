@@ -388,6 +388,7 @@ export default function RecipesPage() {
     () => left?.kept ?? new Set(),
   )
   const toggleWantedOnly = () => {
+    unmake()
     if (!wantedOnly)
       setKept(new Set(wants.filter(isWanted).map((w) => w.recipeId)))
     setWantedOnly(!wantedOnly)
@@ -411,6 +412,7 @@ export default function RecipesPage() {
     () => left?.keptFavorites ?? new Set(),
   )
   const toggleFavoritesOnly = () => {
+    unmake()
     if (!favoritesOnly) setKeptFavorites(new Set(myFavorites))
     setFavoritesOnly(!favoritesOnly)
   }
@@ -419,6 +421,13 @@ export default function RecipesPage() {
   const [made, setMade] = useState<ReadonlySet<string>>(
     () => left?.made ?? new Set(),
   )
+  // Narrowed to something else, or not any more: the new recipes made
+  // meanwhile are just recipes again — in it or not as any other is. (Done
+  // as the filter's changed: not worked out while rendering, where a render
+  // React throws away would lose it.)
+  function unmake() {
+    setMade((m) => (m.size ? new Set() : m))
+  }
   const matches = useMemo(() => {
     const wanted = new Set(wants.filter(isWanted).map((w) => w.recipeId))
     return recipes.filter(
@@ -441,13 +450,8 @@ export default function RecipesPage() {
   ])
   // Any narrowing at all (it opens on its first match).
   const narrowed = wantedOnly || favoritesOnly
-  // (Narrowed or not any more: the new recipes made meanwhile are just
-  // recipes again.)
-  const madeWhile = useRef(narrowed)
-  if (madeWhile.current !== narrowed) {
-    madeWhile.current = narrowed
-    if (made.size) setMade(new Set())
-  }
+  const narrowedRef = useRef(narrowed)
+  narrowedRef.current = narrowed
   // The rolodex layer covers the whole page, header included (so a card
   // being taken out passes over the header rather than behind it); the wheel
   // itself sits below the header, and no resting card ever reaches up into it.
@@ -1208,7 +1212,7 @@ export default function RecipesPage() {
     const draft: Recipe = { id: id ?? newId(), title: '', tags: [], ingredients: [] }
     lifted.current = draft.id
     // (The box narrowed: it'll be in it, once it's saved.)
-    if (madeWhile.current) setMade((m) => new Set(m).add(draft.id))
+    if (narrowedRef.current) setMade((m) => new Set(m).add(draft.id))
     const below = window.innerHeight + 24
     const next = {
       key: draft.id,
