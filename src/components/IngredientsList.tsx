@@ -113,9 +113,7 @@ function IngredientLine({
           }
         />
       )}
-      {/* (Ticked, but no wanted recipe calls for it: dimmed — on hand, not
-          needed. Its box isn't: it can still be unticked.) */}
-      <div className={`min-w-0 flex-1 ${needed ? '' : 'opacity-50'}`}>
+      <div className="min-w-0 flex-1">
         {/* Ticked (with an amount to count), the counter takes the place of
             the quantity: "− [have] of need unit +", or without a recipe
             calling for it, "− [have] unit +". */}
@@ -127,8 +125,13 @@ function IngredientLine({
           {/* (Short of what's needed: the name in red too. Too long to fit
               beside its amount: cut off and feathered, swiped to read, like
               a card's title.) */}
+          {/* (Ticked, but no wanted recipe calls for it: its name and words
+              dimmed — on hand, not needed. Not its box or counter: they're
+              still to use.) */}
           <span
-            className={`min-w-0 flex-1 text-[17px] ${short ? 'text-danger' : ''}`}
+            className={`min-w-0 flex-1 text-[17px] ${short ? 'text-danger' : ''} ${
+              needed ? '' : 'opacity-50'
+            }`}
           >
             <OneLine text={ing.name} centred={false} />
           </span>
@@ -151,7 +154,11 @@ function IngredientLine({
               canEdit={canEdit}
             />
           ) : (
-            <span className="shrink-0 whitespace-nowrap text-base text-ink-soft">
+            <span
+              className={`shrink-0 whitespace-nowrap text-base text-ink-soft ${
+                needed ? '' : 'opacity-50'
+              }`}
+            >
               {needed ? (
                 <Amount
                   quantity={
@@ -166,7 +173,11 @@ function IngredientLine({
           )}
         </div>
         {(ing.sources.length > 0 || !needed) && (
-          <div className="text-xs italic leading-[18px] text-ink-faint">
+          <div
+            className={`text-xs italic leading-[18px] text-ink-faint ${
+              needed ? '' : 'opacity-50'
+            }`}
+          >
             {/* (Ticked, but no wanted recipe calls for it.) */}
             {needed ? ing.sources.join(', ') : '[no recipe]'}
           </div>
