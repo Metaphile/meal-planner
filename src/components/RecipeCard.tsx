@@ -34,6 +34,7 @@ import { Amount } from './Unit'
 import { OneLine } from './OneLine'
 import { ConfirmDialog } from './ui'
 import { arcThrough, sampleTimes, type Arc } from '../lib/arc'
+import { useWakeLock } from '../lib/wakeLock'
 
 /**
  * Paper recipe cards for the Recipes rolodex.
@@ -1828,6 +1829,8 @@ export function CardDetail({
   isNew?: boolean
   onClosed: () => void
 }) {
+  // In hand, you're cooking from it: the screen stays on till it's put back.
+  useWakeLock()
   // Show the recipe as it is now (it may be edited while in hand).
   const live = useStore((s) => s.recipes.find((r) => r.id === recipe.id))
   const shown = live ?? recipe
