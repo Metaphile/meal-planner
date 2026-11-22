@@ -866,6 +866,29 @@ const tidyGroups = (gs: Group[]) =>
   }))
 
 /**
+ * The sections, but none with no heading and nothing in it — however it
+ * came to be empty (its last line dragged away, rubbed out, …), it goes:
+ * there's nothing to it. Not the one being written in, though (it goes
+ * once it's left — see IngredientTable), nor the only one: every recipe
+ * has a first section. (A titled one stays, empty or not.)
+ */
+function withoutEmptySections(gs: Group[]): Group[] {
+  if (gs.length < 2) return gs
+  const here =
+    typeof document === 'undefined'
+      ? null
+      : document.activeElement?.closest('[data-gid]')?.getAttribute('data-gid')
+  const kept = gs.filter(
+    (x) =>
+      x.struck ||
+      x.title.trim() ||
+      !x.rows.every(blank) ||
+      (here != null && String(x.gid) === here),
+  )
+  return kept.length ? kept : gs.slice(0, 1)
+}
+
+/**
  * A recipe's sections as written on the back of its card: crossed-out
  * sections gone (every line in them with them), crossed-out lines left off,
  * and lines with nothing on them (one with only an amount, or only a unit,
@@ -1248,7 +1271,7 @@ function IngredientTable({
         if (row.unit && !COMMON_UNITS.includes(row.unit)) extra.add(row.unit)
     return [...COMMON_UNITS, ...[...extra].sort()]
   }, [recipes, groups])
-  const set = (gs: Group[]) => onChange(tidyGroups(gs))
+  const set = (gs: Group[]) => onChange(withoutEmptySections(tidyGroups(gs)))
   // The ids the next section made here will have, and its first line:
   // "Add section…" (and the line under it) carry them already, so writing
   // there — making the section — keeps the caret where it is.
@@ -1675,6 +1698,7 @@ function IngredientTable({
         <div
           key={`t${group.gid ?? g}`}
           role="rowgroup"
+          data-gid={group.gid}
           className={`relative ${g > 0 ? 'mt-3' : ''}`}
           {...whenLeft(() => dropIfEmptySection(group.gid))}
         >
@@ -1850,13 +1874,15 @@ const RecipeCardBack = forwardRef<
   const titleRef = useRef<HTMLInputElement>(null)
   const [titleFocused, setTitleFocused] = useState(false)
   const [groups, setGroups] = useState<Group[]>(() =>
-    tidyGroups(
-      kept
-        ? kept.groups
-        : sectionsOf(recipe).map((s) => ({
-            title: s.title,
-            rows: s.ingredients,
-          })),
+    withoutEmptySections(
+      tidyGroups(
+        kept
+          ? kept.groups
+          : sectionsOf(recipe).map((s) => ({
+              title: s.title,
+              rows: s.ingredients,
+            })),
+      ),
     ),
   )
   const [notes, setNotes] = useState(kept?.notes ?? recipe.notes ?? '')
