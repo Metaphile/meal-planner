@@ -1678,8 +1678,11 @@ const RecipeCardBack = forwardRef<
               role="img"
               aria-label="Unsaved changes"
               title="Unsaved changes"
-              className="pointer-events-none absolute top-0 text-[30px] font-semibold leading-[30px] text-danger"
-              style={{ left: asteriskAt }}
+              // (Over the title's line — whose fading end reaches past the
+              // title — and with room round the stroke, which reaches past
+              // its own width: either would cut it off on iOS.)
+              className="pointer-events-none absolute top-0 z-[1] px-[0.2em] text-[30px] font-semibold leading-[30px] text-danger"
+              style={{ left: `calc(${asteriskAt}px - 0.2em)` }}
             >
               *
             </span>
