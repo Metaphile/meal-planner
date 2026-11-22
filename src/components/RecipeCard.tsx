@@ -1525,6 +1525,7 @@ function IngredientTable({
 if (typeof document !== 'undefined') void document.fonts?.load('22px Caveat')
 
 const NOTES_MIN_LINES = 6
+const NOTES_HINT = 'Prep tips, substitutions…'
 /** How far the notes' writing is set down from the top of its lines: so
  *  little it stands a touch clear of each line's rule (resting right on it,
  *  the caret dips below the rule, and looks wrong). */
@@ -1917,6 +1918,18 @@ const RecipeCardBack = forwardRef<
                   style={{ top: notesLine * 22, height: 21 }}
                 />
               )}
+              {/* The hint, while nothing's written — blank lines are nothing:
+                  a tap on a line further down fills them in. (Not the field's
+                  own, which any of them would hide.) */}
+              {!notes.trim() && (
+                <span
+                  aria-hidden
+                  className="pointer-events-none absolute inset-x-0 top-0 truncate pr-1 leading-[22px] text-pencil"
+                  style={{ paddingTop: NOTES_DROP }}
+                >
+                  {NOTES_HINT}
+                </span>
+              )}
               {/* (The writing up to the caret, laid out as in the field, to
                   find the line the caret's on — wrapped lines and all.) */}
               <span
@@ -1934,7 +1947,7 @@ const RecipeCardBack = forwardRef<
                 onFocus={findNotesLine}
                 onBlur={() => setNotesLine(null)}
                 rows={NOTES_MIN_LINES}
-                placeholder="Prep tips, substitutions…"
+                aria-placeholder={NOTES_HINT}
                 autoComplete="off"
                 // (Over the tint: the rules drawn on it, the writing clear.)
                 className="paper-lines relative block w-full resize-none overflow-hidden bg-transparent pr-1 leading-[22px] focus:outline-none"
