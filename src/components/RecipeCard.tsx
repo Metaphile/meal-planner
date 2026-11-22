@@ -2830,11 +2830,10 @@ export function CardDetail({
       return
     }
     const rdxCard = TAKE_OUT === 'lift' ? getRolodexCard() : undefined
-    // Pulled down, its slot out of sight (a new recipe just saved, say: the
-    // box not turned to it): it carries on down and fades, as any card
-    // pulled away does — not flying off toward its slot, maybe up the
-    // screen, against the pull.
-    if (!rdxCard && fromY > 0) {
+    // Its slot still out of sight (the box turned to it as far as it
+    // goes — see getOrigin): it fades away where it is (carrying on down,
+    // if pulled), as a card going back does — not flying off the screen.
+    if (!rdxCard && TAKE_OUT === 'lift') {
       closing.current = false
       dismiss(fromY, fromV)
       return

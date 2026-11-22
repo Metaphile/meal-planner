@@ -626,15 +626,17 @@ export default function RecipesPage() {
 
   /** Turn the drum so item `index` stands at the top (as the first item does
    *  at the start), or as near as the ends allow. */
+  /** Where the drum stands with item `index` at the top. */
+  const turnedTo = (index: number) => {
+    const top = (START_PHI - PHI_TOP) * wheel.R
+    return (
+      clamp(items[index].rod - items[0].rod + bounds.first - top, 0, bounds.max) *
+      SCALE
+    )
+  }
   const turnTo = (index: number) => {
     const drum = drumRef.current!
-    const top = (START_PHI - PHI_TOP) * wheel.R
-    const to =
-      clamp(
-        items[index].rod - items[0].rod + bounds.first - top,
-        0,
-        bounds.max,
-      ) * SCALE
+    const to = turnedTo(index)
     const ms = Math.min(SPIN_MS, 120 + Math.abs(to - drum.get()) * 0.4)
     return drum.animateTo(to, ms)
   }
@@ -715,24 +717,37 @@ export default function RecipesPage() {
   /** Where the card in hand goes back to — or null if it has no place in
    *  the box (a new card saved while searching for something else). A card
    *  that was never in the box (a new one, just saved) gets its slot
-   *  readied first. If its slot isn't on screen (e.g. it was renamed to
-   *  another letter), it flies off the screen toward it, by itself. */
+   *  readied first; one whose slot is out of sight has the box turned to
+   *  it. */
   const homeOf = (key: string): CardOrigin | null => {
     const i = indexOf(key)
     const wrap = i >= 0 ? itemEls.current[i] : null
     if (!wrap) return null
-    if (wrap.dataset.free === undefined) {
-      // Placed on the wheel once (it was skipped while in hand), then freed.
+    const placeAll = () => {
       lifted.current = null
       lastPose.current = []
       lastShade.current = []
       shown.current = []
       paint()
+    }
+    if (wrap.dataset.free === undefined) {
+      // Placed on the wheel once (it was skipped while in hand), then freed.
+      placeAll()
       lifted.current = key
       freeSlot(wrap)
     }
+    // Its slot out of sight (a new recipe just saved, the box not turned to
+    // it; or one renamed to another letter): the box is turned to it first
+    // — behind the shade — so it goes back as any card does, fading as its
+    // card in the box drops into the slot. (Not flying off the screen.)
+    if (!shown.current[i] && drumRef.current) {
+      drumRef.current.set(turnedTo(i))
+      placeAll()
+      lifted.current = key
+    }
     const o = originOf(i)
     if (shown.current[i]) return o
+    // (Still out of sight — the box can't turn far enough: off toward it.)
     const above = rimPos(i, drumRef.current?.get() ?? 0) < 0
     const out = above ? o.viewTop - o.height - 24 : window.innerHeight + 24
     return {
