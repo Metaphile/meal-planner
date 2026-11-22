@@ -341,7 +341,7 @@ function FavoriteStar({ recipeId }: { recipeId: string }) {
               aria-hidden
               className="pointer-events-none absolute inset-0 block"
               style={{
-                transform: `translate(${s.x}px, ${s.y}px) scale(${s.scale})`,
+                transform: `translate(${s.x}px, ${s.y}px) rotate(${s.turn}deg) scale(${s.scale})`,
                 opacity: s.opacity,
               }}
             >
@@ -357,14 +357,15 @@ function FavoriteStar({ recipeId }: { recipeId: string }) {
   )
 }
 
-/** Where others' stars sit, under yours: a triangle — yours at the top
- *  (where it always is), the first other's down and to the left, the
- *  second's down and to the right, each partly under it. Upright, smaller,
- *  just their fill, the second a little fainter. Fixed: nothing per recipe
- *  or person, so a stack of so many always looks the same. */
+/** Where others' stars sit, under yours: fanned out from it — the first
+ *  other's to the left, tipped left, the second's mirroring it on the right
+ *  — far enough out, and turned enough, to read as stars of their own (not
+ *  a shadow of yours), yet partly under it. Smaller, just their fill, both
+ *  as faint. Fixed: nothing per recipe or person, so a stack of so many
+ *  always looks the same — and the two, mirrored, look meant. */
 const STACKED = [
-  { x: -6, y: 3.2, scale: 0.82, opacity: 0.9 },
-  { x: 6, y: 3.2, scale: 0.82, opacity: 0.45 },
+  { x: -9, y: 2, turn: -16, scale: 0.8, opacity: 0.85 },
+  { x: 9, y: 2, turn: 16, scale: 0.8, opacity: 0.85 },
 ]
 
 /**
