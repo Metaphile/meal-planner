@@ -143,8 +143,8 @@ function CardBody({ recipe, peek }: { recipe: Recipe; peek: boolean }) {
   )
 }
 
-/** Under a card's tags: who else has favorited it (a star, and their names
- *  — not yours: that's the star at the top). With `gap`, a line left blank
+/** Under a card's tags: who else has favorited it — "★ by Rey, Tara" (not
+ *  you: that's the star at the top). With `gap`, a line left blank
  *  above it. */
 function FavoritedBy({ recipeId, gap }: { recipeId: string; gap: boolean }) {
   const { user } = useAuth()
@@ -154,10 +154,10 @@ function FavoritedBy({ recipeId, gap }: { recipeId: string; gap: boolean }) {
     <p
       className={`flex items-center gap-1.5 text-[#8a8170] ${gap ? 'mt-[var(--rule)]' : ''}`}
     >
-      <span className="sr-only">Favorite of</span>
+      <span className="sr-only">Favorited</span>
       {/* (Outlined, filled: a favorite's star, as at the top.) */}
       <StarIcon on size={18} />
-      <span className="min-w-0">{names}</span>
+      <span className="min-w-0">by {names}</span>
     </p>
   )
 }
