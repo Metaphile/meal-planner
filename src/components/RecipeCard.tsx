@@ -2198,6 +2198,28 @@ const EASE_OUT = 'cubic-bezier(0.2, 0.9, 0.25, 1)'
 const STAND = 'cubic-bezier(0.4, 0, 0.2, 1)' // standing up off / back onto the wheel
 
 const pose = (dy: number) => `translate(0px, ${dy}px)`
+/**
+ * A card pulled `fromY` down, going at `v` px/ms, caught and pulled back to
+ * its place as by an elastic: a damped spring — on a little way with the
+ * pull, back past its place, and settling. (Keyframes, a frame apart.)
+ */
+const CAUGHT_MS = 640
+function caught(fromY: number, v: number): Keyframe[] {
+  const zeta = 0.5 // (a bounce, then still)
+  const w0 = 2 * Math.PI * 3 // (three swings a second, undamped)
+  const wd = w0 * Math.sqrt(1 - zeta * zeta)
+  const v0 = Math.min(0.7, Math.max(0, v)) * 1000 // px/s, down; not flung far
+  const b = (v0 + zeta * w0 * fromY) / wd
+  const frames: Keyframe[] = []
+  for (let t = 0; t <= CAUGHT_MS; t += 16) {
+    const s = t / 1000
+    const x =
+      Math.exp(-zeta * w0 * s) * (fromY * Math.cos(wd * s) + b * Math.sin(wd * s))
+    frames.push({ offset: t / CAUGHT_MS, transform: pose(x) })
+  }
+  frames[frames.length - 1] = { offset: 1, transform: pose(0) }
+  return frames
+}
 /** A card in hand (or one beside it) slid `dx` sideways. */
 const sideways = (dx: number) => `translate(${dx}px, 0px)`
 /** How much of the cards either side of the card in hand shows, at the
@@ -3344,14 +3366,28 @@ export function CardDetail({
         return
       }
       // (Turned over with changes: it springs back while you decide.)
-      if (far) leaveRef.current('putAway')
-      card.animate(
-        [
-          { transform: card.style.transform, opacity: card.style.opacity },
-          { transform: pose(0), opacity: 1 },
-        ],
-        { duration: 220, easing: EASE_OUT },
-      )
+      if (far) {
+        // Stopped short by "Discard changes?": caught as it went — it
+        // carries on a moment with the pull, then snaps back, past its
+        // place and back, like an elastic.
+        leaveRef.current('putAway')
+        const held = performance.now() - d.lastT > 80
+        card.animate(caught(d.dy, held ? 0 : d.v), {
+          duration: CAUGHT_MS,
+          easing: 'linear',
+        })
+        card.animate([{ opacity: card.style.opacity }, { opacity: 1 }], {
+          duration: 200,
+          easing: EASE_OUT,
+        })
+      } else
+        card.animate(
+          [
+            { transform: card.style.transform, opacity: card.style.opacity },
+            { transform: pose(0), opacity: 1 },
+          ],
+          { duration: 220, easing: EASE_OUT },
+        )
       shade.animate([{ opacity: shade.style.opacity }, { opacity: 1 }], {
         duration: 220,
       })
