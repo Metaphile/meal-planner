@@ -784,14 +784,17 @@ const newEditId = () => ++lastId
 
 const blank = (i: Row) =>
   !i.struck && !i.name.trim() && i.quantity === undefined && !i.unit
-/** Always exactly one empty line at the end, to write the next one on.
- *  (Of two there, not `hold` — the one being written in: the other goes.) */
+/** Always exactly one empty line at the end, to write the next one on —
+ *  but `hold`, the one being written in, stays, empty or not: emptied just
+ *  above the spare, both stay (till it's left — see IngredientTable); the
+ *  spare itself, the other goes. */
 const withSpareLine = (rows: Row[], hold?: number | null) => {
   const out = [...rows]
   while (
     out.length > 1 &&
     blank(out[out.length - 1]) &&
-    blank(out[out.length - 2])
+    blank(out[out.length - 2]) &&
+    out[out.length - 2].rid !== hold
   )
     out.splice(out[out.length - 1].rid === hold ? -2 : -1, 1)
   if (!out.length || !blank(out[out.length - 1]))
