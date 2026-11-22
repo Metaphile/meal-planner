@@ -8,6 +8,7 @@ import {
   type HTMLAttributes,
   type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
+  type FocusEvent as ReactFocusEvent,
   type MutableRefObject,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
@@ -552,9 +553,6 @@ function WantCount({
   )
 }
 
-/** A new section's, before there is one: no heading, one empty line. */
-const NEW_GROUP: Group = { title: '', rows: [{ name: '' }] }
-
 /** A section's heading, before one's written: it needn't be. */
 const HEADING_HINT = 'Heading (optional)'
 
@@ -773,7 +771,16 @@ export function UnitCell({
 
 /** An ingredient line on the back of a card; a crossed-out one goes when
  *  the card is saved. */
-export type Row = Ingredient & { struck?: boolean }
+export type Row = Ingredient & {
+  struck?: boolean
+  /** Which line it is, while the card's being edited (not kept): lines
+   *  come and go, and move, and the field being written in must stay with
+   *  its line. */
+  rid?: number
+}
+/** A new id for a line or a section being edited. */
+let lastId = 0
+const newEditId = () => ++lastId
 
 const blank = (i: Row) =>
   !i.struck && !i.name.trim() && i.quantity === undefined && !i.unit
@@ -786,7 +793,8 @@ const withSpareLine = (rows: Row[]) => {
     blank(out[out.length - 2])
   )
     out.pop()
-  if (!out.length || !blank(out[out.length - 1])) out.push({ name: '' })
+  if (!out.length || !blank(out[out.length - 1]))
+    out.push({ name: '', rid: newEditId() })
   return out
 }
 
@@ -842,12 +850,20 @@ export type Group = {
    *  each line's own mark (kept: brought back, the section's lines are as
    *  they were). */
   struck?: boolean
+  /** Which section it is, while the card's being edited (not kept). */
+  gid?: number
 }
 
 /** The groups as they should stand after a change: each with its spare
- *  line. (Sections stand on their own, empty and untitled too.) */
+ *  line — and every section and line with an id of its own. */
 const tidyGroups = (gs: Group[]) =>
-  gs.map((g) => ({ ...g, rows: withSpareLine(g.rows) }))
+  gs.map((g) => ({
+    ...g,
+    gid: g.gid ?? newEditId(),
+    rows: withSpareLine(
+      g.rows.map((r) => (r.rid === undefined ? { ...r, rid: newEditId() } : r)),
+    ),
+  }))
 
 /**
  * A recipe's sections as written on the back of its card: crossed-out
@@ -866,7 +882,7 @@ export function sectionsFromGroups(
   const lines = (rows: Row[]) =>
     rows
       .filter((i) => !i.struck)
-      .map(({ struck: _, ...i }) => ({ ...i, name: i.name.trim() }))
+      .map(({ struck: _, rid: __, ...i }) => ({ ...i, name: i.name.trim() }))
       .filter(hasAnything)
   // (A section with no heading and nothing in it kept — its only line
   // crossed out, say — is nothing: it goes. With a heading, it stays.)
@@ -1233,6 +1249,68 @@ function IngredientTable({
     return [...COMMON_UNITS, ...[...extra].sort()]
   }, [recipes, groups])
   const set = (gs: Group[]) => onChange(tidyGroups(gs))
+  // The ids the next section made here will have, and its first line:
+  // "Add section…" (and the line under it) carry them already, so writing
+  // there — making the section — keeps the caret where it is.
+  const pending = useRef({ gid: newEditId(), rid: newEditId() })
+  const renewPending = () => {
+    pending.current = { gid: newEditId(), rid: newEditId() }
+  }
+  const groupsRef = useRef(groups)
+  groupsRef.current = groups
+
+  // Left — written in, then the focus gone from it (to anywhere outside it,
+  // or nowhere: the keyboard put away) — `act` is done. But not for a tap
+  // within it: on iOS a tap on a button, like a unit's, takes no focus, so
+  // it too leaves the field for nowhere.
+  // (What's being tapped, while it is — a line inside a section: a tap on
+  // it is one within both.)
+  const tapping = useRef<Node | null>(null)
+  const whenLeft = (act: () => void) => ({
+    onPointerDownCapture: (e: ReactPointerEvent<HTMLElement>) => {
+      const target = e.target as Node
+      if (tapping.current === target) return
+      tapping.current = target
+      const done = () =>
+        setTimeout(() => {
+          if (tapping.current === target) tapping.current = null
+        })
+      window.addEventListener('click', done, { capture: true, once: true })
+      setTimeout(done, 1000)
+    },
+    onBlur: (e: ReactFocusEvent<HTMLElement>) => {
+      const area = e.currentTarget
+      const to = e.relatedTarget as Node | null
+      if (to && area.contains(to)) return
+      setTimeout(() => {
+        const t = tapping.current
+        if ((t && area.contains(t)) || area.contains(document.activeElement))
+          return
+        act()
+      })
+    },
+  })
+  // An empty line, left: gone. (Not the spare one at the end — that's
+  // where the next line's written.)
+  const dropIfEmptyLine = (rid: number | undefined) => {
+    const gs = groupsRef.current
+    const g = gs.findIndex((x) => x.rows.some((r) => r.rid === rid))
+    if (g < 0) return
+    const rows = gs[g].rows
+    const i = rows.findIndex((r) => r.rid === rid)
+    if (!blank(rows[i]) || i === rows.length - 1) return
+    set(gs.map((x, k) => (k === g ? { ...x, rows: rows.filter((_, j) => j !== i) } : x)))
+  }
+  // A section with no heading and nothing in it, left: gone. (Not the only
+  // one: every recipe has a first section.)
+  const dropIfEmptySection = (gid: number | undefined) => {
+    const gs = groupsRef.current
+    const g = gs.findIndex((x) => x.gid === gid)
+    if (g < 0 || gs.length < 2) return
+    const x = gs[g]
+    if (x.struck || x.title.trim() || !x.rows.every(blank)) return
+    set(gs.filter((_, k) => k !== g))
+  }
   // "Add section…" being written in (nothing yet): shown as a section's
   // title already.
   const [addingSection, setAddingSection] = useState(false)
@@ -1259,8 +1337,10 @@ function IngredientTable({
       x.title !== '' &&
       x.rows.every(blank)
     ) {
-      // (Still being written in: shown with its column heads, as before.)
+      // (Still being written in: shown with its column heads, as before —
+      // and with its ids, so the caret stays.)
       setAddingSection(true)
+      pending.current = { gid: x.gid ?? newEditId(), rid: newEditId() }
       return set(groups.slice(0, -1))
     }
     set(groups.map((y, i) => (i === g ? { ...y, title } : y)))
@@ -1271,7 +1351,9 @@ function IngredientTable({
     // written in.)
     if (g === groups.length) {
       setAddingSection(false)
-      return set([...groups, { title: '', rows: [{ name: '', ...patch }] }])
+      const { gid, rid } = pending.current
+      renewPending()
+      return set([...groups, { title: '', rows: [{ name: '', rid, ...patch }], gid }])
     }
     const next = groups.map((x, i) =>
       i === g
@@ -1293,6 +1375,10 @@ function IngredientTable({
       next[g].rows.every(blank)
     ) {
       setAddingSection(true)
+      pending.current = {
+        gid: was.gid ?? newEditId(),
+        rid: was.rows[r]?.rid ?? newEditId(),
+      }
       return set(groups.slice(0, -1))
     }
     set(next)
@@ -1306,7 +1392,10 @@ function IngredientTable({
     const gs = groups.map((x) => ({ ...x, rows: [...x.rows] }))
     const [row] = gs[from.g].rows.splice(from.i, 1)
     // (Onto "Add section…": a new section, untitled.)
-    if (to.g >= gs.length) gs.push({ title: '', rows: [] })
+    if (to.g >= gs.length) {
+      gs.push({ title: '', rows: [], gid: pending.current.gid })
+      renewPending()
+    }
     const at = to.g === from.g && to.i > from.i ? to.i - 1 : to.i
     gs[to.g].rows.splice(at, 0, row)
     set(gs)
@@ -1408,10 +1497,11 @@ function IngredientTable({
       if (spare && group.struck) return null
       return (
         <div
-          key={i}
+          key={row.rid ?? i}
           role="row"
           data-g={g}
           data-i={i}
+          {...(g < groups.length ? whenLeft(() => dropIfEmptyLine(row.rid)) : {})}
           className={`${cols} relative items-center border-b border-line-blue`}
         >
           {spare ? (
@@ -1505,7 +1595,7 @@ function IngredientTable({
           // section's title row — a cell where the grip goes, then the
           // field — in the next section's place: see titleField.)
           <div
-            key={`t${g}`}
+            key={`t${pending.current.gid}`}
             role="rowgroup"
             ref={addRef}
             className="relative mt-3"
@@ -1554,7 +1644,9 @@ function IngredientTable({
                     // (A section now, the field its title: a new "Add
                     // section…" below, not being written in.)
                     setAddingSection(false)
-                    set([...groups, { title: t, rows: [] }])
+                    const { gid } = pending.current
+                    renewPending()
+                    set([...groups, { title: t, rows: [], gid }])
                   },
                   // (Being written in: what's written here is its heading.)
                   addingSection ? HEADING_HINT : 'Add section…',
@@ -1573,14 +1665,18 @@ function IngredientTable({
               )}
             </div>
             {addingSection
-              ? [lineRow(g, NEW_GROUP, 0, NEW_GROUP.rows[0])]
+              ? (() => {
+                  const first = { name: '', rid: pending.current.rid }
+                  return [lineRow(g, { title: '', rows: [first] }, 0, first)]
+                })()
               : []}
           </div>
         ) : (
         <div
-          key={`t${g}`}
+          key={`t${group.gid ?? g}`}
           role="rowgroup"
           className={`relative ${g > 0 ? 'mt-3' : ''}`}
+          {...whenLeft(() => dropIfEmptySection(group.gid))}
         >
           {/* The section's title, beside its column headings: its grip, to
               drag the whole section by (when there's more than one), and its

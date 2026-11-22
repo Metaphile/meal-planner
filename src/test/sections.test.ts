@@ -96,6 +96,13 @@ describe('sections as written on the back of a card', () => {
     ).toEqual([{ title: 'Herbs', ingredients: [] }])
   })
 
+  it('keeps nothing of the editor’s own (line and section ids) in what’s saved', () => {
+    const saved = sectionsFromGroups([
+      { title: '', gid: 7, rows: [{ name: 'Salt', rid: 3 }, { name: '', rid: 4 }] },
+    ])
+    expect(saved.ingredients).toEqual([{ name: 'Salt' }])
+  })
+
   it('every section crossed out: one first section, with nothing in it', () => {
     expect(
       sectionsFromGroups([g('A', [{ name: 'x' }], true), g('B', [], true)]),
