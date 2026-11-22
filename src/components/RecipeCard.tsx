@@ -1742,10 +1742,10 @@ const sideways = (dx: number) => `translate(${dx}px, 0px)`
 const BESIDE_PEEK = 5
 /** How far they slide (off the screen, shadow and all) as it's put away. */
 const BESIDE_AWAY = 60
-/** …and how long that takes, coming in (once the card in hand starts
- *  fading in) and going (as it's put away). */
+/** …and how long that takes, coming in (in place as the card in hand is)
+ *  and going (as it's put away). */
 const BESIDE_IN_MS = 650
-const BESIDE_OUT_MS = 450
+const BESIDE_OUT_MS = 750
 const BESIDE_EASE = 'cubic-bezier(0.3, 0, 0.5, 1)'
 /** Room around a card in hand, in the layer it rests in (and so in those
  *  beside it). */
@@ -1868,6 +1868,19 @@ export function CardDetail({
   const nextLayerRef = useRef<HTMLDivElement>(null)
   // How far they've gone (0: in place, 1: off the screen and faded).
   const besideGone = useRef(0)
+  // How far down each card was scrolled, swiping from one to the next —
+  // shown that way beside it, and again in hand. (Forgotten once it's put
+  // away: this card goes, and it with it.)
+  const scrolls = useRef(new Map<string, number>())
+  useLayoutEffect(() => {
+    if (!step) return
+    // (Their layers lay them out just as the card in hand's does: scrolled
+    // the same, they show what it would.)
+    if (prevLayerRef.current)
+      prevLayerRef.current.scrollTop = scrolls.current.get(step.prev.id) ?? 0
+    if (nextLayerRef.current)
+      nextLayerRef.current.scrollTop = scrolls.current.get(step.next.id) ?? 0
+  }, [step?.prev.id, step?.next.id])
   // In hand, you're cooking from it: the screen stays on till it's put back.
   useWakeLock()
   // Show the recipe as it is now (it may be edited while in hand).
@@ -2191,7 +2204,13 @@ export function CardDetail({
     }
     // The cards either side slide in from off the screen as it fades in.
     besideGone.current = 1
-    void besideTo(0, BESIDE_IN_MS, BESIDE_EASE, rdxCard ? FADE_IN_DELAY_MS : 0)
+    // (Arriving as it does: in place just as it's fully faded in.)
+    void besideTo(
+      0,
+      BESIDE_IN_MS,
+      BESIDE_EASE,
+      rdxCard ? Math.max(0, FADE_IN_DELAY_MS + FADE_IN_MS - BESIDE_IN_MS) : 0,
+    )
     return () => {
       for (const el of [card, shadeRef.current])
         el?.getAnimations().forEach((x) => x.cancel())
@@ -2434,6 +2453,9 @@ export function CardDetail({
     if (!stepRef.current) return
     flipping.current = true // (no taps, pulls or swipes till it's in)
     card.getAnimations().forEach((a) => a.finish())
+    // (Each card keeps its place, scrolled, till it's put away.)
+    const into = dir === 1 ? stepRef.current.next : stepRef.current.prev
+    scrolls.current.set(shown.id, scrollRef.current?.scrollTop ?? 0)
     const toX = -dir * pitch()
     const dist = Math.abs(toX - fromX)
     const ms = Math.min(380, Math.max(200, dist / 1.4))
@@ -2449,7 +2471,8 @@ export function CardDetail({
       // The one beside it, in its place, becomes the card in hand (all in
       // one frame: the cards and their places swap under the same picture).
       flushSync(() => stepRef.current?.go(dir))
-      scrollRef.current?.scrollTo({ top: 0 })
+      if (scrollRef.current)
+        scrollRef.current.scrollTop = scrolls.current.get(into.id) ?? 0
       for (const el of [card, prevRef.current, nextRef.current])
         el?.getAnimations().forEach((a) => a.cancel())
       slideAll(0)
