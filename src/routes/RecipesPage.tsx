@@ -19,7 +19,7 @@ import {
   HAND,
   RecipeCard,
   PERSPECTIVE,
-  StarIcon,
+  HeartIcon,
   type CardOrigin,
   type Hand,
 } from '../components/RecipeCard'
@@ -391,7 +391,7 @@ export default function RecipesPage() {
       setKept(new Set(wants.filter(isWanted).map((w) => w.recipeId)))
     setWantedOnly(!wantedOnly)
   }
-  // …and, starred, to just your favorites (the same way: unstarring one
+  // …and, hearted, to just your favorites (the same way: unhearting one
   // there doesn't whisk it away).
   const { user } = useAuth()
   const favorites = useStore((s) => s.favorites)
@@ -1300,8 +1300,8 @@ export default function RecipesPage() {
       </span>
     </button>
   )
-  // Only your favorites: the cards' star, beside it.
-  const favoritesOnlyStar = (
+  // Only your favorites: the cards' heart, beside it.
+  const favoritesOnlyHeart = (
     <button
       type="button"
       aria-pressed={favoritesOnly}
@@ -1309,7 +1309,7 @@ export default function RecipesPage() {
       onClick={toggleFavoritesOnly}
       className="-mx-1 grid h-9 w-9 shrink-0 place-items-center"
     >
-      <StarIcon on={favoritesOnly} size={20} />
+      <HeartIcon on={favoritesOnly} size={18} />
     </button>
   )
   const header = (
@@ -1325,7 +1325,7 @@ export default function RecipesPage() {
         // (New recipes start on the blank card at the front of the box.)
         action={
           <div className="flex items-center gap-1">
-            {favoritesOnlyStar}
+            {favoritesOnlyHeart}
             {wantedOnlyBox}
             {/* Settings — your account, and the group's — in the corner. */}
             <Link
