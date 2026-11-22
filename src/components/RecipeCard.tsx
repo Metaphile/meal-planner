@@ -2829,8 +2829,17 @@ export function CardDetail({
       dismiss(fromY, fromV)
       return
     }
-    const away = besideAway()
     const rdxCard = TAKE_OUT === 'lift' ? getRolodexCard() : undefined
+    // Pulled down, its slot out of sight (a new recipe just saved, say: the
+    // box not turned to it): it carries on down and fades, as any card
+    // pulled away does — not flying off toward its slot, maybe up the
+    // screen, against the pull.
+    if (!rdxCard && fromY > 0) {
+      closing.current = false
+      dismiss(fromY, fromV)
+      return
+    }
+    const away = besideAway()
     const anim = rdxCard
       ? liftFade(o, rdxCard, false, fromY, fromV)
       : fly(arcThrough(base + fromY, o.clearTop, o.slotTop), o, false, base)
