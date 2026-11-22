@@ -1609,9 +1609,26 @@ const RecipeCardBack = forwardRef<
   })
   // Changed: says something different — or a section's crossed out (even
   // an empty one, which saving wouldn't change: still, it's been marked).
-  if (changedRef)
-    changedRef.current =
-      !sameText(draft(), recipe) || groups.some((g) => g.struck)
+  const dirty = !sameText(draft(), recipe) || groups.some((g) => g.struck)
+  if (changedRef) changedRef.current = dirty
+  // Where the asterisk goes: just past the end of the title (centred in its
+  // box), or — the title filling the box — just past the box.
+  const titleBoxRef = useRef<HTMLDivElement>(null)
+  const titleMeasureRef = useRef<HTMLSpanElement>(null)
+  const [asteriskAt, setAsteriskAt] = useState(0)
+  useLayoutEffect(() => {
+    const place = () => {
+      const box = titleBoxRef.current?.clientWidth ?? 0
+      const text = titleMeasureRef.current?.offsetWidth ?? 0
+      setAsteriskAt(Math.min(box + 2, (box + text) / 2 + 5))
+    }
+    place()
+    // (Once the handwriting's in: it's wider than what stood in for it.)
+    void document.fonts?.ready.then(place)
+    const ro = new ResizeObserver(place)
+    if (titleBoxRef.current) ro.observe(titleBoxRef.current)
+    return () => ro.disconnect()
+  }, [title, dirty])
 
   // Someone else has saved a change to it since its editing began: saving
   // now writes over theirs. (A new recipe has no one else's.)
@@ -1641,13 +1658,40 @@ const RecipeCardBack = forwardRef<
         <div className="mx-5 mt-3.5 flex items-center gap-2 border-b-[1.5px] border-pen pb-0.5">
           {/* The favorite star, as on the front — kept at once. (Not on a
               new card until it's saved: there's no recipe yet.) */}
-          {!isNew && (
+          {isNew ? (
+            // (Room the star would take, so the title sits centred between
+            // it and the asterisk's room.)
+            <span aria-hidden className="shrink-0" style={{ width: STAR_ROOM }} />
+          ) : (
             <FavoriteStar recipeId={recipe.id} />
           )}
           {/* Not being written in, the title is shown as on the front (a
               long one cut off, feathered, dragged sideways to read); tapped,
               it's written in, the caret at its end. */}
-          <div className="relative flex min-w-0 flex-1">
+          <div ref={titleBoxRef} className="relative flex min-w-0 flex-1">
+          {/* With changes not yet saved: an asterisk just past the title's
+              end — beside it, not in it (in red, not the pen's blue, so it's
+              not taken for part of it). A title that fills the line: past
+              its edge, in the room beside it. */}
+          {dirty && (
+            <span
+              role="img"
+              aria-label="Unsaved changes"
+              title="Unsaved changes"
+              className="pointer-events-none absolute top-0 text-[30px] font-semibold leading-[30px] text-danger"
+              style={{ left: asteriskAt }}
+            >
+              *
+            </span>
+          )}
+          {/* (The title's width as written, to put the asterisk past it.) */}
+          <span
+            ref={titleMeasureRef}
+            aria-hidden
+            className="invisible absolute whitespace-pre text-[30px] font-semibold leading-[30px]"
+          >
+            {title}
+          </span>
           <input
             ref={titleRef}
             value={title}
@@ -1700,9 +1744,7 @@ const RecipeCardBack = forwardRef<
           )}
           </div>
           {/* (Balancing the star, so the title sits centred.) */}
-          {!isNew && (
-            <span aria-hidden className="shrink-0" style={{ width: STAR_ROOM }} />
-          )}
+          <span aria-hidden className="shrink-0" style={{ width: STAR_ROOM }} />
         </div>
         <div className="mx-5 mt-3.5 mb-4 flex flex-col gap-4">
           <IngredientTable
