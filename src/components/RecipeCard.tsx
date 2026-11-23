@@ -400,7 +400,7 @@ function HeartRings({ count }: { count: number }) {
       {[...rings].reverse().flatMap((r, i) => [
         tracing(
           r.out + line / 2,
-          `color-mix(in srgb, var(--color-accent-edge) ${r.opacity * 100}%, var(--color-paper))`,
+          `color-mix(in srgb, var(--color-heart-edge) ${r.opacity * 100}%, var(--color-paper))`,
           `${i}a`,
         ),
         tracing(r.out - line / 2, 'var(--color-paper)', `${i}b`),
@@ -454,12 +454,12 @@ export function HeartIcon({ on, size = 18 }: { on: boolean; size?: number }) {
       viewBox={`${HEART_BOX.x} ${HEART_BOX.y} ${HEART_BOX.w} ${HEART_BOX.h}`}
       width={size}
       height={(size * HEART_BOX.h) / HEART_BOX.w}
-      className={`block shrink-0 ${on ? 'text-accent-edge' : 'text-ink-faint'}`}
+      className={`block shrink-0 ${on ? 'text-heart-edge' : 'text-ink-faint'}`}
       aria-hidden
     >
       <path
         d={HEART_PATH}
-        fill={on ? 'var(--color-accent)' : 'var(--color-paper)'}
+        fill={on ? 'var(--color-heart)' : 'var(--color-paper)'}
         stroke="currentColor"
         // (Drawn 1.5px wide whatever its size, like the Want box's border.)
         strokeWidth={(1.5 * HEART_BOX.w) / size}

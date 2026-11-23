@@ -5,7 +5,7 @@
  * not the default for a moment), and on the root as data-theme.
  */
 
-export type ThemeId = 'lavender' | 'sage' | 'rose' | 'denim' | 'night'
+export type ThemeId = 'lavender' | 'sage' | 'rose' | 'kraft' | 'night'
 
 export interface Theme {
   id: ThemeId
@@ -32,9 +32,9 @@ export const THEMES: Theme[] = [
     sample: { counter: '#dee7ec', paper: '#fcf9f1', accent: '#dab5ba', edge: '#bc7f88', ink: '#3a3428' },
   },
   {
-    id: 'denim',
-    name: 'Denim',
-    sample: { counter: '#ece4da', paper: '#fcf9f1', accent: '#abc3de', edge: '#6b94c3', ink: '#3a3428' },
+    id: 'kraft',
+    name: 'Kraft',
+    sample: { counter: '#3c291d', paper: '#fcf9f1', accent: '#d6ba86', edge: '#a67e44', ink: '#3a3428' },
   },
   {
     id: 'night',

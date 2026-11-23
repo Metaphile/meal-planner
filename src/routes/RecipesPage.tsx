@@ -1334,7 +1334,7 @@ export default function RecipesPage() {
             <Link
               to="/account"
               aria-label="Account"
-              className="grid h-9 w-9 place-items-center rounded-full text-ink-soft active:bg-ink/5"
+              className="grid h-9 w-9 place-items-center rounded-full text-on-counter-soft active:bg-on-counter/10"
             >
               <svg
                 viewBox="0 0 24 24"

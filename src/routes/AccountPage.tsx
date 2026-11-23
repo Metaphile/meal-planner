@@ -71,7 +71,7 @@ export default function AccountPage() {
           <Link
             to="/recipes"
             aria-label="Back to Meals"
-            className="-ml-2 grid h-9 w-9 shrink-0 place-items-center rounded-full text-ink-soft active:bg-ink/5"
+            className="-ml-2 grid h-9 w-9 shrink-0 place-items-center rounded-full text-on-counter-soft active:bg-on-counter/10"
           >
             <svg
               viewBox="0 0 24 24"
@@ -125,7 +125,7 @@ export default function AccountPage() {
 
         <button
           onClick={signOut}
-          className="text-sm font-medium text-danger active:scale-95"
+          className="text-sm font-medium text-on-counter-danger active:scale-95"
         >
           Sign out
         </button>

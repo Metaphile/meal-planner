@@ -65,6 +65,16 @@
   --color-accent-text: #73688d;
   --color-accent-ink: #443d54;
 
+  /* What's written straight on the counter (the header, its icons; a page
+     with no paper): ink, unless the counter's dark. */
+  --color-on-counter: var(--color-ink);
+  --color-on-counter-soft: var(--color-ink-soft);
+  --color-on-counter-danger: var(--color-danger);
+
+  /* A favorite's heart: the accent's, unless a theme says otherwise. */
+  --color-heart: var(--color-accent);
+  --color-heart-edge: var(--color-accent-edge);
+
   /* Danger (and short of what's needed): its colour, a light edge, and what's
      written on it. */
   --color-danger: #b8402f;
@@ -118,8 +128,9 @@
    on the root, as data-theme. The light ones keep the paper, ink and pen,
    and change the accent and the counter: each accent on the same steps of
    lightness as the lavender (OKLCH), so every contrast holds — its edge 3:1
-   on paper, its text 4.5:1, its ink 5.5:1 on its fill. Night restates them
-   all, for dark paper, keeping the same contrasts. */
+   on paper, its text 4.5:1, its ink 5.5:1 on its fill. (Kraft's counter is
+   dark: what's on it is written in cream, 11:1.) Night restates them all,
+   for dark paper, keeping the same contrasts. */
 :root[data-theme='sage'] {
   --color-accent: #aec8b2;
   --color-accent-edge: #6d9b76;
@@ -136,13 +147,20 @@
   --color-counter: #dee7ec;
   --color-counter-deep: #b8c7ce;
 }
-:root[data-theme='denim'] {
-  --color-accent: #abc3de;
-  --color-accent-edge: #6b94c3;
-  --color-accent-text: #507299;
-  --color-accent-ink: #2e435c;
-  --color-counter: #ece4da;
-  --color-counter-deep: #cec2b2;
+:root[data-theme='kraft'] {
+  /* Kraft-paper dividers on a dark walnut counter — written on in cream —
+     and red hearts. */
+  --color-accent: #d6ba86;
+  --color-accent-edge: #a67e44;
+  --color-accent-text: #8b6330;
+  --color-accent-ink: #55391b;
+  --color-counter: #3c291d;
+  --color-counter-deep: #2e1f15;
+  --color-on-counter: #f0e7d6;
+  --color-on-counter-soft: #c5b9a5;
+  --color-on-counter-danger: #f18a76;
+  --color-heart: #e54c4a;
+  --color-heart-edge: #b02a2d;
 }
 :root[data-theme='night'] {
   color-scheme: dark;

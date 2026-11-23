@@ -54,7 +54,7 @@ export default function App() {
   if (!ready) return <Splash />
 
   return (
-    <div className="flex h-full flex-col bg-counter text-ink">
+    <div className="flex h-full flex-col bg-counter text-on-counter">
       <main
         className="relative flex-1 overflow-hidden"
         style={{ paddingTop: 'var(--safe-top)' }}
@@ -154,7 +154,7 @@ function SignedOut() {
   return (
     <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
       <h1 className="paper-serif text-title font-semibold">Meals</h1>
-      <p className="max-w-xs text-sm text-ink-soft">
+      <p className="max-w-xs text-sm text-on-counter-soft">
         This is a private app. To sign in, paste the invite link someone in
         your group shared with you — or your own sign-in link.
       </p>
@@ -163,7 +163,7 @@ function SignedOut() {
           <PrimaryButton onClick={() => void paste()}>
             Paste sign-in link
           </PrimaryButton>
-          {error && <p className="text-sm text-danger">{error}</p>}
+          {error && <p className="text-sm text-on-counter-danger">{error}</p>}
         </div>
       )}
       <form
@@ -197,7 +197,7 @@ function SignedOut() {
 
 function Splash() {
   return (
-    <div className="flex h-full items-center justify-center bg-counter text-ink-soft">
+    <div className="flex h-full items-center justify-center bg-counter text-on-counter-soft">
       <div className="animate-pulse text-sm">Meals</div>
     </div>
   )
