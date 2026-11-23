@@ -1287,14 +1287,14 @@ export default function RecipesPage() {
       <span
         className={`grid h-[22px] w-[22px] place-items-center rounded-[5px] border-[1.5px] ${
           wantedOnly
-            ? 'border-accent-edge bg-accent'
+            ? 'border-heart-edge bg-heart'
             : 'border-ink-faint bg-paper'
         }`}
       >
         {wantedOnly && (
           <svg
             viewBox="0 0 12 12"
-            className="h-3.5 w-3.5 text-accent-ink"
+            className="h-3.5 w-3.5 text-on-heart"
             fill="none"
             stroke="currentColor"
             strokeWidth={2}

@@ -266,7 +266,7 @@ export function Tickbox({
       <span
         className={`grid h-[18px] w-[18px] place-items-center rounded-[4px] border-[1.5px] ${
           state === 'on'
-            ? 'border-accent-edge bg-accent text-accent-ink'
+            ? 'border-heart-edge bg-heart text-on-heart'
             : state === 'short'
               ? 'border-danger bg-danger text-on-danger'
               : 'border-ink-faint bg-paper'

@@ -71,9 +71,11 @@
   --color-on-counter-soft: var(--color-ink-soft);
   --color-on-counter-danger: var(--color-danger);
 
-  /* A favorite's heart: the accent's, unless a theme says otherwise. */
+  /* A favorite's heart — and a ticked box (wanted, on hand, got): the
+     accent's, unless a theme says otherwise; and the tick on it. */
   --color-heart: var(--color-accent);
   --color-heart-edge: var(--color-accent-edge);
+  --color-on-heart: var(--color-accent-ink);
 
   /* Danger (and short of what's needed): its colour, a light edge, and what's
      written on it. */
@@ -131,17 +133,20 @@
    on paper, its text 4.5:1, its ink 5.5:1 on its fill. (Kraft's counter is
    dark: what's on it is written in cream, 11:1.) Night restates them all,
    for dark paper, keeping the same contrasts. */
-/* Each theme's hearts stand apart from its accent (across the colour wheel
-   from it), outlined 3:1 on its paper and its counter. Lavender's (the
-   default: no data-theme): yellow, a deeper gold round them. */
+/* Each theme's hearts — and ticked boxes — stand apart from its accent
+   (across the colour wheel from it), outlined 3:1 on its paper and its
+   counter, their ticks 3:1 or more on them. Lavender's (the default: no
+   data-theme): yellow, a deeper gold round them. */
 :root:not([data-theme]) {
   --color-heart: #f4cd4b;
   --color-heart-edge: #aa7c03;
+  --color-on-heart: #392c00;
 }
 :root[data-theme='sage'] {
   /* Hearts: raspberry — opposite the green, echoing the blush counter. */
   --color-heart: #d55078;
   --color-heart-edge: #a82e57;
+  --color-on-heart: #ffffff;
   --color-accent: #aec8b2;
   --color-accent-edge: #6d9b76;
   --color-accent-text: #547a5c;
@@ -153,6 +158,7 @@
   /* Hearts: teal — opposite the pink, echoing the cool counter. */
   --color-heart: #43b2ac;
   --color-heart-edge: #23928d;
+  --color-on-heart: #003634;
   --color-accent: #dab5ba;
   --color-accent-edge: #bc7f88;
   --color-accent-text: #915f66;
@@ -174,11 +180,13 @@
   --color-on-counter-danger: #f18a76;
   --color-heart: #e54c4a;
   --color-heart-edge: #b02a2d;
+  --color-on-heart: #ffffff;
 }
 :root[data-theme='night'] {
   /* Hearts: amber, glowing on the dark paper (Lavender's yellow, by night). */
   --color-heart: #f5ae39;
   --color-heart-edge: #ffc674;
+  --color-on-heart: #402800;
   color-scheme: dark;
   --color-counter: #19201c;
   --color-counter-deep: #111814;

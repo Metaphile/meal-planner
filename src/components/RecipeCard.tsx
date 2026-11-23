@@ -508,13 +508,13 @@ function WantBox({
       )}
       <span
         className={`grid h-[18px] w-[18px] place-items-center rounded-[4px] border-[1.5px] ${
-          on ? 'border-accent-edge bg-accent' : 'border-ink-faint bg-paper'
+          on ? 'border-heart-edge bg-heart' : 'border-ink-faint bg-paper'
         }`}
       >
         {on && (
           <svg
             viewBox="0 0 12 12"
-            className="h-3 w-3 text-accent-ink"
+            className="h-3 w-3 text-on-heart"
             fill="none"
             stroke="currentColor"
             strokeWidth={2}
