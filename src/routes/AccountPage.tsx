@@ -612,8 +612,8 @@ function HomeScreen({ userId }: { userId: string }) {
 
 /**
  * The app's colours (kept on this device): a sample of each theme in its
- * own colours — the box in miniature: its counter, its accent's divider, a
- * card of its paper — to pick from. Picked, the app's in it at once.
+ * own colours — its counter, a slip of its paper with its accent's tab, a
+ * line of its ink — to pick from. Picked, the app's in it at once.
  */
 function ThemePicker() {
   const [theme, setTheme] = useState<ThemeId>(savedTheme)
@@ -642,30 +642,25 @@ function ThemePicker() {
               className="flex flex-col items-center gap-1.5 active:scale-95"
             >
               <span
-                className={`relative block h-14 w-full overflow-hidden rounded-lg border ${
+                className={`relative block h-12 w-full overflow-hidden rounded-lg border ${
                   on
                     ? 'border-accent-edge ring-2 ring-accent-edge ring-offset-1 ring-offset-paper'
                     : 'border-paper-edge'
                 }`}
                 style={{ background: t.sample.counter }}
               >
-                {/* The box in miniature: on its counter, a divider in its
-                    accent (its tab up), and a card of its paper in front,
-                    a line of its ink on it. */}
+                {/* A slip of its paper, its accent's tab on it, a line of
+                    its ink. */}
                 <span
-                  className="absolute top-1.5 left-2.5 h-3 w-4 rounded-t-[3px] border border-b-0"
-                  style={{ background: t.sample.accent, borderColor: t.sample.edge }}
-                />
-                <span
-                  className="absolute inset-x-1.5 top-4 bottom-0 rounded-t-md border border-b-0"
-                  style={{ background: t.sample.accent, borderColor: t.sample.edge }}
-                />
-                <span
-                  className="absolute inset-x-1 top-7 bottom-0 rounded-t-md"
+                  className="absolute inset-x-2 top-2 bottom-0 rounded-t-md"
                   style={{ background: t.sample.paper }}
                 >
                   <span
-                    className="absolute top-2.5 right-1.5 left-1.5 h-[2px] rounded-full opacity-60"
+                    className="absolute top-1.5 left-1.5 h-2 w-4 rounded-sm border"
+                    style={{ background: t.sample.accent, borderColor: t.sample.edge }}
+                  />
+                  <span
+                    className="absolute top-5 right-1.5 left-1.5 h-[2px] rounded-full opacity-60"
                     style={{ background: t.sample.ink }}
                   />
                 </span>
