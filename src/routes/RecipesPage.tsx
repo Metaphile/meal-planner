@@ -118,9 +118,13 @@ const LIST_ROOM = 24
 /** Below the screen, how much of the top of the shopping list shows over
  *  its bottom edge (as the cards beside one in hand show a sliver). */
 const LIST_PEEK = 6
-/** Following the back of the box up, the list's top is this far below the
- *  top of that divider (a sliver of it showing over the list). */
+/** Turned to the end, the list's top is this far below the top of the back
+ *  of the box (a sliver of it showing over the list). */
 const LIST_DROP = 30
+/** Rising into view, the list moves this much faster than the finger at
+ *  first — in front, it outpaces the box turning behind it — easing to the
+ *  finger's pace (1:1) as the turning ends, and keeping it on up. */
+const LIST_LEAD = 1.6
 
 /** A card on the wheel is trimmed at its rod (the rest is behind the cards
  *  in front), with room above and to the sides for its shadow. (A clip-path,
@@ -479,20 +483,14 @@ export default function RecipesPage() {
   const shown = useRef<boolean[]>([])
   const headerRef = useRef<HTMLDivElement>(null)
   const wheel = useMemo(() => fitWheel(stageH), [stageH])
-  // Where the shopping list's top is on screen (from the top of the page)
-  // with the back of the box at angle `phi` on the wheel: following the
-  // top of that divider up from the bottom edge — never lower than peeking
-  // over it.
-  const listTopAt = useCallback(
-    (phi: number) =>
-      Math.min(
-        pageH - LIST_PEEK,
-        dividerTop(wheel, headerU, phi) * SCALE + LIST_DROP,
-      ),
-    [wheel, headerU, pageH],
+  // Where the shopping list's top is on screen (from the top of the page),
+  // turned to the end of the box: just below the top of its back (never
+  // lower than peeking over the bottom edge). It rises to there, and on up
+  // from there, with the finger (see paint).
+  const listStart = Math.min(
+    pageH - LIST_PEEK,
+    dividerTop(wheel, headerU, REACH_LAST_PHI) * SCALE + LIST_DROP,
   )
-  // (Turned to the end: where it starts sliding on up from.)
-  const listStart = listTopAt(REACH_LAST_PHI)
   const bounds = useMemo(
     () =>
       boundsOf(
@@ -556,15 +554,24 @@ export default function RecipesPage() {
     // ahead of it.
     const at = drum.get()
     const turn = bounds.turn * SCALE
-    const st = Math.min(at, turn)
-    // The shopping list: following the top of the back of the box up from
-    // the bottom edge as the drum turns; past the turning, slid on up by as
-    // much as the box is scrolled past it (on screen, 1:1).
+    // The shopping list: in front of the box, not riding its wheel — up from
+    // peeking over the bottom edge to just below the top of the back of the
+    // box as the turning ends, then on up with the finger (on screen, 1:1).
+    // Rising into view it leads (LIST_LEAD), easing to the finger's pace as
+    // it gets there: nearer, it outpaces the box turning behind it.
     const sheet = listRef.current
     if (sheet) {
-      const k = items.length - 1
-      const phi = PHI_TOP + rimPos(k, st) / wheel.R
-      const top = listTopAt(phi) - Math.max(0, at - turn)
+      const rest = pageH - LIST_PEEK
+      const rise = rest - listStart
+      // (Over this much scrolling: its pace eases from LIST_LEAD to 1.)
+      const span = (2 * rise) / (LIST_LEAD + 1)
+      const u = (at - (turn - span)) / span
+      const top =
+        u <= 0
+          ? rest
+          : u >= 1
+            ? listStart - (at - turn)
+            : rest - span * (LIST_LEAD * u + ((1 - LIST_LEAD) * u * u) / 2)
       const y = `translate3d(0px, ${top.toFixed(1)}px, 0px)`
       if (sheet.style.transform !== y) sheet.style.transform = y
     }
@@ -624,7 +631,7 @@ export default function RecipesPage() {
         el.style.zIndex = String(zi)
       }
     }
-  }, [items, wheel, rimPos, headerU, bounds, listTopAt, wheelAt])
+  }, [items, wheel, rimPos, headerU, bounds, listStart, pageH, wheelAt])
 
   const busy = useRef(false)
 
