@@ -2561,19 +2561,19 @@ export const HAND: Slice<Hand> = {
 const TAKE_OUT: 'arc' | 'lift' = 'lift'
 /** How far the card in the box slides along its face, lifting out (by its
  *  top edge, px) — the same for every card, long or short — and how fast
- *  (px per ms): 530ms. */
+ *  (px per ms): 610ms. */
 const LIFT_DISTANCE = 900
-const LIFT_SPEED = 1.7
+const LIFT_SPEED = 1.7 / 1.15
 /** Taking a card out, it first sinks a little into the box, as if pressed,
  *  then springs out; putting it back, it drops in past its place, then
  *  settles back up to it. */
 const SINK_PX = 14
-const SINK_MS = 170
-const SETTLE_MS = 180
+const SINK_MS = 195
+const SETTLE_MS = 205
 const SETTLE = 'cubic-bezier(0.3, 0, 0.3, 1)' // back up to its place
 const SINK = 'cubic-bezier(0.25, 0.6, 0.4, 1)' // easing into the bottom
-/** …and dropping back in, putting it back (px per ms): 390ms. */
-const DROP_SPEED = 2.3
+/** …and dropping back in, putting it back (px per ms): 450ms. */
+const DROP_SPEED = 2.3 / 1.15
 /** (However short the way, not over in a blink.) */
 const MOVE_MIN_MS = 150
 // (The card in hand's slide-in keeps its own pace, whatever the take-out's.)
