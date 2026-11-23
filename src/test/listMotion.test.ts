@@ -34,7 +34,7 @@ describe("the shopping list's path", () => {
   })
 
   it('comes up faster than the finger, and reads on with it', () => {
-    expect(speed(800)).toBeGreaterThan(1.9)
+    expect(speed(800)).toBeGreaterThan(PACE.bottom - 0.05)
     expect(speed(-1000)).toBeCloseTo(1, 2) // (a long list, read)
   })
 

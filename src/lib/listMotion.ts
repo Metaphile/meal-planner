@@ -22,7 +22,7 @@ export interface ListPath {
 }
 
 /** Its pace (× the finger's) coming up over the bottom edge. */
-export const PACE = { bottom: 2 }
+export const PACE = { bottom: 1.5 }
 /** How near the finger's pace it is by the top of the drum: e^-3, 5%. */
 const SETTLED = 3
 
