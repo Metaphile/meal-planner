@@ -2607,11 +2607,32 @@ function fadingAway(fromY: number, v: number, opacity: number): Keyframe[] {
   return frames
 }
 
-const LIFT_FADE_DELAY_MS = 130 // the card leaving the box starts fading…
-const LIFT_FADE_MS = 380 // …and fades out as it goes (gone before it's done lifting)
-const LIFT_FADE = 'cubic-bezier(0.5, 0, 0.75, 0)' // ease-in (quartic): barely fading at first, then quickly gone
-const LIFT_UP = 'cubic-bezier(0.32, 0, 0.67, 0)' // slow to start, gathering speed
-const DROP_IN = 'cubic-bezier(0.33, 1, 0.68, 1)' // the take-out's curve, reversed: fast, then settling
+/** A timing curve as CSS's cubic-bezier() draws it: how far along (0–1)
+ *  at `x` of the time. */
+function bezier(x1: number, y1: number, x2: number, y2: number) {
+  const at = (a: number, b: number, t: number) =>
+    3 * a * t * (1 - t) ** 2 + 3 * b * t * t * (1 - t) + t ** 3
+  return (x: number) => {
+    let lo = 0
+    let hi = 1
+    for (let i = 0; i < 30; i++) {
+      const t = (lo + hi) / 2
+      if (at(x1, x2, t) < x) lo = t
+      else hi = t
+    }
+    return at(y1, y2, (lo + hi) / 2)
+  }
+}
+const liftUp = bezier(0.32, 0, 0.67, 0) // slow to start, gathering speed
+const dropIn = bezier(0.33, 1, 0.68, 1) // the take-out's curve, reversed: fast, then settling
+/** The card in the box, `p` of the way out of its slot (0: in it; 1: out
+ *  of sight): how much of it shows — fading gently, then quickly, gone
+ *  under a third of the way out. Where it is, not how long it's been going: the same going
+ *  and coming back, so the fades are mirror images (whatever each's pace,
+ *  and however far a card goes). */
+const slotFade = (p: number) => 1 - Math.min(1, Math.max(0, p) / 0.3) ** 2
+/** (Steps its slide is drawn in, its fade following.) */
+const SLIDE_STEPS = 16
 
 /**
  * The lifted card. One continuous motion takes the card from wherever it
@@ -2940,9 +2961,8 @@ export function CardDetail({
       d = within(d * ((b0 - clearOf) / Math.max(1, b0 - b)) * 1.1)
     }
     rdxCard.style.transform = inline
-    // (Stopped short of out of sight: gone by the time it stops.)
-    const fadesWithSlide = d <= -maxSlide
-    const gone = `translateY(${d}px)`
+    // (Stopped short of out of sight, it's still gone by the time it stops:
+    // gone a third of the way — see slotFade.)
     const home = 'translateY(0px)'
     // (At its speed, however far it goes.)
     const liftMs = Math.max(MOVE_MIN_MS, Math.abs(d) / LIFT_SPEED)
@@ -2959,25 +2979,23 @@ export function CardDetail({
     const anims = opening
       ? [
           // It sinks a little into its slot, then springs up out of it;
-          // and fades out as it goes, gently at first.
+          // and fades out as it goes, gently at first (see slotFade).
           rdxCard.animate(
             [
-              { offset: 0, transform: home, easing: SINK },
-              {
-                offset: SINK_MS / (SINK_MS + liftMs),
-                transform: `translateY(${SINK_PX}px)`,
-                easing: LIFT_UP,
-              },
-              { offset: 1, transform: gone },
+              { offset: 0, transform: home, opacity: 1, easing: SINK },
+              ...Array.from({ length: SLIDE_STEPS + 1 }, (_, i) => {
+                const t = i / SLIDE_STEPS
+                const p = liftUp(t)
+                const sink = SINK_MS / (SINK_MS + liftMs)
+                return {
+                  offset: sink + (1 - sink) * t,
+                  transform: `translateY(${SINK_PX + (d - SINK_PX) * p}px)`,
+                  opacity: slotFade(p),
+                }
+              }),
             ],
             { ...lift, duration: SINK_MS + liftMs },
           ),
-          rdxCard.animate([{ opacity: 1 }, { opacity: 0 }], {
-            ...lift,
-            delay: LIFT_FADE_DELAY_MS,
-            duration: LIFT_FADE_MS,
-            easing: LIFT_FADE,
-          }),
           card.animate(
             [{ transform: pose(below) }, { transform: pose(0) }],
             { ...rise, easing: RISE_EASE },
@@ -2991,22 +3009,21 @@ export function CardDetail({
           }),
         ]
       : [
-          // (From where it stopped short of out of sight, it fades in as
-          // it drops — not appearing there all at once.)
+          // It drops back in, past its place, and settles back up to it;
+          // fading in as it comes — the take-out's fade, mirrored (see
+          // slotFade).
           rdxCard.animate(
             [
-              {
-                offset: 0,
-                transform: gone,
-                opacity: fadesWithSlide ? 0 : 1,
-                easing: DROP_IN,
-              },
-              {
-                offset: dropMs / (dropMs + SETTLE_MS),
-                transform: `translateY(${SINK_PX}px)`,
-                opacity: 1,
-                easing: SETTLE,
-              },
+              ...Array.from({ length: SLIDE_STEPS + 1 }, (_, i) => {
+                const t = i / SLIDE_STEPS
+                const p = 1 - dropIn(t) // (how far out of its slot)
+                return {
+                  offset: (dropMs / (dropMs + SETTLE_MS)) * t,
+                  transform: `translateY(${SINK_PX + (d - SINK_PX) * p}px)`,
+                  opacity: slotFade(p),
+                  ...(i === SLIDE_STEPS ? { easing: SETTLE } : {}),
+                }
+              }),
               { offset: 1, transform: home, opacity: 1 },
             ],
             { ...lift, duration: dropMs + SETTLE_MS },
@@ -3028,7 +3045,7 @@ export function CardDetail({
     for (const a of anims) if (a) a.startTime = now
     // Opening: the rise (only it is on this card, so its fill is what's
     // dropped once it ends). Closing: whichever ends last.
-    if (opening) return anims[2]
+    if (opening) return anims[1]
     return FADE_MS > dropMs + SETTLE_MS ? anims[1] : anims[0]
   }
 
