@@ -153,7 +153,7 @@ function SignedOut() {
   }
   return (
     <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
-      <h1 className="paper-serif text-2xl font-semibold">Meals</h1>
+      <h1 className="paper-serif text-title font-semibold">Meals</h1>
       <p className="max-w-xs text-sm text-ink-soft">
         This is a private app. To sign in, paste the invite link someone in
         your group shared with you — or your own sign-in link.

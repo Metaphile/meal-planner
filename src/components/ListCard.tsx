@@ -47,7 +47,7 @@ export const ListCard = forwardRef<HTMLDivElement, Props>(function ListCard(
       {/* Scratch work, written by hand — like the back of a card (no frame,
           the title underlined in the same pen). */}
       <div className="handwritten relative flex flex-1 flex-col">
-        <div className="mx-5 mt-3.5 border-b-[1.5px] border-pen pb-0.5 text-[32px] font-semibold leading-[32px]">
+        <div className="mx-5 mt-3.5 border-b-[1.5px] border-pen pb-0.5 text-hand-2xl font-semibold leading-[32px]">
           Shopping list
         </div>
         <div className="mx-5 mt-2 mb-4 flex flex-col gap-4">
@@ -63,7 +63,7 @@ export const ListCard = forwardRef<HTMLDivElement, Props>(function ListCard(
             }
           />
           <div>
-            <span className="block text-[26px] font-semibold leading-[30px]">
+            <span className="block text-hand-lg font-semibold leading-[30px]">
               Add-ons
             </span>
             <AddOnsList canEdit={canEdit} bare />

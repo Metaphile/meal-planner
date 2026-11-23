@@ -31,6 +31,7 @@ import {
   type CardOrigin,
 } from '../components/RecipeCard'
 import type { Ingredient, MealComponent, PlanMeal, Recipe } from '../data/types'
+import { quantityText } from '../lib/quantity'
 import { newId } from '../lib/id'
 
 // Meals reorder chronologically; lock the drag to the vertical axis.
@@ -318,7 +319,7 @@ function MealPocket({
             {canEdit && (
               <button
                 onClick={() => setAdding(true)}
-                className="paper-serif -my-1 h-10 px-1 text-[15px] font-semibold active:opacity-60"
+                className="paper-serif -my-1 h-10 px-1 text-sm font-semibold active:opacity-60"
               >
                 + Add
               </button>
@@ -386,7 +387,7 @@ function MealPocket({
               )}
               {slip.length > 0 ? (
                 <ul
-                  className={`scrap-slip paper-serif relative mx-2 mb-2.5 -rotate-1 px-2.5 py-1 text-[15px] text-ink-soft ${
+                  className={`scrap-slip paper-serif relative mx-2 mb-2.5 -rotate-1 px-2.5 py-1 text-sm text-ink-soft ${
                     cards.length > 0 ? '-mt-2' : 'mt-0.5'
                   }`}
                   style={{ zIndex: cards.length + 2 }}
@@ -525,7 +526,7 @@ function itemLabel(item: Ingredient): string {
 
 function formatItemAmount(quantity?: number, unit?: string): string {
   if (quantity === undefined) return unit ?? ''
-  return unit ? `${quantity} ${unit}` : String(quantity)
+  return unit ? `${quantityText(quantity)} ${unit}` : quantityText(quantity)
 }
 
 const CHECK = (
@@ -590,7 +591,7 @@ function ToggleRow({
     <button
       aria-pressed={on}
       onClick={onToggle}
-      className={`paper-serif flex shrink-0 items-center justify-between gap-2 rounded-lg border px-3 py-2 text-left text-[17px] transition active:scale-[0.99] ${
+      className={`paper-serif flex shrink-0 items-center justify-between gap-2 rounded-lg border px-3 py-2 text-left text-base transition active:scale-[0.99] ${
         on
           ? 'border-accent-edge bg-accent/35 text-ink'
           : 'border-paper-edge bg-paper text-ink'
@@ -703,7 +704,7 @@ function AddToMealSheet({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-4 pt-4">
-          <h2 className="paper-serif text-[21px] font-semibold">Add to meal</h2>
+          <h2 className="paper-serif text-xl font-semibold">Add to meal</h2>
           <button onClick={done} className="accent-tag">
             Done{stagedCount > 0 ? ` · ${stagedCount}` : ''}
           </button>
@@ -711,7 +712,7 @@ function AddToMealSheet({
 
         {/* Misc items: the form stages an item as a toggle (on by default) */}
         <div className="border-b border-paper-edge px-4 py-3">
-          <div className="paper-serif mb-1.5 text-[13px] font-semibold uppercase tracking-wider text-ink-faint">
+          <div className="paper-serif mb-1.5 text-xs font-semibold uppercase tracking-wider text-ink-faint">
             Misc item
           </div>
           <div className="flex items-center gap-2">
@@ -766,7 +767,7 @@ function AddToMealSheet({
 
         {/* Recipes */}
         <div className="px-4 pt-3">
-          <div className="paper-serif mb-2 text-[13px] font-semibold uppercase tracking-wider text-ink-faint">
+          <div className="paper-serif mb-2 text-xs font-semibold uppercase tracking-wider text-ink-faint">
             Recipes
           </div>
           <input

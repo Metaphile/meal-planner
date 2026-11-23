@@ -1,14 +1,15 @@
 import { useLayoutEffect, useRef, useState } from 'react'
+import { parseQuantity, quantityText } from '../lib/quantity'
 
+// Written as a recipe reads it — "1 1/2", "1/3" — and read back however
+// it's typed: a decimal, a fraction, or a whole number and a fraction.
 function fmtQty(value: number | undefined): string {
-  return value === undefined ? '' : String(value)
+  return value === undefined ? '' : quantityText(value)
 }
 
 function parseQty(text: string): number | undefined {
-  const t = text.trim()
-  if (t === '') return undefined
-  const n = Number(t)
-  return Number.isNaN(n) ? undefined : n
+  const n = parseQuantity(text)
+  return n === undefined || Number.isNaN(n) ? undefined : n
 }
 
 /**

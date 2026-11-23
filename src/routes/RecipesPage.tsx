@@ -1608,7 +1608,7 @@ const RolodexItem = memo(function RolodexItem({
             nothing (nor goes through it to a card behind). */}
         {item.letter && (
           <div
-            className="paper-divider rolodex-card paper-serif pointer-events-auto absolute top-0 grid select-none place-items-center rounded-t-lg border-b-0 text-[15px] font-bold"
+            className="paper-divider rolodex-card paper-serif pointer-events-auto absolute top-0 grid select-none place-items-center rounded-t-lg border-b-0 text-sm font-bold"
             style={{
               height: TAB_H + 1,
               width: TAB_W,
@@ -1646,7 +1646,7 @@ const RolodexItem = memo(function RolodexItem({
         >
           <div className="paper-frame" />
           <div className="px-5 pt-3.5">
-            <div className="paper-rule font-hand pb-1.5 text-[28px] leading-[25px] text-ink-faint">
+            <div className="paper-rule font-hand pb-1.5 text-hand-xl leading-[25px] text-ink-faint">
               New recipe…
             </div>
           </div>

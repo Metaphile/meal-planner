@@ -39,8 +39,8 @@ export function AddOnsList({
       className={`font-hand ${
         bare
           ? // (On the shopping list: as large as its other lines.)
-            'text-[26px] [--cell-h:36px] [--cell-lead:30px]'
-          : 'paper-card notepad rounded-t-md px-4 pt-3 pb-3 text-[22px]'
+            'text-hand-lg [--cell-h:36px] [--cell-lead:30px]'
+          : 'paper-card notepad rounded-t-md px-4 pt-3 pb-3 text-hand-sm'
       }`}
     >
       <div role="table" aria-label="Add-ons">

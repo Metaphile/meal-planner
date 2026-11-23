@@ -17,7 +17,7 @@ export function ClearSelectedButton({ canEdit }: { canEdit: boolean }) {
   return (
     // (Printed, not written: it's a button. At the right, coloured as a
     // card's Save.)
-    <div className="flex justify-end pt-3 font-sans">
+    <div className="paper-serif flex justify-end pt-3">
       <button
         type="button"
         onClick={clearSelected}

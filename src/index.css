@@ -35,8 +35,9 @@
    These are roles, not colours: everything uses them (never a colour of its
    own), so a palette is just a set of values for them. Each family steps
    down in lightness at one hue, and what's read against paper keeps its
-   contrast: ink 11.7:1, soft ink 4.6:1, faint ink and the accent's edge
-   3:1 (outlines of the boxes you tick), accent text 4.9:1. */
+   contrast: ink 11.7:1, soft ink 4.6:1, faint ink, pencil and the
+   accent's edge 3:1 (hints; outlines of the boxes you tick), accent text
+   4.9:1, pen 9.9:1. */
 @theme {
   /* The counter the box sits on (and, deeper, the box's floor). */
   --color-counter: #dfe8e3;
@@ -81,9 +82,10 @@
   --color-scrap: #fffbe8;
   --color-scrap-edge: #eadfb4;
 
-  /* Writing by hand: ballpoint, and pencil for hints on a draft. */
+  /* Writing by hand: ballpoint, and pencil for hints on a draft (and notes
+     beside a line: where it's from) — faint, but 3:1, still to be read. */
   --color-pen: #2c3e6b;
-  --color-pencil: #a3a8b5;
+  --color-pencil: #8a90a1;
 
   /* Shadows (mixed to strength where they're used: see shadow()), the
      deeper one cast inside the box, and the shade behind a card in hand
@@ -91,6 +93,23 @@
   --color-shadow: #3c321e;
   --color-shadow-cast: #281e0f;
   --color-scrim: rgb(20 24 22 / 0.55);
+
+  /* Type. Two faces, each with its job: handwriting (Caveat) for anything
+     written on paper — a card, the shopping list — and a book serif for
+     what's printed: the header, tabs, buttons, labels. (No system sans.)
+
+     Handwriting, in six sizes (it reads small for its size: its x-height is
+     0.4em, so nothing smaller than 20px). Sizes only: what's written sits on
+     ruled lines, which set its line height where it's used. */
+  --text-hand-xs: 20px; /* notes under a line: where it's from */
+  --text-hand-sm: 22px; /* a card's back, being written */
+  --text-hand-md: 24px; /* a card's front; the shopping list's amounts */
+  --text-hand-lg: 26px; /* the shopping list's lines */
+  --text-hand-xl: 28px; /* a card's title */
+  --text-hand-2xl: 32px; /* the shopping list's title */
+  /* Print: Tailwind's steps (xs 12, sm 14, base 16, lg 18), and the page's
+     title. */
+  --text-title: 28px;
 }
 
 /* ---- Base ---------------------------------------------------------------- */
@@ -109,12 +128,8 @@ body {
   margin: 0;
   background: var(--color-counter);
   color: var(--color-ink);
-  font-family:
-    system-ui,
-    -apple-system,
-    'Segoe UI',
-    Roboto,
-    sans-serif;
+  /* Printed: a book serif (see Type, above). */
+  font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
   /* Disable the tap-highlight and overscroll glow for a native feel. */
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior-y: none;
@@ -324,6 +339,11 @@ body {
       #000 calc(100% - var(--fade-r, 20px)),
       transparent
     );
+  }
+  /* A fraction ("1/3"), set in the face's own fraction figures: a small
+     numerator over a small denominator, on the line (see Qty). */
+  .frac {
+    font-feature-settings: 'frac';
   }
   .paper-serif {
     font-family:

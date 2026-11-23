@@ -204,7 +204,7 @@ function YouRow({
         aria-expanded={open}
         className="flex w-full items-baseline justify-between gap-3 py-2.5 text-left"
       >
-        <span className="paper-serif text-[17px]">
+        <span className="paper-serif text-base">
           {member.name || 'You'}
           <span className="text-ink-soft"> (you)</span>
         </span>
@@ -315,7 +315,7 @@ function MemberRow({
 
   const summary = (
     <>
-      <span className="paper-serif text-[17px]">
+      <span className="paper-serif text-base">
         {member.name || 'Someone'}
       </span>
       <span className="text-sm text-ink-soft">{ACCESS_LABEL[member.role]}</span>
@@ -425,7 +425,7 @@ function InviteSomeone({ onAdded }: { onAdded: () => void }) {
   if (link)
     return (
       <div className="paper-card space-y-3 p-3">
-        <div className="paper-serif text-[17px] font-semibold">
+        <div className="paper-serif text-base font-semibold">
           {name} is in the group
         </div>
         <InviteLink name={name} link={link} />
@@ -567,7 +567,7 @@ function HomeScreen({ userId }: { userId: string }) {
 
   return (
     <section className="paper-card space-y-2 px-4 py-3">
-      <h2 className="paper-serif text-[17px] font-semibold">
+      <h2 className="paper-serif text-base font-semibold">
         Meals on your Home Screen
       </h2>
       <p className="text-sm text-ink-soft">
@@ -579,7 +579,7 @@ function HomeScreen({ userId }: { userId: string }) {
         </PrimaryButton>
       ) : (
         <>
-          <ol className="list-decimal space-y-1.5 pl-5 text-[15px]">
+          <ol className="list-decimal space-y-1.5 pl-5 text-sm">
             <li>
               Tap Share{' '}
               <ShareIcon className="inline-block h-[18px] w-[18px] -translate-y-0.5 align-middle text-accent-text" />{' '}

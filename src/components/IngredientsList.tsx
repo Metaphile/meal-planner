@@ -2,7 +2,7 @@ import { useMemo, type ReactNode } from 'react'
 import type { AggregatedIngredient } from '../data/aggregate'
 import { haveKey, type Have } from '../data/types'
 import { useStore } from '../store/store'
-import { Amount, Unit } from './Unit'
+import { Amount, Qty, Unit } from './Unit'
 import { OneLine } from './OneLine'
 
 /**
@@ -62,7 +62,7 @@ export function IngredientsList({
         <p
           className={
             bare
-              ? 'py-2 text-[24px] leading-[28px] text-pencil'
+              ? 'py-2 text-hand-md leading-[28px] text-pencil'
               : 'paper-serif py-3 text-center italic text-ink-faint'
           }
         >
@@ -115,14 +115,14 @@ function IngredientLine({
   const type = hand
     ? {
         line: '',
-        name: 'text-[26px] leading-[30px]',
-        amount: 'text-[23px] leading-[30px]',
+        name: 'text-hand-lg leading-[30px]',
+        amount: 'text-hand-md leading-[30px]',
         soft: '',
-        from: 'text-[18px] leading-[20px] text-pencil',
+        from: 'text-hand-xs leading-[22px] text-pencil',
       }
     : {
         line: 'paper-serif',
-        name: 'text-[17px]',
+        name: 'text-base',
         amount: 'text-base',
         soft: 'text-ink-soft',
         from: 'text-xs italic leading-[18px] text-ink-faint',
@@ -186,8 +186,13 @@ function IngredientLine({
                 short ? 'text-danger' : type.soft
               } ${needed ? '' : 'opacity-50'}`}
             >
-              {round(have.amount ?? 0)}
-              {needed && need !== undefined ? ` of ${need}` : ''}
+              <Qty n={round(have.amount ?? 0)} />
+              {needed && need !== undefined && (
+                <>
+                  {' of '}
+                  <Qty n={need} />
+                </>
+              )}
               {ing.unit && ' '}
               <Unit>{ing.unit}</Unit>
             </span>

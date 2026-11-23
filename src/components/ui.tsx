@@ -15,7 +15,7 @@ export function PageHeader({
     <header className="flex shrink-0 items-center justify-between gap-3 bg-counter px-4 pt-2.5 pb-2 text-ink">
       <div className="flex min-w-0 items-center gap-1">
         {back}
-        <h1 className="paper-serif min-w-0 truncate text-[27px] font-semibold leading-9 tracking-[0.2px]">
+        <h1 className="paper-serif min-w-0 truncate text-title font-semibold leading-9 tracking-[0.2px]">
           {title}
         </h1>
       </div>

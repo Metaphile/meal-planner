@@ -76,10 +76,9 @@ function IngredientLine({ ing }: { ing: Ingredient }) {
   )
 }
 
-/** A heading on a card (a section's, Notes): larger than the lines under
- *  it, smaller than the title — still one ruled line high. (1.1em: 25px in
- *  the rolodex, 26px in hand; titles are 28 and 29.) */
-const HEADING = 'text-[1.1em] font-semibold text-ink-soft'
+/** A heading on a card (a section's, Notes): a step larger than the lines
+ *  under it, a step smaller than the title — still one ruled line high. */
+const HEADING = 'text-hand-lg font-semibold text-ink-soft'
 
 /** Ingredient lines that can show on a peeking card (more than fit). */
 const PEEK_LINES = 16
@@ -222,7 +221,7 @@ export const RecipeCard = forwardRef<HTMLDivElement, CardProps>(
               <FavoriteHeart recipeId={recipe.id} />
               <div
                 className={`font-hand min-w-0 flex-1 text-center font-semibold ${
-                  large ? 'text-[29px] leading-[26px]' : 'text-[28px] leading-[25px]'
+                  large ? 'text-hand-xl leading-[26px]' : 'text-hand-xl leading-[25px]'
                 }`}
               >
                 {/* (Only swiped sideways, in the box or in hand: a vertical
@@ -239,7 +238,7 @@ export const RecipeCard = forwardRef<HTMLDivElement, CardProps>(
             // (Room inside its right edge for the handwriting, whose letters
             // reach past their own width — an amount ends flush against it.)
             className={`paper-lines font-hand mb-2 ml-5 mr-4 min-h-0 flex-1 pt-[3px] pr-1 [--rule:24px] ${
-              large ? 'text-[24px]' : 'text-[23px]'
+              'text-hand-md'
             } ${
               scrollable ? 'scroll-y no-scrollbar' : 'overflow-hidden'
             }`}
@@ -508,7 +507,7 @@ function WantBox({
     >
       {/* Wanted more than once: how many times, beside the box. */}
       {count > 1 && (
-        <span className="font-hand text-[21px] font-semibold leading-[18px] text-accent-text">
+        <span className="font-hand text-hand-sm font-semibold leading-[18px] text-accent-text">
           ×{count}
         </span>
       )}
@@ -581,7 +580,7 @@ function WantCount({
               : `Wanted ${count} times`
             : undefined
         }
-        className="paper-serif min-w-[1.25rem] text-center text-[15px] font-semibold"
+        className="paper-serif min-w-[1.25rem] text-center text-sm font-semibold"
       >
         ×{count}
       </span>
@@ -742,7 +741,7 @@ export function UnitCell({
   }
 
   const chip =
-    'rounded-full border px-2.5 py-1 text-[21px] leading-5 active:scale-95'
+    'rounded-full border px-2.5 py-1 text-hand-sm leading-5 active:scale-95'
   return (
     <div ref={ref} className="relative min-w-0">
       <button
@@ -2209,7 +2208,7 @@ const RecipeCardBack = forwardRef<
   if (saveDraftRef)
     saveDraftRef.current = title.trim() ? () => upsertRecipe(draft()) : null
 
-  const label = 'block text-[22px] font-semibold leading-[26px]'
+  const label = 'block text-hand-sm font-semibold leading-[26px]'
 
   return (
     <div
@@ -2247,7 +2246,7 @@ const RecipeCardBack = forwardRef<
               // (Over the title's line — whose fading end reaches past the
               // title — and with room round the stroke, which reaches past
               // its own width: either would cut it off on iOS.)
-              className="pointer-events-none absolute top-0 z-[1] px-[0.2em] text-[30px] font-semibold leading-[30px] text-danger"
+              className="pointer-events-none absolute top-0 z-[1] px-[0.2em] text-hand-xl font-semibold leading-[30px] text-danger"
               style={{ left: `calc(${asteriskAt}px - 0.2em)` }}
             >
               *
@@ -2259,7 +2258,7 @@ const RecipeCardBack = forwardRef<
           <span aria-hidden className="pointer-events-none absolute h-0 w-0 overflow-hidden">
             <span
               ref={titleMeasureRef}
-              className="invisible absolute whitespace-pre text-[30px] font-semibold leading-[30px]"
+              className="invisible absolute whitespace-pre text-hand-xl font-semibold leading-[30px]"
             >
               {/* (No title yet: past the hint, which is showing.) */}
               {title || 'Recipe'}
@@ -2291,7 +2290,7 @@ const RecipeCardBack = forwardRef<
             autoComplete="off"
             // (A title: each word capitalised, as the keyboard types it.)
             autoCapitalize="words"
-            className="min-w-0 flex-1 bg-transparent text-center text-[30px] font-semibold leading-[30px] focus:outline-none"
+            className="min-w-0 flex-1 bg-transparent text-center text-hand-xl font-semibold leading-[30px] focus:outline-none"
             // (Shown by the line over it while not being written in.)
             style={!titleFocused && title ? { color: 'transparent' } : undefined}
           />
@@ -2309,7 +2308,7 @@ const RecipeCardBack = forwardRef<
                 field.scrollLeft = field.scrollWidth
               }}
             >
-              <div className="min-w-0 flex-1 text-center text-[30px] font-semibold leading-[30px]">
+              <div className="min-w-0 flex-1 text-center text-hand-xl font-semibold leading-[30px]">
                 {/* (A vertical drag on it is the card's, as on the front.) */}
                 <OneLine text={title} panY={false} />
               </div>

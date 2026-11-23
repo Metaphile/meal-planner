@@ -1,3 +1,5 @@
+import { asFraction, quantityText } from '../lib/quantity'
+
 /**
  * A unit as it's shown everywhere but the unit picker: cut short with "…"
  * when it's long ("tbsp heaping"), so it doesn't crowd the line. (In ems,
@@ -17,11 +19,26 @@ export function Unit({ children }: { children?: string }) {
   )
 }
 
+/** A quantity, typeset as a recipe reads it: "1½", "⅓", "2", "0.4" (see
+ *  quantity.ts) — its fraction drawn by the writing's own fraction figures
+ *  (`.frac`), sitting on the line with the rest. */
+export function Qty({ n }: { n: number }) {
+  const f = asFraction(n)
+  if (!f) return <>{quantityText(n)}</>
+  if (!f.num) return <>{f.whole}</>
+  return (
+    <>
+      {f.whole > 0 && f.whole}
+      <span className="frac">{`${f.num}/${f.den}`}</span>
+    </>
+  )
+}
+
 /** "2 cup", "cup", or "2": an amount with its unit (cut short if long). */
 export function Amount({ quantity, unit }: { quantity?: number; unit?: string }) {
   return (
     <>
-      {quantity !== undefined && quantity}
+      {quantity !== undefined && <Qty n={quantity} />}
       {quantity !== undefined && unit && ' '}
       <Unit>{unit}</Unit>
     </>
