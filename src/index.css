@@ -131,13 +131,17 @@
    on paper, its text 4.5:1, its ink 5.5:1 on its fill. (Kraft's counter is
    dark: what's on it is written in cream, 11:1.) Night restates them all,
    for dark paper, keeping the same contrasts. */
-/* Lavender (the default: no data-theme) has its own hearts: yellow, a
-   deeper gold round them (3:1 on paper and on the counter). */
+/* Each theme's hearts stand apart from its accent (across the colour wheel
+   from it), outlined 3:1 on its paper and its counter. Lavender's (the
+   default: no data-theme): yellow, a deeper gold round them. */
 :root:not([data-theme]) {
   --color-heart: #f4cd4b;
   --color-heart-edge: #aa7c03;
 }
 :root[data-theme='sage'] {
+  /* Hearts: raspberry — opposite the green, echoing the blush counter. */
+  --color-heart: #d55078;
+  --color-heart-edge: #a82e57;
   --color-accent: #aec8b2;
   --color-accent-edge: #6d9b76;
   --color-accent-text: #547a5c;
@@ -146,6 +150,9 @@
   --color-counter-deep: #d1c0bb;
 }
 :root[data-theme='rose'] {
+  /* Hearts: teal — opposite the pink, echoing the cool counter. */
+  --color-heart: #43b2ac;
+  --color-heart-edge: #23928d;
   --color-accent: #dab5ba;
   --color-accent-edge: #bc7f88;
   --color-accent-text: #915f66;
@@ -169,6 +176,9 @@
   --color-heart-edge: #b02a2d;
 }
 :root[data-theme='night'] {
+  /* Hearts: amber, glowing on the dark paper (Lavender's yellow, by night). */
+  --color-heart: #f5ae39;
+  --color-heart-edge: #ffc674;
   color-scheme: dark;
   --color-counter: #19201c;
   --color-counter-deep: #111814;
