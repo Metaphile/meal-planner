@@ -1,7 +1,6 @@
 import {
   forwardRef,
   useEffect,
-  useId,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -358,58 +357,54 @@ const RINGS = [
   { out: 4.3, opacity: 0.25 },
 ]
 
-/** The outlines around a heart (see RINGS): drawn behind it, over the
- *  same box, reaching out past it. Each a band of the heart's outline — traced
- *  wider, less a narrower tracing — so it's just the line, nothing filled
- *  inside it. */
+/** The outlines around a heart (see RINGS): drawn behind it, reaching out
+ *  past it. Each is the heart traced wide in the ring's colour, then traced
+ *  a line narrower in the paper's — leaving just the line. All solid: the
+ *  ring's colour is mixed with the paper's (not faded), and there are no
+ *  masks — on a card tilted in the box, a mask or a faded layer could be
+ *  redrawn stale as the card came back into view (a faint box round the
+ *  heart, rings broken up). And it's drawn on a box with room for the
+ *  rings (nothing drawn outside it, to be cut off). */
 function HeartRings({ count }: { count: number }) {
-  // (The masks' ids: unique on the page, and usable in url(#…).)
-  const id = useId().replace(/:/g, '')
   const k = HEART_BOX.w / HEART_SIZE // its picture's units per px
   const line = 1
+  const rings = RINGS.slice(0, count)
+  // Room all round for the outermost ring (px), and in its picture's units.
+  const room = Math.ceil(rings[rings.length - 1].out + line)
+  const m = room * k
+  const tracing = (d: number, colour: string, i: string) => (
+    <path
+      key={i}
+      d={HEART_PATH}
+      strokeWidth={2 * d * k}
+      strokeLinejoin="round"
+      style={{ fill: colour, stroke: colour }}
+    />
+  )
   return (
     <svg
       aria-hidden
-      viewBox={`${HEART_BOX.x} ${HEART_BOX.y} ${HEART_BOX.w} ${HEART_BOX.h}`}
-      className="pointer-events-none absolute inset-0 overflow-visible"
-      width="100%"
-      height="100%"
+      viewBox={`${HEART_BOX.x - m} ${HEART_BOX.y - m} ${HEART_BOX.w + 2 * m} ${
+        HEART_BOX.h + 2 * m
+      }`}
+      className="pointer-events-none absolute"
+      style={{
+        left: -room,
+        top: -room,
+        width: HEART_SIZE + 2 * room,
+        height: (HEART_SIZE * HEART_BOX.h) / HEART_BOX.w + 2 * room,
+      }}
     >
-      {RINGS.slice(0, count).map((r, i) => {
-        const band = (d: number, colour: string) => (
-          <path
-            d={HEART_PATH}
-            fill={colour}
-            stroke={colour}
-            strokeWidth={2 * d * k}
-            strokeLinejoin="round"
-          />
-        )
-        return (
-          <g key={i}>
-            <mask
-              id={`${id}-${i}`}
-              maskUnits="userSpaceOnUse"
-              x="-20"
-              y="-20"
-              width="64"
-              height="64"
-            >
-              {band(r.out + line / 2, 'white')}
-              {band(r.out - line / 2, 'black')}
-            </mask>
-            <rect
-              x="-20"
-              y="-20"
-              width="64"
-              height="64"
-              fill="var(--color-accent-edge)"
-              opacity={r.opacity}
-              mask={`url(#${id}-${i})`}
-            />
-          </g>
-        )
-      })}
+      {/* The outermost first: each ring inside it is drawn over its
+          hollow. */}
+      {[...rings].reverse().flatMap((r, i) => [
+        tracing(
+          r.out + line / 2,
+          `color-mix(in srgb, var(--color-accent-edge) ${r.opacity * 100}%, var(--color-paper))`,
+          `${i}a`,
+        ),
+        tracing(r.out - line / 2, 'var(--color-paper)', `${i}b`),
+      ])}
     </svg>
   )
 }
