@@ -56,7 +56,7 @@
      and the outline of an empty box to tick. */
   --color-ink: #3a3428;
   --color-ink-soft: #7a705e;
-  --color-ink-faint: #9b8f78;
+  --color-ink-faint: #8d826b;
 
   /* The accent: its fill (tabs, primary buttons, a ticked box), its edge,
      its text on paper (actions written out), its ink (on its fill). */
@@ -64,6 +64,11 @@
   --color-accent-edge: #978ab7;
   --color-accent-text: #73688d;
   --color-accent-ink: #443d54;
+
+  /* Lines drawn round things, 1.5px: an empty box, a heart not yet
+     yours, the header's icons — the same colour all (3:1 on paper, and on
+     the counter). */
+  --color-line: var(--color-ink-faint);
 
   /* What's written straight on the counter (the header, its icons; a page
      with no paper): ink, unless the counter's dark. */

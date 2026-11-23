@@ -71,14 +71,15 @@ export default function AccountPage() {
           <Link
             to="/recipes"
             aria-label="Back to Meals"
-            className="-ml-2 grid h-9 w-9 shrink-0 place-items-center rounded-full text-on-counter-soft active:bg-on-counter/10"
+            className="-ml-2 grid h-9 w-9 shrink-0 place-items-center rounded-full text-line active:bg-on-counter/10"
           >
             <svg
               viewBox="0 0 24 24"
               className="h-6 w-6"
               fill="none"
               stroke="currentColor"
-              strokeWidth="2"
+              // (The line colour, 1.5px: as the header's other icons.)
+              strokeWidth="1.5"
               strokeLinecap="round"
               strokeLinejoin="round"
             >

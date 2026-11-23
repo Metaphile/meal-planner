@@ -4,6 +4,7 @@ import { haveKey, type Have } from '../data/types'
 import { useStore } from '../store/store'
 import { Amount, Qty, Unit } from './Unit'
 import { OneLine } from './OneLine'
+import { BoxIcon } from './BoxIcon'
 
 /**
  * Read-only aggregated ingredients, with each line tagged by its sources —
@@ -263,29 +264,7 @@ export function Tickbox({
       // to be ticked here — a reader: faded, still showing its state.)
       className={`-ml-1.5 flex shrink-0 p-1.5 disabled:cursor-default disabled:opacity-55 ${className}`}
     >
-      <span
-        className={`grid h-[18px] w-[18px] place-items-center rounded-[4px] border-[1.5px] ${
-          state === 'on'
-            ? 'border-heart-edge bg-heart text-on-heart'
-            : state === 'short'
-              ? 'border-danger bg-danger text-on-danger'
-              : 'border-ink-faint bg-paper'
-        }`}
-      >
-        {checked && (
-          <svg
-            viewBox="0 0 12 12"
-            className="h-3 w-3"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d={state === 'short' ? 'M3 6h6' : 'M2.5 6.2 5 8.5l4.5-5'} />
-          </svg>
-        )}
-      </span>
+      <BoxIcon state={state} />
     </button>
   )
 }

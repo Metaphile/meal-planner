@@ -34,6 +34,7 @@ import {
 import { QuantityInput } from './QuantityInput'
 import { Amount } from './Unit'
 import { OneLine } from './OneLine'
+import { BoxIcon } from './BoxIcon'
 import { ConfirmDialog } from './ui'
 import { arcThrough, sampleTimes, type Arc } from '../lib/arc'
 import { useWakeLock } from '../lib/wakeLock'
@@ -454,7 +455,7 @@ export function HeartIcon({ on, size = 18 }: { on: boolean; size?: number }) {
       viewBox={`${HEART_BOX.x} ${HEART_BOX.y} ${HEART_BOX.w} ${HEART_BOX.h}`}
       width={size}
       height={(size * HEART_BOX.h) / HEART_BOX.w}
-      className={`block shrink-0 ${on ? 'text-heart-edge' : 'text-ink-faint'}`}
+      className={`block shrink-0 ${on ? 'text-heart-edge' : 'text-line'}`}
       aria-hidden
     >
       <path
@@ -506,25 +507,7 @@ function WantBox({
           ×{count}
         </span>
       )}
-      <span
-        className={`grid h-[18px] w-[18px] place-items-center rounded-[4px] border-[1.5px] ${
-          on ? 'border-heart-edge bg-heart' : 'border-ink-faint bg-paper'
-        }`}
-      >
-        {on && (
-          <svg
-            viewBox="0 0 12 12"
-            className="h-3 w-3 text-on-heart"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M2.5 6.2 5 8.5l4.5-5" />
-          </svg>
-        )}
-      </span>
+      <BoxIcon state={on ? 'on' : 'off'} />
     </button>
   )
 }

@@ -39,6 +39,7 @@ import {
   type Slice,
 } from '../lib/uiState'
 import { ListCard } from '../components/ListCard'
+import { BoxIcon } from '../components/BoxIcon'
 import { favoriteKey, isWanted, type Recipe } from '../data/types'
 import { listPath } from '../lib/listMotion'
 import { wakeLockNow } from '../lib/wakeLock'
@@ -1286,27 +1287,7 @@ export default function RecipesPage() {
       onClick={toggleWantedOnly}
       className="-mx-1 grid h-9 w-9 shrink-0 place-items-center"
     >
-      <span
-        className={`grid h-[18px] w-[18px] place-items-center rounded-[4px] border-[1.5px] ${
-          wantedOnly
-            ? 'border-heart-edge bg-heart'
-            : 'border-ink-faint bg-paper'
-        }`}
-      >
-        {wantedOnly && (
-          <svg
-            viewBox="0 0 12 12"
-            className="h-3 w-3 text-on-heart"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M2.5 6.2 5 8.5l4.5-5" />
-          </svg>
-        )}
-      </span>
+      <BoxIcon state={wantedOnly ? 'on' : 'off'} />
     </button>
   )
   // Only your favorites: the cards' heart (its size, its 1.5px outline),
@@ -1341,14 +1322,14 @@ export default function RecipesPage() {
             <Link
               to="/account"
               aria-label="Account"
-              className="grid h-9 w-9 place-items-center rounded-full text-on-counter-soft active:bg-on-counter/10"
+              // (In the line colour, a 1.5px line: as the heart and the box.)
+              className="grid h-9 w-9 place-items-center rounded-full text-line active:bg-on-counter/10"
             >
               <svg
                 viewBox="0 0 24 24"
                 className="h-[21px] w-[21px]"
                 fill="none"
                 stroke="currentColor"
-                // (A 1.5px line, as the heart's and the box's beside it.)
                 strokeWidth={(1.5 * 24) / 21}
                 strokeLinecap="round"
                 strokeLinejoin="round"

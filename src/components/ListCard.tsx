@@ -2,6 +2,7 @@ import { forwardRef, type HTMLAttributes } from 'react'
 import { useWantedIngredients } from '../store/selectors'
 import { AddOnsList } from './AddOnsList'
 import { IngredientsList } from './IngredientsList'
+import { BoxIcon } from './BoxIcon'
 import { ClearSelectedButton } from './ClearSelected'
 import { CARD_H } from './RecipeCard'
 
@@ -25,8 +26,10 @@ export function WantBoxPicture() {
     <span
       role="img"
       aria-label="the box on a recipe card"
-      className="mx-0.5 inline-block h-[18px] w-[18px] rounded-[4px] border-[1.5px] border-ink-faint bg-paper align-[-3px]"
-    />
+      className="mx-0.5 inline-block align-[-3px]"
+    >
+      <BoxIcon state="off" />
+    </span>
   )
 }
 
