@@ -2565,10 +2565,10 @@ const LIFT_MS = 530 // the card lifting out of the box (after its sink)
  *  settles back up to it. */
 const SINK_PX = 14
 const SINK_MS = 170
-const SETTLE_MS = 140
+const SETTLE_MS = 180
 const SETTLE = 'cubic-bezier(0.3, 0, 0.3, 1)' // back up to its place
 const SINK = 'cubic-bezier(0.25, 0.6, 0.4, 1)' // easing into the bottom
-const DROP_MS = 300 // …and dropping back in
+const DROP_MS = 390 // …and dropping back in (as unhurried as the take-out)
 // (The card in hand's slide-in keeps its own pace, whatever the take-out's.)
 const RISE_DELAY_MS = 330 // the card in hand starts sliding up from below (a moment after the other springs out)…
 const RISE_MS = 500 // …over this
@@ -3021,7 +3021,7 @@ export function CardDetail({
     // Opening: the rise (only it is on this card, so its fill is what's
     // dropped once it ends). Closing: whichever ends last.
     if (opening) return anims[2]
-    return FADE_MS > DROP_MS ? anims[1] : anims[0]
+    return FADE_MS > DROP_MS + SETTLE_MS ? anims[1] : anims[0]
   }
 
   // Fly out of the rolodex into place.
