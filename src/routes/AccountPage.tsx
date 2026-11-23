@@ -21,6 +21,7 @@ import {
 } from '../components/ui'
 import { isIOS, isInstalled, useInstallPrompt } from '../lib/install'
 import { copyText } from '../lib/clipboard'
+import { THEMES, applyTheme, savedTheme, type ThemeId } from '../lib/theme'
 import { useKeptDialog } from '../lib/dialogs'
 
 const ACCESS_LABEL: Record<Access, string> = {
@@ -117,6 +118,8 @@ export default function AccountPage() {
             {canWrite && <InviteSomeone onAdded={refresh} />}
           </div>
         </section>
+
+        <ThemePicker />
 
         <HomeScreen userId={user.id} />
 
@@ -603,6 +606,79 @@ function HomeScreen({ userId }: { userId: string }) {
           {error && <p className="text-sm text-danger">{error}</p>}
         </>
       )}
+    </section>
+  )
+}
+
+/**
+ * The app's colours (kept on this device): a sample of each theme in its
+ * own colours — the box in miniature: its counter, its accent's divider, a
+ * card of its paper — to pick from. Picked, the app's in it at once.
+ */
+function ThemePicker() {
+  const [theme, setTheme] = useState<ThemeId>(savedTheme)
+  return (
+    <section className="paper-card space-y-3 px-4 py-3">
+      <h2 id="theme-heading" className="text-base font-semibold">
+        Theme
+      </h2>
+      <div
+        role="radiogroup"
+        aria-labelledby="theme-heading"
+        className="grid grid-cols-5 gap-2"
+      >
+        {THEMES.map((t) => {
+          const on = t.id === theme
+          return (
+            <button
+              key={t.id}
+              type="button"
+              role="radio"
+              aria-checked={on}
+              onClick={() => {
+                applyTheme(t.id, true)
+                setTheme(t.id)
+              }}
+              className="flex flex-col items-center gap-1.5 active:scale-95"
+            >
+              <span
+                className={`relative block h-14 w-full overflow-hidden rounded-lg border ${
+                  on
+                    ? 'border-accent-edge ring-2 ring-accent-edge ring-offset-1 ring-offset-paper'
+                    : 'border-paper-edge'
+                }`}
+                style={{ background: t.sample.counter }}
+              >
+                {/* The box in miniature: on its counter, a divider in its
+                    accent (its tab up), and a card of its paper in front,
+                    a line of its ink on it. */}
+                <span
+                  className="absolute top-1.5 left-2.5 h-3 w-4 rounded-t-[3px] border border-b-0"
+                  style={{ background: t.sample.accent, borderColor: t.sample.edge }}
+                />
+                <span
+                  className="absolute inset-x-1.5 top-4 bottom-0 rounded-t-md border border-b-0"
+                  style={{ background: t.sample.accent, borderColor: t.sample.edge }}
+                />
+                <span
+                  className="absolute inset-x-1 top-7 bottom-0 rounded-t-md"
+                  style={{ background: t.sample.paper }}
+                >
+                  <span
+                    className="absolute top-2.5 right-1.5 left-1.5 h-[2px] rounded-full opacity-60"
+                    style={{ background: t.sample.ink }}
+                  />
+                </span>
+              </span>
+              <span
+                className={`text-xs ${on ? 'font-semibold text-ink' : 'text-ink-soft'}`}
+              >
+                {t.name}
+              </span>
+            </button>
+          )
+        })}
+      </div>
     </section>
   )
 }

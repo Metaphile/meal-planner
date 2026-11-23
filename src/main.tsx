@@ -6,6 +6,11 @@ import App from './App'
 import { AuthProvider } from './auth/AuthProvider'
 import './index.css'
 import { catchInstallPrompt } from './lib/install'
+import { applyTheme, savedTheme } from './lib/theme'
+
+// (The theme's already on the page — see index.html — but the browser's own
+// colour round it follows it now the stylesheet's in.)
+applyTheme(savedTheme())
 
 // (Before the browser offers to install: see Account → Home Screen.)
 catchInstallPrompt()

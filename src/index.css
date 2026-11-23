@@ -112,6 +112,69 @@
   --text-title: 28px;
 }
 
+/* ---- Themes ---------------------------------------------------------------
+   Alternatives to the default (lavender on a sage counter), chosen on the
+   Account page (see lib/theme.ts): each gives the roles above new values,
+   on the root, as data-theme. The light ones keep the paper, ink and pen,
+   and change the accent and the counter: each accent on the same steps of
+   lightness as the lavender (OKLCH), so every contrast holds — its edge 3:1
+   on paper, its text 4.5:1, its ink 5.5:1 on its fill. Night restates them
+   all, for dark paper, keeping the same contrasts. */
+:root[data-theme='sage'] {
+  --color-accent: #aec8b2;
+  --color-accent-edge: #6d9b76;
+  --color-accent-text: #547a5c;
+  --color-accent-ink: #304835;
+  --color-counter: #eee3e0;
+  --color-counter-deep: #d1c0bb;
+}
+:root[data-theme='rose'] {
+  --color-accent: #dab5ba;
+  --color-accent-edge: #bc7f88;
+  --color-accent-text: #915f66;
+  --color-accent-ink: #57373c;
+  --color-counter: #dee7ec;
+  --color-counter-deep: #b8c7ce;
+}
+:root[data-theme='denim'] {
+  --color-accent: #abc3de;
+  --color-accent-edge: #6b94c3;
+  --color-accent-text: #507299;
+  --color-accent-ink: #2e435c;
+  --color-counter: #ece4da;
+  --color-counter-deep: #cec2b2;
+}
+:root[data-theme='night'] {
+  color-scheme: dark;
+  --color-counter: #19201c;
+  --color-counter-deep: #111814;
+  --color-paper: #2d2a24;
+  --color-paper-deep: #37322b;
+  --color-paper-lit: #312d27;
+  --color-paper-edge: #443f38;
+  --color-paper-edge-strong: #544f46;
+  --color-ink: #eae4d7;
+  --color-ink-soft: #b7b0a3;
+  --color-ink-faint: #868073;
+  --color-accent: #5f5378;
+  --color-accent-edge: #8c7cad;
+  --color-accent-text: #bcafd9;
+  --color-accent-ink: #f0ecfa;
+  --color-danger: #e37e6a;
+  --color-danger-edge: #7b4338;
+  --color-on-danger: #231715;
+  --color-margin-rule: #98636f;
+  --color-ruled-line: #323a40;
+  --color-frame: #544c3a;
+  --color-scrap: #333025;
+  --color-scrap-edge: #4d4835;
+  --color-pen: #a6c7f1;
+  --color-pencil: #7c8795;
+  --color-shadow: #000000;
+  --color-shadow-cast: #000000;
+  --color-scrim: rgb(0 0 0 / 0.6);
+}
+
 /* ---- Base ---------------------------------------------------------------- */
 html,
 body,
