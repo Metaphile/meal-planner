@@ -39,7 +39,7 @@ import {
 } from '../lib/uiState'
 import { ListCard } from '../components/ListCard'
 import { favoriteKey, isWanted, type Recipe } from '../data/types'
-import { PACE, listPath } from '../lib/listMotion'
+import { listPath } from '../lib/listMotion'
 
 /*
  * Recipes — a rolodex of paper cards on a wheel.
@@ -489,24 +489,16 @@ export default function RecipesPage() {
   )
   // Its path as the box scrolls (see listMotion): there as the turning ends
   // (scrolled 0 past it); coming up over the bottom edge faster than the
-  // finger, and slowing as it nears the end of its travel — the top of the
-  // drum, or (a short list) where it stops, its end in view.
+  // finger, and settling toward the finger's pace all the way up.
   const listEnd = pageH - footH - LIST_ROOM - listH
-  const listMove = useMemo(() => {
-    const rest = pageH - LIST_PEEK
-    const top = Math.max(headerH, listEnd)
-    return listPath(
-      {
-        rest,
-        top,
-        // (Stopping short of the top: arriving gently.)
-        topPace: listEnd > headerH ? PACE.stop : PACE.top,
-        anchor: 0,
-        anchorY: listStart,
-      },
-      Math.min(listEnd, 0) - pageH,
-    )
-  }, [pageH, headerH, listStart, listEnd])
+  const listMove = useMemo(
+    () =>
+      listPath(
+        { rest: pageH - LIST_PEEK, top: headerH, anchor: 0, anchorY: listStart },
+        Math.min(listEnd, 0) - pageH,
+      ),
+    [pageH, headerH, listStart, listEnd],
+  )
   const bounds = useMemo(
     () =>
       boundsOf(
@@ -572,7 +564,7 @@ export default function RecipesPage() {
     const turn = bounds.turn * SCALE
     // The shopping list: in front of the box, not riding its wheel — at its
     // own pace (see listMove): up over the bottom edge faster than the
-    // finger, outpacing the box behind it, and slowing as it arrives.
+    // finger, outpacing the box behind it, and settling toward its pace.
     const sheet = listRef.current
     if (sheet) {
       const top = listMove.at(at - turn)

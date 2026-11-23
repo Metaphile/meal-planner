@@ -1,12 +1,10 @@
 /**
  * How the shopping list moves as the box is scrolled: in front of the box,
- * at a pace of its own — set by where it is on the screen, not by the box's
+ * at a pace of its own — set by how far it's come up, not by the box's
  * wheel. It comes up over the bottom edge faster than the finger, outpacing
- * the box behind it, and slows — on one smooth curve — as it nears the end
- * of its travel: the top of the drum (then on up with the finger, a long
- * list read) or, a short list, where it stops.
- *
- * (Beyond the end of its travel it goes at its pace there.)
+ * the box behind it, and settles toward the finger's pace (1:1) all the way
+ * up — ever nearer it, never slower: by the top of the drum it's all but
+ * there, and a long list reads on with the finger.
  *
  * Positions are the list's top on screen (px from the top of the page);
  * scrolling is in screen px. The list's motion is fixed to one place: at
@@ -16,27 +14,24 @@
 export interface ListPath {
   /** Peeking over the bottom edge: as low as it goes. */
   rest: number
-  /** The end of its travel: the top of the drum (the header's foot) — or,
-   *  a short list, where it stops (its end in view). */
+  /** The top of the drum (the header's foot): by here, it's within
+   *  SETTLED of the finger's pace. */
   top: number
-  /** Its pace there: the finger's (1) if it reads on up past it — a long
-   *  list — or slower, where it stops. */
-  topPace?: number
   anchor: number
   anchorY: number
 }
 
-/** Its pace (× the finger's): coming up over the bottom edge; at the top
- *  of the drum (reading on); arriving where a short list stops. */
-export const PACE = { bottom: 2, top: 1, stop: 0.6 }
+/** Its pace (× the finger's) coming up over the bottom edge. */
+export const PACE = { bottom: 2 }
+/** How near the finger's pace it is by the top of the drum: e^-3, 5%. */
+const SETTLED = 3
 
-/** Its pace with its top at `y`: from the bottom's to the top's, eased at
- *  both ends (no sudden change of pace on the way). */
+/** Its pace with its top at `y`: the bottom's, settling (exponentially)
+ *  toward the finger's — 1 — as it comes up. */
 export function pace(p: ListPath, y: number): number {
-  const end = p.topPace ?? PACE.top
-  if (y <= p.top || p.rest <= p.top) return end
-  const k = Math.min(1, (y - p.top) / (p.rest - p.top))
-  return end + (PACE.bottom - end) * (1 - Math.cos(Math.PI * k)) / 2
+  const risen = Math.max(0, p.rest - y)
+  const scale = Math.max(1, p.rest - p.top) / SETTLED
+  return 1 + (PACE.bottom - 1) * Math.exp(-risen / scale)
 }
 
 /** The path, worked out once: how far it's scrolled (from the anchor) at
