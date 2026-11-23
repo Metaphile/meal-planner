@@ -2559,7 +2559,11 @@ export const HAND: Slice<Hand> = {
 // ('arc' predates the Recipes rolodex being drawn scaled down: its flight
 // would need converting to the stage's units before being used there again.)
 const TAKE_OUT: 'arc' | 'lift' = 'lift'
-const LIFT_MS = 530 // the card lifting out of the box (after its sink)
+/** How fast the card in the box slides along its face, lifting out (px per
+ *  ms) — the same for every card: a long one, with further to go to be out
+ *  of sight, takes longer, not faster. (530ms for one in the middle of the
+ *  box.) */
+const LIFT_SPEED = 1.7
 /** Taking a card out, it first sinks a little into the box, as if pressed,
  *  then springs out; putting it back, it drops in past its place, then
  *  settles back up to it. */
@@ -2568,7 +2572,11 @@ const SINK_MS = 170
 const SETTLE_MS = 180
 const SETTLE = 'cubic-bezier(0.3, 0, 0.3, 1)' // back up to its place
 const SINK = 'cubic-bezier(0.25, 0.6, 0.4, 1)' // easing into the bottom
-const DROP_MS = 390 // …and dropping back in (as unhurried as the take-out)
+/** …and dropping back in, putting it back (px per ms; the same for every
+ *  card). */
+const DROP_SPEED = 2.3
+/** (However short the way, not over in a blink.) */
+const MOVE_MIN_MS = 150
 // (The card in hand's slide-in keeps its own pace, whatever the take-out's.)
 const RISE_DELAY_MS = 330 // the card in hand starts sliding up from below (a moment after the other springs out)…
 const RISE_MS = 500 // …over this
@@ -2936,10 +2944,10 @@ export function CardDetail({
     const fadesWithSlide = d <= -maxSlide
     const gone = `translateY(${d}px)`
     const home = 'translateY(0px)'
-    const lift = {
-      duration: opening ? LIFT_MS : DROP_MS,
-      fill: 'both' as const,
-    }
+    // (At its speed, however far it goes.)
+    const liftMs = Math.max(MOVE_MIN_MS, Math.abs(d) / LIFT_SPEED)
+    const dropMs = Math.max(MOVE_MIN_MS, Math.abs(d) / DROP_SPEED)
+    const lift = { fill: 'both' as const }
     const fade = { duration: FADE_MS, fill: 'both' as const }
     const rise = {
       duration: RISE_MS,
@@ -2956,13 +2964,13 @@ export function CardDetail({
             [
               { offset: 0, transform: home, easing: SINK },
               {
-                offset: SINK_MS / (SINK_MS + LIFT_MS),
+                offset: SINK_MS / (SINK_MS + liftMs),
                 transform: `translateY(${SINK_PX}px)`,
                 easing: LIFT_UP,
               },
               { offset: 1, transform: gone },
             ],
-            { ...lift, duration: SINK_MS + LIFT_MS },
+            { ...lift, duration: SINK_MS + liftMs },
           ),
           rdxCard.animate([{ opacity: 1 }, { opacity: 0 }], {
             ...lift,
@@ -2994,14 +3002,14 @@ export function CardDetail({
                 easing: DROP_IN,
               },
               {
-                offset: DROP_MS / (DROP_MS + SETTLE_MS),
+                offset: dropMs / (dropMs + SETTLE_MS),
                 transform: `translateY(${SINK_PX}px)`,
                 opacity: 1,
                 easing: SETTLE,
               },
               { offset: 1, transform: home, opacity: 1 },
             ],
-            { ...lift, duration: DROP_MS + SETTLE_MS },
+            { ...lift, duration: dropMs + SETTLE_MS },
           ),
           card.animate(
             fadingAway(fromY, fromV, cardOpacity),
@@ -3021,7 +3029,7 @@ export function CardDetail({
     // Opening: the rise (only it is on this card, so its fill is what's
     // dropped once it ends). Closing: whichever ends last.
     if (opening) return anims[2]
-    return FADE_MS > DROP_MS + SETTLE_MS ? anims[1] : anims[0]
+    return FADE_MS > dropMs + SETTLE_MS ? anims[1] : anims[0]
   }
 
   // Fly out of the rolodex into place.
