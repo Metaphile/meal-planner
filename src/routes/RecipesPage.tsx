@@ -39,6 +39,7 @@ import {
 } from '../lib/uiState'
 import { ListCard } from '../components/ListCard'
 import { favoriteKey, isWanted, type Recipe } from '../data/types'
+import { PACE, listPath } from '../lib/listMotion'
 
 /*
  * Recipes — a rolodex of paper cards on a wheel.
@@ -121,10 +122,6 @@ const LIST_PEEK = 6
 /** Turned to the end, the list's top is this far below the top of the back
  *  of the box (a sliver of it showing over the list). */
 const LIST_DROP = 30
-/** Rising into view, the list moves this much faster than the finger at
- *  first — in front, it outpaces the box turning behind it — easing to the
- *  finger's pace (1:1) as the turning ends, and keeping it on up. */
-const LIST_LEAD = 1.6
 
 /** A card on the wheel is trimmed at its rod (the rest is behind the cards
  *  in front), with room above and to the sides for its shadow. (A clip-path,
@@ -485,24 +482,48 @@ export default function RecipesPage() {
   const wheel = useMemo(() => fitWheel(stageH), [stageH])
   // Where the shopping list's top is on screen (from the top of the page),
   // turned to the end of the box: just below the top of its back (never
-  // lower than peeking over the bottom edge). It rises to there, and on up
-  // from there, with the finger (see paint).
+  // lower than peeking over the bottom edge).
   const listStart = Math.min(
     pageH - LIST_PEEK,
     dividerTop(wheel, headerU, REACH_LAST_PHI) * SCALE + LIST_DROP,
   )
+  // Its path as the box scrolls (see listMotion): there as the turning ends
+  // (scrolled 0 past it); slow leaving the bottom edge, fastest crossing the
+  // drum's centre line, slowing as it nears the end of its travel — the top
+  // of the drum, or (a short list) where it stops, its end in view. (A list
+  // that stops below the centre line: fastest midway.)
+  const listEnd = pageH - footH - LIST_ROOM - listH
+  const listMove = useMemo(() => {
+    const rest = pageH - LIST_PEEK
+    const top = Math.max(headerH, listEnd)
+    const drumCentre = (headerU + wheel.front) * SCALE
+    const centre =
+      drumCentre > top && drumCentre < rest ? drumCentre : (top + rest) / 2
+    return listPath(
+      {
+        rest,
+        centre,
+        top,
+        // (Stopping short of the top: arriving as gently as it left.)
+        topPace: listEnd > headerH ? PACE.bottom : PACE.top,
+        anchor: 0,
+        anchorY: listStart,
+      },
+      Math.min(listEnd, 0) - pageH,
+    )
+  }, [pageH, headerU, headerH, wheel, listStart, listEnd])
   const bounds = useMemo(
     () =>
       boundsOf(
         wheel,
         items,
         narrowed,
-        // (Its top from where the turning leaves it to its end in view,
-        // with room below it — and the home indicator's. In the stage's
-        // units.)
-        (listStart + listH + LIST_ROOM + footH - pageH) / SCALE,
+        // (How far it scrolls past the turning till the list's end is in
+        // view, with room below it — and the home indicator's. In the
+        // stage's units.)
+        listMove.scrollFor(listEnd) / SCALE,
       ),
-    [wheel, items, narrowed, listH, footH, listStart, pageH],
+    [wheel, items, narrowed, listMove, listEnd],
   )
   // The card in hand, by recipe id (editing it can move it to another
   // letter, or delete it, while it's out).
@@ -554,24 +575,13 @@ export default function RecipesPage() {
     // ahead of it.
     const at = drum.get()
     const turn = bounds.turn * SCALE
-    // The shopping list: in front of the box, not riding its wheel — up from
-    // peeking over the bottom edge to just below the top of the back of the
-    // box as the turning ends, then on up with the finger (on screen, 1:1).
-    // Rising into view it leads (LIST_LEAD), easing to the finger's pace as
-    // it gets there: nearer, it outpaces the box turning behind it.
+    // The shopping list: in front of the box, not riding its wheel — at its
+    // own pace (see listMove): slow from the bottom edge, outpacing the box
+    // as it crosses the drum's centre line, easing to the finger's pace at
+    // the top.
     const sheet = listRef.current
     if (sheet) {
-      const rest = pageH - LIST_PEEK
-      const rise = rest - listStart
-      // (Over this much scrolling: its pace eases from LIST_LEAD to 1.)
-      const span = (2 * rise) / (LIST_LEAD + 1)
-      const u = (at - (turn - span)) / span
-      const top =
-        u <= 0
-          ? rest
-          : u >= 1
-            ? listStart - (at - turn)
-            : rest - span * (LIST_LEAD * u + ((1 - LIST_LEAD) * u * u) / 2)
+      const top = listMove.at(at - turn)
       const y = `translate3d(0px, ${top.toFixed(1)}px, 0px)`
       if (sheet.style.transform !== y) sheet.style.transform = y
     }
@@ -631,7 +641,7 @@ export default function RecipesPage() {
         el.style.zIndex = String(zi)
       }
     }
-  }, [items, wheel, rimPos, headerU, bounds, listStart, pageH, wheelAt])
+  }, [items, wheel, rimPos, headerU, bounds, listMove, wheelAt])
 
   const busy = useRef(false)
 
