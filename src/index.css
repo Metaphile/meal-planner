@@ -131,6 +131,12 @@
    on paper, its text 4.5:1, its ink 5.5:1 on its fill. (Kraft's counter is
    dark: what's on it is written in cream, 11:1.) Night restates them all,
    for dark paper, keeping the same contrasts. */
+/* Lavender (the default: no data-theme) has its own hearts: yellow, a
+   deeper gold round them (3:1 on paper and on the counter). */
+:root:not([data-theme]) {
+  --color-heart: #f4cd4b;
+  --color-heart-edge: #aa7c03;
+}
 :root[data-theme='sage'] {
   --color-accent: #aec8b2;
   --color-accent-edge: #6d9b76;
