@@ -69,7 +69,7 @@ function IngredientLine({ ing }: { ing: Ingredient }) {
       {/* (Room for the handwriting's last letter, which reaches past its
           own width: else the clip that makes "…" cuts it.) */}
       <span className="-mr-1 truncate pr-1">{ing.name}</span>
-      <span className="shrink-0 whitespace-nowrap text-[#8a8170]">
+      <span className="shrink-0 whitespace-nowrap text-ink-soft">
         <Amount quantity={ing.quantity} unit={ing.unit} />
       </span>
     </li>
@@ -79,7 +79,7 @@ function IngredientLine({ ing }: { ing: Ingredient }) {
 /** A heading on a card (a section's, Notes): larger than the lines under
  *  it, smaller than the title — still one ruled line high. (1.1em: 25px in
  *  the rolodex, 26px in hand; titles are 28 and 29.) */
-const HEADING = 'text-[1.1em] font-semibold text-[#8a8170]'
+const HEADING = 'text-[1.1em] font-semibold text-ink-soft'
 
 /** Ingredient lines that can show on a peeking card (more than fit). */
 const PEEK_LINES = 16
@@ -99,7 +99,7 @@ function CardBody({ recipe, peek }: { recipe: Recipe; peek: boolean }) {
     <>
       {allIngredients(recipe).length === 0 && !heads.some(Boolean) ? (
         <ul>
-          <li className="text-[#8a8170]">No ingredients yet</li>
+          <li className="text-ink-soft">No ingredients yet</li>
         </ul>
       ) : (
         sections.map((s, si) => {
@@ -124,7 +124,7 @@ function CardBody({ recipe, peek }: { recipe: Recipe; peek: boolean }) {
       )}
       {/* (Peeking, below what can show: not drawn.) */}
       {!peek && recipe.tags.length > 0 && (
-        <p className="mt-[var(--rule)] text-[#8a8170]">
+        <p className="mt-[var(--rule)] text-ink-soft">
           {recipe.tags.join(' · ')}
         </p>
       )}
@@ -155,7 +155,7 @@ function FavoritedBy({ recipeId, gap }: { recipeId: string; gap: boolean }) {
   if (!names) return null
   return (
     <p
-      className={`flex items-center gap-1.5 text-[#8a8170] ${gap ? 'mt-[var(--rule)]' : ''}`}
+      className={`flex items-center gap-1.5 text-ink-soft ${gap ? 'mt-[var(--rule)]' : ''}`}
     >
       <span className="sr-only">Favorited</span>
       {/* (Outlined, filled: a favorite's heart, as at the top.) */}
@@ -275,7 +275,7 @@ export const RecipeCard = forwardRef<HTMLDivElement, CardProps>(
 )
 
 export const EDIT_CLASS =
-  'rounded-full border border-[#d8cdb6] px-4 py-1.5 text-sm font-medium leading-5 active:scale-95'
+  'rounded-full border border-paper-edge-strong px-4 py-1.5 text-sm font-medium leading-5 active:scale-95'
 
 /** Edit, on a card that isn't in hand (in the rolodex or a pocket): just
  *  the look of the Edit button the same card shows once it's taken out (so
@@ -404,7 +404,7 @@ function HeartRings({ count }: { count: number }) {
               y="-20"
               width="64"
               height="64"
-              fill="var(--color-kraft-edge)"
+              fill="var(--color-accent-edge)"
               opacity={r.opacity}
               mask={`url(#${id}-${i})`}
             />
@@ -460,12 +460,12 @@ export function HeartIcon({ on, size = 18 }: { on: boolean; size?: number }) {
       viewBox={`${HEART_BOX.x} ${HEART_BOX.y} ${HEART_BOX.w} ${HEART_BOX.h}`}
       width={size}
       height={(size * HEART_BOX.h) / HEART_BOX.w}
-      className={`block shrink-0 ${on ? 'text-kraft-edge' : 'text-[#c9bda4]'}`}
+      className={`block shrink-0 ${on ? 'text-accent-edge' : 'text-ink-faint'}`}
       aria-hidden
     >
       <path
         d={HEART_PATH}
-        fill={on ? 'var(--color-kraft)' : 'var(--color-paper)'}
+        fill={on ? 'var(--color-accent)' : 'var(--color-paper)'}
         stroke="currentColor"
         // (Drawn 1.5px wide whatever its size, like the Want box's border.)
         strokeWidth={(1.5 * HEART_BOX.w) / size}
@@ -508,19 +508,19 @@ function WantBox({
     >
       {/* Wanted more than once: how many times, beside the box. */}
       {count > 1 && (
-        <span className="font-hand text-[21px] font-semibold leading-[18px] text-brand-ink">
+        <span className="font-hand text-[21px] font-semibold leading-[18px] text-accent-text">
           ×{count}
         </span>
       )}
       <span
         className={`grid h-[18px] w-[18px] place-items-center rounded-[4px] border-[1.5px] ${
-          on ? 'border-kraft-edge bg-kraft' : 'border-[#c9bda4] bg-paper'
+          on ? 'border-accent-edge bg-accent' : 'border-ink-faint bg-paper'
         }`}
       >
         {on && (
           <svg
             viewBox="0 0 12 12"
-            className="h-3 w-3 text-kraft-ink"
+            className="h-3 w-3 text-accent-ink"
             fill="none"
             stroke="currentColor"
             strokeWidth={2}
@@ -560,7 +560,7 @@ function WantCount({
   return (
     <div
       aria-hidden={!interactive || undefined}
-      className="flex items-center rounded-full border border-kraft-edge bg-brand text-on-brand"
+      className="flex items-center rounded-full border border-accent-edge bg-accent text-accent-ink"
     >
       <button
         type="button"
@@ -754,7 +754,7 @@ export function UnitCell({
         aria-label={value ? `Unit: ${value}` : 'Choose a unit'}
         // (Its menu open: tinted, as a field being written in is — the
         // line it's choosing for.)
-        className={`${className} block w-full truncate text-left aria-expanded:bg-kraft/15`}
+        className={`${className} block w-full truncate text-left aria-expanded:bg-accent/15`}
       >
         {value ?? (placeholder && <span className="text-pencil">{placeholder}</span>)}
       </button>
@@ -779,7 +779,7 @@ export function UnitCell({
               }}
               className={`${chip} ${
                 u === value
-                  ? 'border-kraft-edge bg-kraft text-kraft-ink'
+                  ? 'border-accent-edge bg-accent text-accent-ink'
                   : 'border-paper-edge bg-paper text-ink'
               }`}
             >
@@ -849,7 +849,7 @@ const withSpareLine = (rows: Row[], hold?: number | null) => {
 
 export const MARK_BUTTON =
   // (The table's rule blue, at half its lightness.)
-  'grid h-[30px] place-items-center text-[#457ca1] active:text-pen'
+  'grid h-[30px] place-items-center text-accent-text active:text-accent-ink'
 
 /** × (cross a line out), drawn so it's centred on the line, and ↺ (bring
  *  it back). */
@@ -1073,7 +1073,7 @@ function dragSection(
   Object.assign(block.style, {
     zIndex: '10',
     background: 'var(--color-paper)',
-    boxShadow: '0 8px 18px -8px rgb(60 50 30 / 0.45)',
+    boxShadow: '0 8px 18px -8px color-mix(in srgb, var(--color-shadow) 45%, transparent)',
     transition: 'none',
   })
   els.forEach((el, k) => {
@@ -1252,7 +1252,7 @@ function dragRow(
   Object.assign(origin.style, {
     zIndex: '10',
     background: 'var(--color-paper)',
-    boxShadow: '0 6px 14px -6px rgb(60 50 30 / 0.45)',
+    boxShadow: '0 6px 14px -6px color-mix(in srgb, var(--color-shadow) 45%, transparent)',
     transition: 'none',
   })
   els.forEach((el, k) => {
@@ -1625,7 +1625,7 @@ function IngredientTable({
     // of the writing) is the line's middle — level with the grip and the ✕,
     // so a stroke through them meets those. (A field centres its writing in
     // what its padding leaves: so, padded below, the writing's 2px high.)
-    'h-[30px] min-w-0 bg-transparent pt-0 pb-[4px] leading-[24px] focus:bg-kraft/15 focus:outline-none'
+    'h-[30px] min-w-0 bg-transparent pt-0 pb-[4px] leading-[24px] focus:bg-accent/15 focus:outline-none'
   // The amount and unit, set level with the name — the same height, and the
   // middle of what its padding leaves where the name's is (13px down) — but
   // with no room left over: what's left is just its line (24px), so the
@@ -1634,7 +1634,7 @@ function IngredientTable({
   // weren't in Safari.)
   const exact =
     'h-[30px] bg-transparent pt-px pb-[5px] leading-[24px] focus:outline-none'
-  const rule = 'border-l border-line-blue'
+  const rule = 'border-l border-ruled-line'
   // A section's title, written in (a heading, across the whole line). Its
   // key is its place among the sections — and "Add section…" takes the next
   // place's, so typing there becomes the new section's title without losing
@@ -1669,7 +1669,7 @@ function IngredientTable({
       aria-label="Section"
       autoComplete="off"
       autoCapitalize="words"
-      className={`${headClass} h-[34px] min-w-0 bg-transparent pt-0 pb-[4px] placeholder:font-normal placeholder:text-pencil focus:bg-kraft/15 focus:outline-none ${
+      className={`${headClass} h-[34px] min-w-0 bg-transparent pt-0 pb-[4px] placeholder:font-normal placeholder:text-pencil focus:bg-accent/15 focus:outline-none ${
         readOnly ? 'pointer-events-none' : ''
       }`}
     />
@@ -1696,7 +1696,7 @@ function IngredientTable({
           onFocus={() => {
             if (row.rid !== undefined) held.current = row.rid
           }}
-          className={`${cols} relative items-center border-b border-line-blue`}
+          className={`${cols} relative items-center border-b border-ruled-line`}
         >
           {spare ? (
             <span />
@@ -1749,7 +1749,7 @@ function IngredientTable({
             // The cell's padding less the room past the figures, so
             // they end where they did. Tinted, being written in, as a
             // field is: the whole cell.)
-            fitClassName={`h-[30px] min-w-0 ${rule} flex justify-end pr-px focus-within:bg-kraft/15`}
+            fitClassName={`h-[30px] min-w-0 ${rule} flex justify-end pr-px focus-within:bg-accent/15`}
             className={`${exact} block min-w-[4px] px-0 text-left`}
           />
           <UnitCell
@@ -1757,7 +1757,7 @@ function IngredientTable({
             onChange={(unit) => update(g, i, { unit })}
             units={units}
             disabled={struck}
-            className={`${exact} ${rule} min-w-0 pl-1.5 focus:bg-kraft/15`}
+            className={`${exact} ${rule} min-w-0 pl-1.5 focus:bg-accent/15`}
           />
           {/* (Its mark: none on the spare line, nor in a section crossed
               out — nor on a line emptied: there's nothing to cross out, and
@@ -1836,7 +1836,7 @@ function IngredientTable({
               data-new-label={HEADING_HINT}
               className={`${
                 addingSection ? cols : 'grid grid-cols-[1rem_minmax(0,1fr)]'
-              } items-end border-b border-line-blue`}
+              } items-end border-b border-ruled-line`}
             >
               <span />
               <div className="grid">
@@ -1886,7 +1886,7 @@ function IngredientTable({
               mark, to cross the whole section out. */}
           <div
             role="row"
-            className={`${cols} relative items-end border-b border-line-blue`}
+            className={`${cols} relative items-end border-b border-ruled-line`}
           >
             {groups.length > 1 ? (
               <span
@@ -2334,7 +2334,7 @@ const RecipeCardBack = forwardRef<
               autoComplete="off"
               // (Tags are written lowercase.)
               autoCapitalize="none"
-              className="block h-[25px] w-full border-b border-line-blue bg-transparent pt-[3px] pr-1 leading-[21px] focus:bg-kraft/15 focus:outline-none"
+              className="block h-[25px] w-full border-b border-ruled-line bg-transparent pt-[3px] pr-1 leading-[21px] focus:bg-accent/15 focus:outline-none"
             />
           </label>
           <label className="block">
@@ -2346,7 +2346,7 @@ const RecipeCardBack = forwardRef<
               {notesLine !== null && (
                 <span
                   aria-hidden
-                  className="pointer-events-none absolute inset-x-0 bg-kraft/15"
+                  className="pointer-events-none absolute inset-x-0 bg-accent/15"
                   style={{ top: notesLine * 22, height: 21 }}
                 />
               )}
@@ -2409,7 +2409,7 @@ const RecipeCardBack = forwardRef<
           type="button"
           onClick={save}
           disabled={!title.trim()}
-          className="rounded-full border border-kraft-edge bg-brand px-4 py-1.5 text-sm font-semibold leading-5 text-on-brand transition active:scale-95 disabled:opacity-40"
+          className="rounded-full border border-accent-edge bg-accent px-4 py-1.5 text-sm font-semibold leading-5 text-accent-ink transition active:scale-95 disabled:opacity-40"
         >
           Save
         </button>
@@ -3765,7 +3765,7 @@ export function CardDetail({
     <div ref={rootRef} className="fixed inset-0 z-50">
       <div
         ref={shadeRef}
-        className="absolute inset-0 bg-[rgb(20_24_22/0.55)]"
+        className="absolute inset-0 bg-scrim"
       />
       {/* The cards either side of it, a sliver of each at the screen's
           edges: swiped, they slide in with it (each where it'll rest once

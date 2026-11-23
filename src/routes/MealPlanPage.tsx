@@ -72,13 +72,13 @@ export default function MealPlanPage() {
     // rises over it (and is clipped only at the top of the page).
     <div
       data-meal-scroller
-      className="scroll-y h-full overflow-x-hidden bg-backdrop text-ink"
+      className="scroll-y h-full overflow-x-hidden bg-counter text-ink"
     >
       <PageHeader
         title="Meals"
         action={
           canEdit ? (
-            <button onClick={addEmptyMeal} className="kraft-tag">
+            <button onClick={addEmptyMeal} className="accent-tag">
               + Meal
             </button>
           ) : undefined
@@ -94,7 +94,7 @@ export default function MealPlanPage() {
               : 'No meals are planned yet.'
           }
           action={
-            <Link to="/recipes" className="kraft-tag">
+            <Link to="/recipes" className="accent-tag">
               Browse recipes
             </Link>
           }
@@ -126,13 +126,13 @@ export default function MealPlanPage() {
           </DndContext>
 
           {/* Ingredients for the included meals: a notepad sheet behind a
-              kraft divider tab. */}
+              accent divider tab. */}
           <div className="relative mt-7 h-[30px]">
-            <span className="paper-serif absolute bottom-[-1px] left-[18px] z-[1] rounded-t-lg border border-b-0 border-kraft-edge bg-kraft px-3 pt-1 pb-[5px] text-sm font-semibold text-kraft-ink">
+            <span className="paper-serif absolute bottom-[-1px] left-[18px] z-[1] rounded-t-lg border border-b-0 border-accent-edge bg-accent px-3 pt-1 pb-[5px] text-sm font-semibold text-accent-ink">
               Ingredients
             </span>
           </div>
-          <div className="kraft-pocket rounded-tl-none p-2">
+          <div className="accent-pocket rounded-tl-none p-2">
             <IngredientsList
               ingredients={planIngredients}
               empty="Tick Include on a meal to see what it needs."
@@ -160,7 +160,7 @@ interface Lift {
 }
 
 /**
- * A meal: a kraft pocket holding the recipe cards pulled from the box, their
+ * A meal: an accent pocket holding the recipe cards pulled from the box, their
  * tops peeking out as in the rolodex, with any misc items on a slip of scrap
  * paper tucked in front. Tapping a card lifts it out exactly as the rolodex
  * does; swipe the pocket right to remove the meal.
@@ -275,7 +275,7 @@ function MealPocket({
         // A meal that isn't counted: the pocket goes dull, its cards dim.
         ...(meal.includeInIngredients
           ? {}
-          : ({ '--color-kraft': '#d6cfbb' } as React.CSSProperties)),
+          : ({ '--color-accent': 'var(--color-paper-edge-strong)' } as React.CSSProperties)),
       }}
       className={isDragging ? 'opacity-80' : undefined}
     >
@@ -284,10 +284,10 @@ function MealPocket({
           ref={canEdit ? swipeRef : undefined}
           {...(canEdit ? handlers : {})}
           style={{ touchAction: 'pan-y' }}
-          className="kraft-pocket peer relative z-10 px-2.5 pt-1.5 transition-colors duration-200"
+          className="accent-pocket peer relative z-10 px-2.5 pt-1.5 transition-colors duration-200"
         >
           {/* Pocket bar: drag handle · Add · Include */}
-          <div className="flex items-center gap-3 pb-1.5 text-kraft-ink">
+          <div className="flex items-center gap-3 pb-1.5 text-accent-ink">
             {canEdit && (
               <button
                 {...attributes}
@@ -297,7 +297,7 @@ function MealPocket({
                   listeners?.onPointerDown?.(e)
                 }}
                 aria-label="Drag meal to reorder"
-                className="-my-1 -ml-1 grid h-10 w-8 shrink-0 cursor-grab touch-none place-items-center rounded-lg text-kraft-edge focus:outline-none focus-visible:ring-2 focus-visible:ring-kraft-ink active:cursor-grabbing"
+                className="-my-1 -ml-1 grid h-10 w-8 shrink-0 cursor-grab touch-none place-items-center rounded-lg text-accent-edge focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-ink active:cursor-grabbing"
               >
                 <svg
                   width="18"
@@ -331,7 +331,7 @@ function MealPocket({
           </div>
 
           {cards.length === 0 && slip.length === 0 ? (
-            <p className="paper-serif mb-2.5 rounded-lg border border-dashed border-kraft-edge px-3 py-4 text-center italic text-kraft-ink/70">
+            <p className="paper-serif mb-2.5 rounded-lg border border-dashed border-accent-edge px-3 py-4 text-center italic text-accent-ink/70">
               {canEdit
                 ? 'Empty — tap + Add to fill it.'
                 : 'Nothing in this meal yet.'}
@@ -410,7 +410,7 @@ function MealPocket({
             so its red can't fringe the pocket's rounded corners. */}
         <div
           aria-hidden
-          className="pointer-events-none invisible absolute inset-0 z-0 flex items-center rounded-xl bg-danger pl-5 text-lg text-white peer-data-swiping:visible"
+          className="pointer-events-none invisible absolute inset-0 z-0 flex items-center rounded-xl bg-danger pl-5 text-lg text-on-danger peer-data-swiping:visible"
         >
           Remove
         </div>
@@ -468,7 +468,7 @@ function PocketCardActions({
       {canEdit && (
         <button
           onClick={onRemove}
-          className="rounded-full border border-[#e3b4ac] px-4 py-1.5 text-sm font-medium leading-5 text-[#a8443a] active:scale-95"
+          className="rounded-full border border-danger-edge px-4 py-1.5 text-sm font-medium leading-5 text-danger active:scale-95"
         >
           Remove from meal
         </button>
@@ -558,13 +558,13 @@ function IncludeTick({
       aria-disabled={disabled}
       aria-label="Include in ingredients"
       onClick={disabled ? undefined : onToggle}
-      className={`paper-serif -my-1 flex h-10 shrink-0 items-center gap-1.5 text-sm text-kraft-ink focus:outline-none focus-visible:underline ${
+      className={`paper-serif -my-1 flex h-10 shrink-0 items-center gap-1.5 text-sm text-accent-ink focus:outline-none focus-visible:underline ${
         disabled ? 'cursor-default opacity-60' : ''
       }`}
     >
-      <span className="grid h-5 w-5 place-items-center rounded border-[1.5px] border-kraft-ink bg-white/35">
+      <span className="grid h-5 w-5 place-items-center rounded border-[1.5px] border-accent-ink bg-paper/35">
         <span
-          className={`h-4 w-4 text-[#a8443a] transition duration-150 ${
+          className={`h-4 w-4 text-danger transition duration-150 ${
             on ? 'scale-100 opacity-100' : 'scale-50 opacity-0'
           }`}
         >
@@ -592,17 +592,17 @@ function ToggleRow({
       onClick={onToggle}
       className={`paper-serif flex shrink-0 items-center justify-between gap-2 rounded-lg border px-3 py-2 text-left text-[17px] transition active:scale-[0.99] ${
         on
-          ? 'border-kraft-edge bg-kraft/35 text-ink'
+          ? 'border-accent-edge bg-accent/35 text-ink'
           : 'border-paper-edge bg-paper text-ink'
       }`}
     >
       <span className="truncate">{label}</span>
       <span
         aria-hidden
-        className="grid h-5 w-5 shrink-0 place-items-center rounded border-[1.5px] border-ink-soft bg-white/50"
+        className="grid h-5 w-5 shrink-0 place-items-center rounded border-[1.5px] border-ink-soft bg-paper/50"
       >
         <span
-          className={`h-4 w-4 text-[#a8443a] transition duration-150 ${
+          className={`h-4 w-4 text-danger transition duration-150 ${
             on ? 'scale-100 opacity-100' : 'scale-50 opacity-0'
           }`}
         >
@@ -694,17 +694,17 @@ function AddToMealSheet({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex flex-col justify-end bg-black/50"
+      className="fixed inset-0 z-50 flex flex-col justify-end bg-scrim"
       onClick={onClose}
     >
       <div
-        className="flex max-h-[80%] flex-col rounded-t-2xl border-t border-paper-edge bg-backdrop text-ink"
+        className="flex max-h-[80%] flex-col rounded-t-2xl border-t border-paper-edge bg-counter text-ink"
         style={{ paddingBottom: 'calc(var(--safe-bottom) + 1rem)' }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-4 pt-4">
           <h2 className="paper-serif text-[21px] font-semibold">Add to meal</h2>
-          <button onClick={done} className="kraft-tag">
+          <button onClick={done} className="accent-tag">
             Done{stagedCount > 0 ? ` · ${stagedCount}` : ''}
           </button>
         </div>
@@ -722,7 +722,7 @@ function AddToMealSheet({
               placeholder="e.g. Steamed broccoli"
               aria-label="Misc item"
               autoComplete="off"
-              className="min-w-0 flex-1 rounded-lg border border-paper-edge bg-paper px-3 py-2 placeholder:text-ink-faint focus:border-kraft-edge focus:outline-none"
+              className="min-w-0 flex-1 rounded-lg border border-paper-edge bg-paper px-3 py-2 placeholder:text-ink-faint focus:border-accent-edge focus:outline-none"
             />
             <input
               value={itemQty}
@@ -731,7 +731,7 @@ function AddToMealSheet({
               placeholder="Qty"
               aria-label="Quantity"
               autoComplete="off"
-              className="w-14 rounded-lg border border-paper-edge bg-paper px-2 py-2 text-center placeholder:text-ink-faint focus:border-kraft-edge focus:outline-none"
+              className="w-14 rounded-lg border border-paper-edge bg-paper px-2 py-2 text-center placeholder:text-ink-faint focus:border-accent-edge focus:outline-none"
             />
             <input
               value={itemUnit}
@@ -740,12 +740,12 @@ function AddToMealSheet({
               aria-label="Unit"
               autoComplete="off"
               autoCapitalize="none"
-              className="w-16 rounded-lg border border-paper-edge bg-paper px-2 py-2 placeholder:text-ink-faint focus:border-kraft-edge focus:outline-none"
+              className="w-16 rounded-lg border border-paper-edge bg-paper px-2 py-2 placeholder:text-ink-faint focus:border-accent-edge focus:outline-none"
             />
             <button
               onClick={stageItem}
               disabled={!itemName.trim()}
-              className="kraft-tag"
+              className="accent-tag"
             >
               Add
             </button>
@@ -775,7 +775,7 @@ function AddToMealSheet({
             placeholder="Search recipes…"
             inputMode="search"
             aria-label="Search recipes"
-            className="w-full rounded-lg border border-paper-edge bg-paper px-3 py-2 placeholder:text-ink-faint focus:border-kraft-edge focus:outline-none"
+            className="w-full rounded-lg border border-paper-edge bg-paper px-3 py-2 placeholder:text-ink-faint focus:border-accent-edge focus:outline-none"
           />
         </div>
         <div className="scroll-y flex flex-col gap-2 px-4 py-3">

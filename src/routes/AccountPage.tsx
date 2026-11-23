@@ -70,7 +70,7 @@ export default function AccountPage() {
           <Link
             to="/recipes"
             aria-label="Back to Meals"
-            className="-ml-2 grid h-9 w-9 shrink-0 place-items-center rounded-full text-ink-soft active:bg-black/5"
+            className="-ml-2 grid h-9 w-9 shrink-0 place-items-center rounded-full text-ink-soft active:bg-ink/5"
           >
             <svg
               viewBox="0 0 24 24"
@@ -89,13 +89,13 @@ export default function AccountPage() {
       <div className="scroll-y flex-1 space-y-6 px-4 pt-3 pb-8">
         <section>
           <GroupTab />
-          <div className="kraft-pocket space-y-2 rounded-tl-none p-2">
+          <div className="accent-pocket space-y-2 rounded-tl-none p-2">
             {error && (
               <p className="rounded-lg bg-paper px-3 py-2 text-sm text-danger">
                 {error}
               </p>
             )}
-            <div className="paper-card divide-y divide-line-blue px-4 py-1">
+            <div className="paper-card divide-y divide-ruled-line px-4 py-1">
               {members.map((m) =>
                 m.id === user.id ? (
                   <YouRow
@@ -135,7 +135,7 @@ export default function AccountPage() {
 function GroupTab() {
   return (
     <div className="relative h-[30px]">
-      <span className="paper-serif absolute bottom-[-1px] left-[18px] z-[1] rounded-t-lg border border-b-0 border-kraft-edge bg-kraft px-3 pt-1 pb-[5px] text-sm font-semibold text-kraft-ink">
+      <span className="paper-serif absolute bottom-[-1px] left-[18px] z-[1] rounded-t-lg border border-b-0 border-accent-edge bg-accent px-3 pt-1 pb-[5px] text-sm font-semibold text-accent-ink">
         Group
       </span>
     </div>
@@ -206,9 +206,9 @@ function YouRow({
       >
         <span className="paper-serif text-[17px]">
           {member.name || 'You'}
-          <span className="text-muted"> (you)</span>
+          <span className="text-ink-soft"> (you)</span>
         </span>
-        <span className="text-sm text-muted">{ACCESS_LABEL[member.role]}</span>
+        <span className="text-sm text-ink-soft">{ACCESS_LABEL[member.role]}</span>
       </button>
       {open && (
         <div className="space-y-2 pb-3">
@@ -235,7 +235,7 @@ function YouRow({
               <button
                 onClick={() => void newLink()}
                 disabled={busy}
-                className="text-sm font-medium text-brand-ink active:opacity-60"
+                className="text-sm font-medium text-accent-text active:opacity-60"
               >
                 Sign in on another device
               </button>
@@ -260,7 +260,7 @@ function AccessPicker({
     <div
       role="radiogroup"
       aria-label="Access"
-      className="inline-flex overflow-hidden rounded-full border border-kraft-edge"
+      className="inline-flex overflow-hidden rounded-full border border-accent-edge"
     >
       {(['reader', 'writer'] as const).map((a) => (
         <button
@@ -271,7 +271,7 @@ function AccessPicker({
           disabled={disabled}
           onClick={() => value !== a && onChange(a)}
           className={`px-3.5 py-1.5 text-sm font-medium ${
-            value === a ? 'bg-brand text-on-brand' : 'bg-paper text-muted'
+            value === a ? 'bg-accent text-accent-ink' : 'bg-paper text-ink-soft'
           }`}
         >
           {ACCESS_LABEL[a]}
@@ -318,7 +318,7 @@ function MemberRow({
       <span className="paper-serif text-[17px]">
         {member.name || 'Someone'}
       </span>
-      <span className="text-sm text-muted">{ACCESS_LABEL[member.role]}</span>
+      <span className="text-sm text-ink-soft">{ACCESS_LABEL[member.role]}</span>
     </>
   )
 
@@ -342,7 +342,7 @@ function MemberRow({
       {open && (
         <div className="space-y-3 pb-3">
           <div className="flex items-center justify-between gap-3">
-            <span className="text-sm text-muted">Access</span>
+            <span className="text-sm text-ink-soft">Access</span>
             <AccessPicker
               value={member.role}
               disabled={busy}
@@ -364,7 +364,7 @@ function MemberRow({
                 }, 'Couldn’t make an invite link.')
               }
               disabled={busy}
-              className="text-sm font-medium text-brand-ink active:opacity-60"
+              className="text-sm font-medium text-accent-text active:opacity-60"
             >
               New invite link
             </button>
@@ -459,10 +459,10 @@ function InviteSomeone({ onAdded }: { onAdded: () => void }) {
         autoFocus
       />
       <div className="flex items-center justify-between gap-3">
-        <span className="text-sm text-muted">Access</span>
+        <span className="text-sm text-ink-soft">Access</span>
         <AccessPicker value={access} onChange={setAccessPick} />
       </div>
-      <p className="text-xs text-muted">{ACCESS_HINT[access]}</p>
+      <p className="text-xs text-ink-soft">{ACCESS_HINT[access]}</p>
       {error && <p className="text-sm text-danger">{error}</p>}
       <div className="flex gap-2">
         <PrimaryButton
@@ -500,8 +500,8 @@ function InviteLink({ name, link }: { name: string; link: string }) {
     }
   }
   return (
-    <div className="rounded-lg border border-kraft-edge bg-surface-2 p-2.5">
-      <div className="mb-1.5 text-xs text-muted">
+    <div className="rounded-lg border border-accent-edge bg-paper-deep p-2.5">
+      <div className="mb-1.5 text-xs text-ink-soft">
         A one-time link, good for {INVITE_TTL_DAYS} days. Whoever opens it
         joins as {name || 'them'}.
       </div>
@@ -510,14 +510,14 @@ function InviteLink({ name, link }: { name: string; link: string }) {
         {canShare && (
           <button
             onClick={() => void share()}
-            className="shrink-0 rounded-full bg-brand px-3 py-1 text-xs font-semibold text-on-brand active:scale-95"
+            className="shrink-0 rounded-full bg-accent px-3 py-1 text-xs font-semibold text-accent-ink active:scale-95"
           >
             Share
           </button>
         )}
         <button
           onClick={() => void copy()}
-          className="shrink-0 rounded-full border border-kraft-edge bg-paper px-3 py-1 text-xs font-semibold text-on-brand active:scale-95"
+          className="shrink-0 rounded-full border border-accent-edge bg-paper px-3 py-1 text-xs font-semibold text-accent-ink active:scale-95"
         >
           {copied ? 'Copied ✓' : 'Copy'}
         </button>
@@ -570,7 +570,7 @@ function HomeScreen({ userId }: { userId: string }) {
       <h2 className="paper-serif text-[17px] font-semibold">
         Meals on your Home Screen
       </h2>
-      <p className="text-sm text-muted">
+      <p className="text-sm text-ink-soft">
         Opens full screen, like an app.
       </p>
       {!open ? (
@@ -582,7 +582,7 @@ function HomeScreen({ userId }: { userId: string }) {
           <ol className="list-decimal space-y-1.5 pl-5 text-[15px]">
             <li>
               Tap Share{' '}
-              <ShareIcon className="inline-block h-[18px] w-[18px] -translate-y-0.5 align-middle text-brand-ink" />{' '}
+              <ShareIcon className="inline-block h-[18px] w-[18px] -translate-y-0.5 align-middle text-accent-text" />{' '}
               in Safari.
             </li>
             <li>
@@ -594,7 +594,7 @@ function HomeScreen({ userId }: { userId: string }) {
             </li>
           </ol>
           {copied && (
-            <p className="text-sm text-muted">
+            <p className="text-sm text-ink-soft">
               Your sign-in link is copied, ready to paste. (One-time, good for{' '}
               {INVITE_TTL_DAYS} days.)
             </p>

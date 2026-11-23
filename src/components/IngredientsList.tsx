@@ -143,7 +143,7 @@ function IngredientLine({
     checkable && !!have && !short ? (hand ? 'struck' : 'line-through') : ''
   return (
     <li
-      className={`${type.line} flex ${hand ? 'gap-1' : 'gap-2.5'} border-b border-line-blue pt-1.5 pb-1 last:border-b-0`}
+      className={`${type.line} flex ${hand ? 'gap-1' : 'gap-2.5'} border-b border-ruled-line pt-1.5 pb-1 last:border-b-0`}
     >
       {checkable && (
         <Tickbox
@@ -261,10 +261,10 @@ export function Tickbox({
       <span
         className={`grid h-[18px] w-[18px] place-items-center rounded-[4px] border-[1.5px] ${
           state === 'on'
-            ? 'border-kraft-edge bg-kraft text-kraft-ink'
+            ? 'border-accent-edge bg-accent text-accent-ink'
             : state === 'short'
-              ? 'border-danger bg-danger text-white'
-              : 'border-[#c9bda4] bg-paper'
+              ? 'border-danger bg-danger text-on-danger'
+              : 'border-ink-faint bg-paper'
         }`}
       >
         {checked && (

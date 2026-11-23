@@ -21,7 +21,7 @@ export function ClearSelectedButton({ canEdit }: { canEdit: boolean }) {
       <button
         type="button"
         onClick={clearSelected}
-        className="rounded-full border border-kraft-edge bg-brand px-4 py-1.5 text-sm font-semibold leading-5 text-on-brand transition active:scale-95"
+        className="rounded-full border border-accent-edge bg-accent px-4 py-1.5 text-sm font-semibold leading-5 text-accent-ink transition active:scale-95"
       >
         Clear selected
       </button>

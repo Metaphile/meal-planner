@@ -27,41 +27,70 @@
 }
 
 /* ---- Theme tokens -------------------------------------------------------- */
-/* The whole app is a recipe box on a kitchen counter: paper cards in ink on
-   a sage counter, with kraft for tabs, pockets and primary actions. The
-   general-purpose names (bg, surface, brand…) map onto that palette. */
-@theme {
-  --color-bg: #dfe8e3; /* the counter (= backdrop) */
-  --color-surface: #fcf9f1; /* paper: cards, rows, inputs */
-  --color-surface-2: #f1e8d2; /* a deeper paper: chips, selected rows */
-  --color-border: #e4dac6; /* paper's edge */
-  --color-brand: #c3bbd5; /* "kraft" (now a greyed lavender): primary actions, focus */
-  --color-brand-strong: #d1cfdf; /* light lavender highlight */
-  --color-on-brand: #443d54; /* lavender's ink, on lavender fills */
-  --color-brand-ink: #73688d; /* lavender-coloured text that reads on paper */
-  --color-text: #3a3428; /* ink */
-  --color-muted: #7a705e; /* soft ink */
-  --color-danger: #b8402f; /* a warm, inky red */
+/* The whole app is a recipe box on a kitchen counter: paper cards, printed
+   and written on in ink and pen, on a sage counter, with one accent — a
+   soft, greyed lavender — for the tabs, the marks you make (a favorite,
+   a want, a tick) and the main actions.
 
-  /* The recipe box: paper, ink and kraft. */
-  --color-backdrop: #dfe8e3; /* the counter everything sits on */
+   These are roles, not colours: everything uses them (never a colour of its
+   own), so a palette is just a set of values for them. Each family steps
+   down in lightness at one hue, and what's read against paper keeps its
+   contrast: ink 11.7:1, soft ink 4.6:1, faint ink and the accent's edge
+   3:1 (outlines of the boxes you tick), accent text 4.9:1. */
+@theme {
+  /* The counter the box sits on (and, deeper, the box's floor). */
+  --color-counter: #dfe8e3;
+  --color-counter-deep: #bac8c0;
+
+  /* Paper: cards, rows, fields. Deep: chips, selected rows. Lit: the box's
+     paper, in a lighter light. Edges: paper's own; firmer, an outlined
+     button's. */
   --color-paper: #fcf9f1;
+  --color-paper-deep: #f1e8d2;
+  --color-paper-lit: #fdfaf4;
   --color-paper-edge: #e4dac6;
+  --color-paper-edge-strong: #d8cdb6;
+
+  /* Ink: printed text; soft — secondary text (tags, headings); faint — hints,
+     and the outline of an empty box to tick. */
   --color-ink: #3a3428;
   --color-ink-soft: #7a705e;
-  --color-ink-faint: #a89e8a;
-  /* "Kraft" — the tabs, pockets and primary buttons — is a soft, greyed
-     lavender now (the names stay). */
-  --color-kraft: #c3bbd5;
-  --color-kraft-edge: #988bb7;
-  --color-kraft-ink: #443d54;
-  --color-rule-red: #e9a99f;
-  --color-line-blue: #dce8f0;
-  --color-frame: #a9c9b9;
+  --color-ink-faint: #9b8f78;
+
+  /* The accent: its fill (tabs, primary buttons, a ticked box), its edge,
+     its text on paper (actions written out), its ink (on its fill). */
+  --color-accent: #c3bbd5;
+  --color-accent-edge: #978ab7;
+  --color-accent-text: #73688d;
+  --color-accent-ink: #443d54;
+
+  /* Danger (and short of what's needed): its colour, a light edge, and what's
+     written on it. */
+  --color-danger: #b8402f;
+  --color-danger-edge: #e3b4ac;
+  --color-on-danger: #ffffff;
+
+  /* An index card's printing: the rule under its title (rose, apart from
+     danger's red), the faint blue lines, the double frame (as the paper's
+     edge, deeper: the card's own, not a second accent). */
+  --color-margin-rule: #e8a6b4;
+  --color-ruled-line: #dce8f0;
+  --color-frame: #d3c6aa;
+
+  /* A slip of scrap paper. */
   --color-scrap: #fffbe8;
   --color-scrap-edge: #eadfb4;
-  --color-pen: #2c3e6b; /* ballpoint ink, for handwriting */
-  --color-pencil: #a3a8b5; /* faint pencil: hints on a draft */
+
+  /* Writing by hand: ballpoint, and pencil for hints on a draft. */
+  --color-pen: #2c3e6b;
+  --color-pencil: #a3a8b5;
+
+  /* Shadows (mixed to strength where they're used: see shadow()), the
+     deeper one cast inside the box, and the shade behind a card in hand
+     or a dialog. */
+  --color-shadow: #3c321e;
+  --color-shadow-cast: #281e0f;
+  --color-scrim: rgb(20 24 22 / 0.55);
 }
 
 /* ---- Base ---------------------------------------------------------------- */
@@ -78,8 +107,8 @@ html {
 
 body {
   margin: 0;
-  background: var(--color-bg);
-  color: var(--color-text);
+  background: var(--color-counter);
+  color: var(--color-ink);
   font-family:
     system-ui,
     -apple-system,
@@ -171,21 +200,21 @@ body {
     border-radius: 14px;
     color: var(--color-ink);
     box-shadow:
-      0 1px 1px rgb(60 50 30 / 0.06),
-      0 6px 16px -8px rgb(60 50 30 / 0.3);
+      0 1px 1px color-mix(in srgb, var(--color-shadow) 6%, transparent),
+      0 6px 16px -8px color-mix(in srgb, var(--color-shadow) 30%, transparent);
   }
   .paper-divider {
-    background: var(--color-kraft);
-    border: 1px solid var(--color-kraft-edge);
-    color: var(--color-kraft-ink);
+    background: var(--color-accent);
+    border: 1px solid var(--color-accent-edge);
+    color: var(--color-accent-ink);
   }
   /* Cards in the rolodex (or a pocket) also cast a soft shadow up onto the
      card behind them (a downward shadow would be hidden by the card in front). */
   .rolodex-card {
     box-shadow:
-      0 -1px 2px rgb(60 50 30 / 0.08),
-      0 -3px 8px -3px rgb(60 50 30 / 0.22),
-      0 6px 16px -8px rgb(60 50 30 / 0.3);
+      0 -1px 2px color-mix(in srgb, var(--color-shadow) 8%, transparent),
+      0 -3px 8px -3px color-mix(in srgb, var(--color-shadow) 22%, transparent),
+      0 6px 16px -8px color-mix(in srgb, var(--color-shadow) 30%, transparent);
   }
   /* Darkening as a card tips back at the top; driven by --shade (0–1) set
      on the card's wrapper, so a divider's tab and body shade together. */
@@ -193,7 +222,7 @@ body {
     position: absolute;
     inset: -1px; /* over the paper's edge too */
     border-radius: inherit;
-    background: #000;
+    background: var(--color-shadow-cast);
     opacity: var(--shade, 0);
     pointer-events: none;
   }
@@ -207,7 +236,7 @@ body {
   }
   /* The red rule under an index card's title. */
   .paper-rule {
-    border-bottom: 1.5px solid var(--color-rule-red);
+    border-bottom: 1.5px solid var(--color-margin-rule);
   }
   /* Faint blue ruled lines, --rule apart (22px unless set); text set at that
      line-height sits on them. */
@@ -216,7 +245,7 @@ body {
     background-image: repeating-linear-gradient(
       to bottom,
       transparent 0 calc(var(--rule, 22px) - 1px),
-      var(--color-line-blue) calc(var(--rule, 22px) - 1px) var(--rule, 22px)
+      var(--color-ruled-line) calc(var(--rule, 22px) - 1px) var(--rule, 22px)
     );
     background-attachment: local;
   }
@@ -300,8 +329,8 @@ body {
     font-family:
       'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
   }
-  /* A kraft tab used as a button (header actions, Done). */
-  .kraft-tag {
+  /* An accent tab used as a button (header actions, Done). */
+  .accent-tag {
     font-family:
       'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
     font-size: 15px;
@@ -309,15 +338,15 @@ body {
     line-height: 20px;
     padding: 6px 12px;
     border-radius: 8px 8px 3px 3px;
-    background: var(--color-kraft);
-    border: 1px solid var(--color-kraft-edge);
-    color: var(--color-kraft-ink);
-    box-shadow: 0 2px 4px -2px rgb(60 50 30 / 0.4);
+    background: var(--color-accent);
+    border: 1px solid var(--color-accent-edge);
+    color: var(--color-accent-ink);
+    box-shadow: 0 2px 4px -2px color-mix(in srgb, var(--color-shadow) 40%, transparent);
   }
-  .kraft-tag:active {
+  .accent-tag:active {
     transform: translateY(1px);
   }
-  .kraft-tag:disabled {
+  .accent-tag:disabled {
     opacity: 0.45;
   }
   /* A card's slot in a pocket: only its top peeks out (with room for its
@@ -333,18 +362,18 @@ body {
   .pocket-slot .rolodex-dim {
     transition: opacity 200ms;
   }
-  /* A meal: a kraft pocket holding recipe cards. */
-  .kraft-pocket {
-    background: var(--color-kraft);
-    border: 1px solid var(--color-kraft-edge);
+  /* A meal: an accent pocket holding recipe cards. */
+  .accent-pocket {
+    background: var(--color-accent);
+    border: 1px solid var(--color-accent-edge);
     border-radius: 12px;
-    box-shadow: 0 6px 16px -8px rgb(60 50 30 / 0.4);
+    box-shadow: 0 6px 16px -8px color-mix(in srgb, var(--color-shadow) 40%, transparent);
   }
   /* The pocket's front, curving over the bottom of the cards. */
   .pocket-lip {
-    background: var(--color-kraft);
-    border-top: 1px solid var(--color-kraft-edge);
-    box-shadow: 0 -4px 8px -4px rgb(60 50 30 / 0.35);
+    background: var(--color-accent);
+    border-top: 1px solid var(--color-accent-edge);
+    box-shadow: 0 -4px 8px -4px color-mix(in srgb, var(--color-shadow) 35%, transparent);
     border-radius: 50% 50% 0 0 / 12px 12px 0 0;
   }
   /* A slip of scrap paper (a meal's misc items). */
@@ -352,7 +381,7 @@ body {
     background: var(--color-scrap);
     border: 1px solid var(--color-scrap-edge);
     border-radius: 3px;
-    box-shadow: 0 2px 4px -2px rgb(60 50 30 / 0.3);
+    box-shadow: 0 2px 4px -2px color-mix(in srgb, var(--color-shadow) 30%, transparent);
   }
   /* Notepad sheet: perforations along its top edge, where it tore off. */
   .notepad {
@@ -367,7 +396,7 @@ body {
     height: 6px;
     background: radial-gradient(
         circle at 6px 0,
-        var(--color-kraft) 2.5px,
+        var(--color-accent) 2.5px,
         transparent 3px
       )
       0 0 / 12px 6px repeat-x;

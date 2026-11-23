@@ -41,16 +41,16 @@ export default function InvitePage() {
   return (
     <div className="flex h-full flex-col items-center justify-center gap-4 px-6 text-center">
       {!error ? (
-        <p className="animate-pulse text-muted">Signing you in…</p>
+        <p className="animate-pulse text-ink-soft">Signing you in…</p>
       ) : (
         <>
           <p className="text-base font-medium">{error}</p>
-          <p className="max-w-xs text-sm text-muted">
+          <p className="max-w-xs text-sm text-ink-soft">
             Ask a writer in your group to send you a fresh invite link.
           </p>
           <Link
             to="/"
-            className="rounded-full border border-border px-4 py-2 text-sm font-medium"
+            className="rounded-full border border-paper-edge px-4 py-2 text-sm font-medium"
           >
             Back
           </Link>

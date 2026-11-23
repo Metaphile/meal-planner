@@ -12,7 +12,7 @@ export function PageHeader({
   back?: ReactNode
 }) {
   return (
-    <header className="flex shrink-0 items-center justify-between gap-3 bg-backdrop px-4 pt-2.5 pb-2 text-ink">
+    <header className="flex shrink-0 items-center justify-between gap-3 bg-counter px-4 pt-2.5 pb-2 text-ink">
       <div className="flex min-w-0 items-center gap-1">
         {back}
         <h1 className="paper-serif min-w-0 truncate text-[27px] font-semibold leading-9 tracking-[0.2px]">
@@ -35,8 +35,8 @@ export function EmptyState({
 }) {
   return (
     <div className="flex flex-col items-center gap-3 px-6 py-16 text-center">
-      <p className="paper-serif text-lg font-semibold text-text">{title}</p>
-      {hint && <p className="max-w-xs text-sm text-muted">{hint}</p>}
+      <p className="paper-serif text-lg font-semibold text-ink">{title}</p>
+      {hint && <p className="max-w-xs text-sm text-ink-soft">{hint}</p>}
       {action}
     </div>
   )
@@ -63,7 +63,7 @@ export function PrimaryButton({
       onClick={onClick}
       disabled={disabled}
       autoFocus={autoFocus}
-      className={`rounded-full border border-kraft-edge bg-brand px-4 py-2 text-sm font-semibold text-on-brand transition active:scale-95 disabled:opacity-40 ${className}`}
+      className={`rounded-full border border-accent-edge bg-accent px-4 py-2 text-sm font-semibold text-accent-ink transition active:scale-95 disabled:opacity-40 ${className}`}
     >
       {children}
     </button>
@@ -83,7 +83,7 @@ export function GhostButton({
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-full border border-[#d8cdb6] bg-surface px-4 py-2 text-sm font-medium text-text transition active:scale-95 ${className}`}
+      className={`rounded-full border border-paper-edge-strong bg-paper px-4 py-2 text-sm font-medium text-ink transition active:scale-95 ${className}`}
     >
       {children}
     </button>
@@ -95,7 +95,7 @@ export function TextInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
     <input
       autoComplete="off"
       {...props}
-      className={`w-full rounded-lg border border-border bg-surface px-3 py-2 text-text placeholder:text-muted/60 focus:border-kraft-edge focus:outline-none ${
+      className={`w-full rounded-lg border border-paper-edge bg-paper px-3 py-2 text-ink placeholder:text-ink-soft/60 focus:border-accent-edge focus:outline-none ${
         props.className ?? ''
       }`}
     />
@@ -134,7 +134,7 @@ export function ConfirmDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 grid place-items-center bg-black/50 px-4"
+      className="fixed inset-0 z-50 grid place-items-center bg-scrim px-4"
       onClick={onCancel}
     >
       <div
@@ -147,7 +147,7 @@ export function ConfirmDialog({
         <h2 id="confirm-title" className="paper-serif text-lg font-semibold">
           {title}
         </h2>
-        <div className="mt-2 text-sm text-muted">{message}</div>
+        <div className="mt-2 text-sm text-ink-soft">{message}</div>
         {/* The confirming (destructive) button always on the far left,
             apart from the others. */}
         <div className="mt-5 flex gap-2">
@@ -155,7 +155,7 @@ export function ConfirmDialog({
             type="button"
             onClick={onConfirm}
             autoFocus={!onSave}
-            className="whitespace-nowrap rounded-full bg-danger px-4 py-2 text-sm font-semibold text-white transition active:scale-95"
+            className="whitespace-nowrap rounded-full bg-danger px-4 py-2 text-sm font-semibold text-on-danger transition active:scale-95"
           >
             {confirmLabel}
           </button>

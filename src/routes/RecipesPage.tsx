@@ -1280,14 +1280,14 @@ export default function RecipesPage() {
       <span
         className={`grid h-[22px] w-[22px] place-items-center rounded-[5px] border-[1.5px] ${
           wantedOnly
-            ? 'border-kraft-edge bg-kraft'
-            : 'border-[#c9bda4] bg-paper'
+            ? 'border-accent-edge bg-accent'
+            : 'border-ink-faint bg-paper'
         }`}
       >
         {wantedOnly && (
           <svg
             viewBox="0 0 12 12"
-            className="h-3.5 w-3.5 text-kraft-ink"
+            className="h-3.5 w-3.5 text-accent-ink"
             fill="none"
             stroke="currentColor"
             strokeWidth={2}
@@ -1318,7 +1318,7 @@ export default function RecipesPage() {
     <div
       ref={headerRef}
       className="absolute inset-x-0 top-0 z-[3]"
-      style={{ boxShadow: '0 4px 12px -6px rgb(0 0 0 / 0.35)' }}
+      style={{ boxShadow: '0 4px 12px -6px color-mix(in srgb, var(--color-shadow) 45%, transparent)' }}
     >
       <PageHeader
         title="Meals"
@@ -1331,7 +1331,7 @@ export default function RecipesPage() {
             <Link
               to="/account"
               aria-label="Account"
-              className="grid h-9 w-9 place-items-center rounded-full text-ink-soft active:bg-black/5"
+              className="grid h-9 w-9 place-items-center rounded-full text-ink-soft active:bg-ink/5"
             >
               <svg
                 viewBox="0 0 24 24"
@@ -1364,7 +1364,7 @@ export default function RecipesPage() {
         />
         {/* The rolodex's backdrop, below the header. */}
         <div
-          className="absolute inset-x-0 bottom-0 bg-[#bac8c0]"
+          className="absolute inset-x-0 bottom-0 bg-counter-deep"
           style={{ top: headerH }}
         />
         {/* The rolodex layer: the whole page, under the header (a card
@@ -1413,9 +1413,9 @@ export default function RecipesPage() {
               perspective: `${PERSPECTIVE}px`,
               perspectiveOrigin: `50% ${headerU + wheel.front}px`,
               // The box in a lighter light: paper 20% toward white (ink and
-              // edges as they are). The dividers are the same kraft as the
+              // edges as they are). The dividers are the same accent as the
               // meals' pockets.
-              ['--color-paper' as string]: '#fdfaf4',
+              ['--color-paper' as string]: 'var(--color-paper-lit)',
             }}
           >
             {items.map((item, i) => (
@@ -1496,7 +1496,7 @@ export default function RecipesPage() {
                 readOnly
                 value={lostDraft.words}
                 rows={6}
-                className="mt-3 block w-full resize-none rounded border border-border bg-transparent p-2 text-sm"
+                className="mt-3 block w-full resize-none rounded border border-paper-edge bg-transparent p-2 text-sm"
                 onFocus={(e) => e.currentTarget.select()}
               />
             </>
@@ -1560,7 +1560,7 @@ const RolodexItem = memo(function RolodexItem({
         style={{
           top: paperTop,
           borderRadius: '14px 14px 0 0',
-          background: `linear-gradient(to bottom, rgb(40 30 15 / 0) ${shadowEnd - CAST_FADE}px, rgb(40 30 15 / ${CAST}) ${shadowEnd + CAST_FADE}px)`,
+          background: `linear-gradient(to bottom, transparent ${shadowEnd - CAST_FADE}px, color-mix(in srgb, var(--color-shadow-cast) ${CAST * 100}%, transparent) ${shadowEnd + CAST_FADE}px)`,
         }}
       />
     ) : null

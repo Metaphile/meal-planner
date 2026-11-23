@@ -54,7 +54,7 @@ export default function App() {
   if (!ready) return <Splash />
 
   return (
-    <div className="flex h-full flex-col bg-bg text-text">
+    <div className="flex h-full flex-col bg-counter text-ink">
       <main
         className="relative flex-1 overflow-hidden"
         style={{ paddingTop: 'var(--safe-top)' }}
@@ -116,7 +116,7 @@ export default function App() {
           mustn't show through it. */}
       <div
         aria-hidden
-        className="pointer-events-none fixed inset-x-0 top-0 z-50 bg-backdrop"
+        className="pointer-events-none fixed inset-x-0 top-0 z-50 bg-counter"
         style={{ height: 'var(--safe-top)' }}
       />
     </div>
@@ -154,7 +154,7 @@ function SignedOut() {
   return (
     <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
       <h1 className="paper-serif text-2xl font-semibold">Meals</h1>
-      <p className="max-w-xs text-sm text-muted">
+      <p className="max-w-xs text-sm text-ink-soft">
         This is a private app. To sign in, paste the invite link someone in
         your group shared with you — or your own sign-in link.
       </p>
@@ -197,7 +197,7 @@ function SignedOut() {
 
 function Splash() {
   return (
-    <div className="flex h-full items-center justify-center bg-bg text-muted">
+    <div className="flex h-full items-center justify-center bg-counter text-ink-soft">
       <div className="animate-pulse text-sm">Meals</div>
     </div>
   )
@@ -205,7 +205,7 @@ function Splash() {
 
 function BootSkeleton() {
   return (
-    <div className="flex h-full items-center justify-center text-muted">
+    <div className="flex h-full items-center justify-center text-ink-soft">
       <div className="animate-pulse text-sm">Loading your kitchen…</div>
     </div>
   )
@@ -213,7 +213,7 @@ function BootSkeleton() {
 
 function PageSpinner() {
   return (
-    <div className="flex h-40 items-center justify-center text-muted">
+    <div className="flex h-40 items-center justify-center text-ink-soft">
       <div className="animate-pulse text-sm">…</div>
     </div>
   )

@@ -11,7 +11,7 @@ const CELL =
   // (A field centres its writing in what its padding leaves: padded below,
   // it's 2px high. Its height and line height: 30 and 24 — larger, on the
   // shopping list: see AddOnsList.)
-  'h-[var(--cell-h,30px)] min-w-0 bg-transparent pt-0 pb-[4px] pr-1 leading-[var(--cell-lead,24px)] focus:bg-kraft/15 focus:outline-none'
+  'h-[var(--cell-h,30px)] min-w-0 bg-transparent pt-0 pb-[4px] pr-1 leading-[var(--cell-lead,24px)] focus:bg-accent/15 focus:outline-none'
 
 /**
  * Add-ons: things wanted that aren't from a recipe, jotted down by hand —
@@ -103,7 +103,7 @@ function AddOnLine({ addon, canEdit }: { addon: AddOn; canEdit: boolean }) {
     <div
       ref={rowRef}
       role="row"
-      className={`${COLS} items-center border-b border-line-blue`}
+      className={`${COLS} items-center border-b border-ruled-line`}
       onPointerDownCapture={() => {
         tapping.current = true
         const done = () => setTimeout(() => (tapping.current = false))
@@ -174,7 +174,7 @@ function SpareLine() {
     setText('')
   }
   return (
-    <div role="row" className={`${COLS} items-center border-b border-line-blue`}>
+    <div role="row" className={`${COLS} items-center border-b border-ruled-line`}>
       <span />
       <input
         value={text}

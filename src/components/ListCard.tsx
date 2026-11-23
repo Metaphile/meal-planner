@@ -25,7 +25,7 @@ export function WantBoxPicture() {
     <span
       role="img"
       aria-label="the box on a recipe card"
-      className="mx-0.5 inline-block h-[18px] w-[18px] rounded-[4px] border-[1.5px] border-[#c9bda4] bg-paper align-[-3px]"
+      className="mx-0.5 inline-block h-[18px] w-[18px] rounded-[4px] border-[1.5px] border-ink-faint bg-paper align-[-3px]"
     />
   )
 }
