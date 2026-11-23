@@ -52,7 +52,9 @@ interface AppState {
   setWantCount: (recipeId: string, count: number) => void
 
   // Add-ons
-  addAddOn: (item: Ingredient) => void
+  /** Add an add-on — at the end, or just after another (`after`, its id).
+   *  Its id. */
+  addAddOn: (item: Ingredient, after?: string) => string
   updateAddOn: (
     id: string,
     patch: Partial<Ingredient & Pick<AddOn, 'have'>>,
@@ -186,15 +188,21 @@ export const useStore = create<AppState>((set, get) => ({
     if (updated) enqueuePut('wants', updated)
   },
 
-  addAddOn: (item) => {
+  addAddOn: (item, after) => {
     const addons = get().addons
-    const addon: AddOn = {
-      ...item,
-      id: newId(),
-      position: addons.length ? addons[addons.length - 1].position + 1 : 0,
-    }
-    set({ addons: [...addons, addon] })
+    const i = after === undefined ? -1 : addons.findIndex((a) => a.id === after)
+    const last = addons.length ? addons[addons.length - 1].position : -1
+    // Just after `after`: halfway to the one after it (or one on, at the end).
+    const position =
+      i < 0
+        ? last + 1
+        : i + 1 < addons.length
+          ? (addons[i].position + addons[i + 1].position) / 2
+          : addons[i].position + 1
+    const addon: AddOn = { ...item, id: newId(), position }
+    set({ addons: [...addons, addon].sort(byPos) })
     enqueuePut('addons', addon)
+    return addon.id
   },
 
   updateAddOn: (id, patch) => {
