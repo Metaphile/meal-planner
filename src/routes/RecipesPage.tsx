@@ -19,6 +19,7 @@ import {
   HAND,
   RecipeCard,
   PERSPECTIVE,
+  HEART_SIZE,
   HeartIcon,
   type CardOrigin,
   type Hand,
@@ -1274,7 +1275,8 @@ export default function RecipesPage() {
     itemEls.current[i] = el
   }, [])
 
-  // Only the wanted recipes: the same box as on the cards.
+  // Only the wanted recipes: the same box as on the cards (its size, its
+  // 1.5px outline).
   const wantedOnlyBox = (
     <button
       type="button"
@@ -1285,7 +1287,7 @@ export default function RecipesPage() {
       className="-mx-1 grid h-9 w-9 shrink-0 place-items-center"
     >
       <span
-        className={`grid h-[22px] w-[22px] place-items-center rounded-[5px] border-[1.5px] ${
+        className={`grid h-[18px] w-[18px] place-items-center rounded-[4px] border-[1.5px] ${
           wantedOnly
             ? 'border-heart-edge bg-heart'
             : 'border-ink-faint bg-paper'
@@ -1294,7 +1296,7 @@ export default function RecipesPage() {
         {wantedOnly && (
           <svg
             viewBox="0 0 12 12"
-            className="h-3.5 w-3.5 text-on-heart"
+            className="h-3 w-3 text-on-heart"
             fill="none"
             stroke="currentColor"
             strokeWidth={2}
@@ -1307,7 +1309,8 @@ export default function RecipesPage() {
       </span>
     </button>
   )
-  // Only your favorites: the cards' heart, beside it.
+  // Only your favorites: the cards' heart (its size, its 1.5px outline),
+  // beside it.
   const favoritesOnlyHeart = (
     <button
       type="button"
@@ -1316,7 +1319,7 @@ export default function RecipesPage() {
       onClick={toggleFavoritesOnly}
       className="-mx-1 grid h-9 w-9 shrink-0 place-items-center"
     >
-      <HeartIcon on={favoritesOnly} size={18} />
+      <HeartIcon on={favoritesOnly} size={HEART_SIZE} />
     </button>
   )
   const header = (
@@ -1345,7 +1348,8 @@ export default function RecipesPage() {
                 className="h-[21px] w-[21px]"
                 fill="none"
                 stroke="currentColor"
-                strokeWidth="1.8"
+                // (A 1.5px line, as the heart's and the box's beside it.)
+                strokeWidth={(1.5 * 24) / 21}
                 strokeLinecap="round"
                 strokeLinejoin="round"
               >

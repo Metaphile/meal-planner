@@ -436,8 +436,8 @@ function twinkle(el: HTMLElement | null, on: boolean) {
 /** px: the heart's room in a card's title row — the Want box's width. */
 const HEART_ROOM = 18
 
-/** px: the heart's width in a card's title row. */
-const HEART_SIZE = 20
+/** px: the heart's width in a card's title row (and the header's). */
+export const HEART_SIZE = 20
 
 /** A heart (in its picture's units). */
 const HEART_PATH =
