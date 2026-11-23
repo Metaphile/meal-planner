@@ -488,30 +488,25 @@ export default function RecipesPage() {
     dividerTop(wheel, headerU, REACH_LAST_PHI) * SCALE + LIST_DROP,
   )
   // Its path as the box scrolls (see listMotion): there as the turning ends
-  // (scrolled 0 past it); slow leaving the bottom edge, fastest crossing the
-  // drum's centre line, slowing as it nears the end of its travel — the top
-  // of the drum, or (a short list) where it stops, its end in view. (A list
-  // that stops below the centre line: fastest midway.)
+  // (scrolled 0 past it); coming up over the bottom edge faster than the
+  // finger, and slowing as it nears the end of its travel — the top of the
+  // drum, or (a short list) where it stops, its end in view.
   const listEnd = pageH - footH - LIST_ROOM - listH
   const listMove = useMemo(() => {
     const rest = pageH - LIST_PEEK
     const top = Math.max(headerH, listEnd)
-    const drumCentre = (headerU + wheel.front) * SCALE
-    const centre =
-      drumCentre > top && drumCentre < rest ? drumCentre : (top + rest) / 2
     return listPath(
       {
         rest,
-        centre,
         top,
-        // (Stopping short of the top: arriving as gently as it left.)
-        topPace: listEnd > headerH ? PACE.bottom : PACE.top,
+        // (Stopping short of the top: arriving gently.)
+        topPace: listEnd > headerH ? PACE.stop : PACE.top,
         anchor: 0,
         anchorY: listStart,
       },
       Math.min(listEnd, 0) - pageH,
     )
-  }, [pageH, headerU, headerH, wheel, listStart, listEnd])
+  }, [pageH, headerH, listStart, listEnd])
   const bounds = useMemo(
     () =>
       boundsOf(
@@ -576,9 +571,8 @@ export default function RecipesPage() {
     const at = drum.get()
     const turn = bounds.turn * SCALE
     // The shopping list: in front of the box, not riding its wheel — at its
-    // own pace (see listMove): slow from the bottom edge, outpacing the box
-    // as it crosses the drum's centre line, easing to the finger's pace at
-    // the top.
+    // own pace (see listMove): up over the bottom edge faster than the
+    // finger, outpacing the box behind it, and slowing as it arrives.
     const sheet = listRef.current
     if (sheet) {
       const top = listMove.at(at - turn)

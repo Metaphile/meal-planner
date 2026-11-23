@@ -1,18 +1,19 @@
 import { describe, expect, it } from 'vitest'
 import { PACE, listPath, pace, type ListPath } from '../lib/listMotion'
 
-const p: ListPath = { rest: 806, centre: 490, top: 60, anchor: 1000, anchorY: 450 }
+const p: ListPath = { rest: 806, top: 60, anchor: 1000, anchorY: 450 }
 const path = listPath(p, -2000)
+const speed = (path: ReturnType<typeof listPath>, y: number) => {
+  const at = path.scrollFor(y)
+  return path.at(at) - path.at(at + 1)
+}
 
 describe("the shopping list's path", () => {
-  it('paces itself by where it is', () => {
+  it("slows as it rises: from the bottom's pace to the top's", () => {
     expect(pace(p, 806)).toBeCloseTo(PACE.bottom)
-    expect(pace(p, 490)).toBeCloseTo(PACE.centre)
     expect(pace(p, 60)).toBeCloseTo(PACE.top)
     expect(pace(p, -500)).toBe(PACE.top)
-    // (Faster nearer the centre, from either side.)
-    expect(pace(p, 600)).toBeGreaterThan(pace(p, 700))
-    expect(pace(p, 300)).toBeGreaterThan(pace(p, 150))
+    for (let y = 805; y > 60; y -= 5) expect(pace(p, y)).toBeLessThan(pace(p, y + 5))
   })
 
   it('is where it was fixed: at the anchor, just below the back of the box', () => {
@@ -29,25 +30,19 @@ describe("the shopping list's path", () => {
     }
   })
 
-  it('moves at its pace: slow from the bottom, fast at the centre, 1:1 at the top', () => {
-    const speed = (y: number) => {
-      const at = path.scrollFor(y)
-      return path.at(at) - path.at(at + 1)
-    }
-    expect(speed(800)).toBeCloseTo(PACE.bottom, 1)
-    expect(speed(490)).toBeCloseTo(PACE.centre, 1)
-    expect(speed(-1000)).toBeCloseTo(1, 5) // (reading a long list)
+  it('comes up faster than the finger, and reads on with it', () => {
+    expect(speed(path, 800)).toBeGreaterThan(1.9)
+    expect(speed(path, -1000)).toBeCloseTo(1, 5) // (a long list, read)
+  })
+
+  it('arrives gently, stopping short of the top', () => {
+    const short = listPath({ ...p, top: 300, topPace: PACE.stop }, -500)
+    expect(speed(short, 302)).toBeCloseTo(PACE.stop, 1)
   })
 
   it('knows how far to scroll to put it anywhere', () => {
     for (const y of [800, 650, 450, 100, -300, -2500]) {
       expect(path.at(path.scrollFor(y))).toBeCloseTo(y, 6)
     }
-  })
-
-  it('arrives as gently as it leaves, stopping short of the top', () => {
-    const short = listPath({ ...p, top: 300, topPace: PACE.bottom }, -500)
-    const at = short.scrollFor(302)
-    expect(short.at(at) - short.at(at + 1)).toBeCloseTo(PACE.bottom, 1)
   })
 })

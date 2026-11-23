@@ -1,10 +1,10 @@
 /**
  * How the shopping list moves as the box is scrolled: in front of the box,
  * at a pace of its own — set by where it is on the screen, not by the box's
- * wheel. Slow leaving the bottom edge; fastest crossing the drum's centre
- * line (where its cards face you), outpacing the box turning behind it;
- * easing to the finger's pace as it nears the top of the drum; and with the
- * finger from there (a long list read on up).
+ * wheel. It comes up over the bottom edge faster than the finger, outpacing
+ * the box behind it, and slows — on one smooth curve — as it nears the end
+ * of its travel: the top of the drum (then on up with the finger, a long
+ * list read) or, a short list, where it stops.
  *
  * (Beyond the end of its travel it goes at its pace there.)
  *
@@ -16,35 +16,27 @@
 export interface ListPath {
   /** Peeking over the bottom edge: as low as it goes. */
   rest: number
-  /** The drum's centre line. */
-  centre: number
   /** The end of its travel: the top of the drum (the header's foot) — or,
    *  a short list, where it stops (its end in view). */
   top: number
   /** Its pace there: the finger's (1) if it reads on up past it — a long
-   *  list — or, where it stops, as slow as it leaves the bottom. */
+   *  list — or slower, where it stops. */
   topPace?: number
   anchor: number
   anchorY: number
 }
 
-/** Its pace (× the finger's): leaving the bottom, crossing the centre,
- *  nearing the top. */
-export const PACE = { bottom: 0.6, centre: 1.8, top: 1 }
+/** Its pace (× the finger's): coming up over the bottom edge; at the top
+ *  of the drum (reading on); arriving where a short list stops. */
+export const PACE = { bottom: 2, top: 1, stop: 0.6 }
 
-/** Its pace with its top at `y`. */
+/** Its pace with its top at `y`: from the bottom's to the top's, eased at
+ *  both ends (no sudden change of pace on the way). */
 export function pace(p: ListPath, y: number): number {
-  const ease = (from: number, to: number, k: number) =>
-    from + (to - from) * (1 - Math.cos(Math.PI * Math.min(1, Math.max(0, k)))) / 2
-  if (y >= p.centre)
-    return p.rest > p.centre
-      ? ease(PACE.centre, PACE.bottom, (y - p.centre) / (p.rest - p.centre))
-      : PACE.centre
-  if (y >= p.top)
-    return p.centre > p.top
-      ? ease(PACE.centre, p.topPace ?? PACE.top, (p.centre - y) / (p.centre - p.top))
-      : (p.topPace ?? PACE.top)
-  return p.topPace ?? PACE.top
+  const end = p.topPace ?? PACE.top
+  if (y <= p.top || p.rest <= p.top) return end
+  const k = Math.min(1, (y - p.top) / (p.rest - p.top))
+  return end + (PACE.bottom - end) * (1 - Math.cos(Math.PI * k)) / 2
 }
 
 /** The path, worked out once: how far it's scrolled (from the anchor) at
