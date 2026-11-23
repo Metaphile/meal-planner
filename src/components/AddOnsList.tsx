@@ -167,7 +167,8 @@ function AddOnLine({ addon, canEdit }: { addon: AddOn; canEdit: boolean }) {
 function SpareLine() {
   const add = useStore((s) => s.addAddOn)
   const [text, setText] = useState('')
-  const fieldRef = useRef<HTMLInputElement>(null)
+  // Each item written on a field of its own (see Return, below).
+  const [field, setField] = useState(0)
   const commit = () => {
     if (!text.trim()) return
     add({ name: text.trim() })
@@ -177,17 +178,24 @@ function SpareLine() {
     <div role="row" className={`${COLS} items-center border-b border-ruled-line`}>
       <span />
       <input
+        key={field}
+        // (A new field, on Return: written in straight away.)
+        autoFocus={field > 0}
         value={text}
         onChange={(e) => setText(e.target.value)}
-        ref={fieldRef}
         // Return: it's added, and the line's ready for the next — one after
-        // another. (The keyboard's key says "next", and the field keeps the
-        // focus: "done", iOS would put the keyboard away.)
+        // another. (The keyboard's key says "next", and the focus stays on
+        // the line: "done", iOS would put the keyboard away.) The next is
+        // written on a new field, not this one emptied: iOS decides on a
+        // capital as a field's focused (or as it's typed in), so an emptied
+        // field would start the next item in lowercase — every item should
+        // start as the first did.
         onKeyDown={(e) => {
           if (e.key !== 'Enter') return
           e.preventDefault()
+          if (!text.trim()) return
           commit()
-          fieldRef.current?.focus()
+          setField((n) => n + 1)
         }}
         onBlur={commit}
         placeholder="Add an item…"
