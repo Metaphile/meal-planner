@@ -2614,9 +2614,9 @@ const SLOT_FADE_MS = 380
 const SLOT_FADE_LAG_MS = 130
 const SLOT_FADE_OUT = 'cubic-bezier(0.5, 0, 0.75, 0)' // ease-in (quartic): barely fading at first, then quickly gone
 const SLOT_FADE_IN = 'cubic-bezier(0.25, 1, 0.5, 1)' // the same, reversed: quickly there, then settling
-// (Starting from still; its fastest, at the end, twice its average speed.)
-const LIFT_UP = 'cubic-bezier(0.32, 0, 0.67, 0.34)' // slow to start, gathering speed
-const DROP_IN = 'cubic-bezier(0.33, 0.66, 0.68, 1)' // the take-out's curve, reversed: fast, then settling
+// (Starting from still; its fastest, at the end, 1.7× its average speed.)
+const LIFT_UP = 'cubic-bezier(0.32, 0, 0.67, 0.44)' // slow to start, gathering speed
+const DROP_IN = 'cubic-bezier(0.33, 0.56, 0.68, 1)' // the take-out's curve, reversed: fast, then settling
 
 /**
  * The lifted card. One continuous motion takes the card from wherever it
