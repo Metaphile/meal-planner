@@ -40,6 +40,7 @@ import {
 import { ListCard } from '../components/ListCard'
 import { favoriteKey, isWanted, type Recipe } from '../data/types'
 import { listPath } from '../lib/listMotion'
+import { wakeLockNow } from '../lib/wakeLock'
 
 /*
  * Recipes — a rolodex of paper cards on a wheel.
@@ -960,6 +961,8 @@ export default function RecipesPage() {
       const wrap = itemEls.current[index]
       if (it.kind !== 'card' || !wrap || busy.current) return
       busy.current = true
+      // (In the tap: the screen kept awake while it's in hand.)
+      wakeLockNow()
       lifted.current = it.key
       freeSlot(wrap)
       uncoverBehind(index)
@@ -1190,6 +1193,7 @@ export default function RecipesPage() {
     const layer = scrollRef.current
     if (!layer || busy.current) return
     busy.current = true
+    wakeLockNow()
     const r = layer.getBoundingClientRect()
     // (A new recipe left mid-edit keeps its id: its edit's kept by it.)
     const draft: Recipe = { id: id ?? newId(), title: '', tags: [], ingredients: [] }
