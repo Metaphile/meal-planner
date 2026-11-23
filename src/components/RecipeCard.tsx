@@ -2569,8 +2569,9 @@ const SETTLE_MS = 140
 const SETTLE = 'cubic-bezier(0.3, 0, 0.3, 1)' // back up to its place
 const SINK = 'cubic-bezier(0.25, 0.6, 0.4, 1)' // easing into the bottom
 const DROP_MS = 300 // …and dropping back in
-const RISE_DELAY_MS = SINK_MS + 200 // the card in hand starts sliding up from below (a moment after the other springs out)…
-const RISE_MS = 650 // …over this
+// (The card in hand's slide-in keeps its own pace, whatever the take-out's.)
+const RISE_DELAY_MS = 330 // the card in hand starts sliding up from below (a moment after the other springs out)…
+const RISE_MS = 500 // …over this
 /** Its fades keep their own pace, whatever the movement's: the shade
  *  darkening behind the card in hand, and (below) the card leaving the box
  *  fading out. */
