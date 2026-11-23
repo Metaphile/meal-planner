@@ -2559,18 +2559,23 @@ export const HAND: Slice<Hand> = {
 // ('arc' predates the Recipes rolodex being drawn scaled down: its flight
 // would need converting to the stage's units before being used there again.)
 const TAKE_OUT: 'arc' | 'lift' = 'lift'
-const LIFT_MS = 409 // the card lifting out of the box (after its sink)
+const LIFT_MS = 530 // the card lifting out of the box (after its sink)
 /** Taking a card out, it first sinks a little into the box, as if pressed,
  *  then springs out; putting it back, it drops in past its place, then
  *  settles back up to it. */
 const SINK_PX = 14
-const SINK_MS = 130
+const SINK_MS = 170
 const SETTLE_MS = 140
 const SETTLE = 'cubic-bezier(0.3, 0, 0.3, 1)' // back up to its place
 const SINK = 'cubic-bezier(0.25, 0.6, 0.4, 1)' // easing into the bottom
 const DROP_MS = 300 // …and dropping back in
 const RISE_DELAY_MS = SINK_MS + 200 // the card in hand starts sliding up from below (a moment after the other springs out)…
-const RISE_MS = 500 // …over this (the shade darkening with it)
+const RISE_MS = 650 // …over this
+/** Its fades keep their own pace, whatever the movement's: the shade
+ *  darkening behind the card in hand, and (below) the card leaving the box
+ *  fading out. */
+const SHADE_IN_DELAY_MS = 330
+const SHADE_IN_MS = 500
 const RISE_EASE = 'cubic-bezier(0.33, 1, 0.68, 1)' // quick, then settling into place (as one put back drops in)
 const FADE_MS = 225 // putting it back: fading out
 /** Let go of while moving, a card coasts on, slowing as it goes. */
@@ -2593,7 +2598,8 @@ function fadingAway(fromY: number, v: number, opacity: number): Keyframe[] {
   return frames
 }
 
-const LIFT_FADE_MS = 380 // …fading out as it goes (gone before it's done lifting)
+const LIFT_FADE_DELAY_MS = 130 // the card leaving the box starts fading…
+const LIFT_FADE_MS = 380 // …and fades out as it goes (gone before it's done lifting)
 const LIFT_FADE = 'cubic-bezier(0.5, 0, 0.75, 0)' // ease-in (quartic): barely fading at first, then quickly gone
 const LIFT_UP = 'cubic-bezier(0.32, 0, 0.67, 0)' // slow to start, gathering speed
 const DROP_IN = 'cubic-bezier(0.33, 1, 0.68, 1)' // the take-out's curve, reversed: fast, then settling
@@ -2959,17 +2965,19 @@ export function CardDetail({
           ),
           rdxCard.animate([{ opacity: 1 }, { opacity: 0 }], {
             ...lift,
-            delay: SINK_MS,
-            duration: Math.min(LIFT_FADE_MS, LIFT_MS),
+            delay: LIFT_FADE_DELAY_MS,
+            duration: LIFT_FADE_MS,
             easing: LIFT_FADE,
           }),
           card.animate(
             [{ transform: pose(below) }, { transform: pose(0) }],
             { ...rise, easing: RISE_EASE },
           ),
-          // The shade darkens as it comes.
+          // The shade darkens as it comes (at its own pace).
           shade.animate([{ opacity: 0 }, { opacity: 1 }], {
-            ...rise,
+            duration: SHADE_IN_MS,
+            delay: SHADE_IN_DELAY_MS,
+            fill: 'both',
             easing: 'linear',
           }),
         ]
