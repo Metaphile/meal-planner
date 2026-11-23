@@ -2559,10 +2559,10 @@ export const HAND: Slice<Hand> = {
 // ('arc' predates the Recipes rolodex being drawn scaled down: its flight
 // would need converting to the stage's units before being used there again.)
 const TAKE_OUT: 'arc' | 'lift' = 'lift'
-/** How fast the card in the box slides along its face, lifting out (px per
- *  ms) — the same for every card: a long one, with further to go to be out
- *  of sight, takes longer, not faster. (530ms for one in the middle of the
- *  box.) */
+/** How far the card in the box slides along its face, lifting out (by its
+ *  top edge, px) — the same for every card, long or short — and how fast
+ *  (px per ms): 530ms. */
+const LIFT_DISTANCE = 900
 const LIFT_SPEED = 1.7
 /** Taking a card out, it first sinks a little into the box, as if pressed,
  *  then springs out; putting it back, it drops in past its place, then
@@ -2572,8 +2572,7 @@ const SINK_MS = 170
 const SETTLE_MS = 180
 const SETTLE = 'cubic-bezier(0.3, 0, 0.3, 1)' // back up to its place
 const SINK = 'cubic-bezier(0.25, 0.6, 0.4, 1)' // easing into the bottom
-/** …and dropping back in, putting it back (px per ms; the same for every
- *  card). */
+/** …and dropping back in, putting it back (px per ms): 390ms. */
 const DROP_SPEED = 2.3
 /** (However short the way, not over in a blink.) */
 const MOVE_MIN_MS = 150
@@ -2607,32 +2606,16 @@ function fadingAway(fromY: number, v: number, opacity: number): Keyframe[] {
   return frames
 }
 
-/** A timing curve as CSS's cubic-bezier() draws it: how far along (0–1)
- *  at `x` of the time. */
-function bezier(x1: number, y1: number, x2: number, y2: number) {
-  const at = (a: number, b: number, t: number) =>
-    3 * a * t * (1 - t) ** 2 + 3 * b * t * t * (1 - t) + t ** 3
-  return (x: number) => {
-    let lo = 0
-    let hi = 1
-    for (let i = 0; i < 30; i++) {
-      const t = (lo + hi) / 2
-      if (at(x1, x2, t) < x) lo = t
-      else hi = t
-    }
-    return at(y1, y2, (lo + hi) / 2)
-  }
-}
-const liftUp = bezier(0.32, 0, 0.67, 0) // slow to start, gathering speed
-const dropIn = bezier(0.33, 1, 0.68, 1) // the take-out's curve, reversed: fast, then settling
-/** The card in the box, `p` of the way out of its slot (0: in it; 1: out
- *  of sight): how much of it shows — fading gently, then quickly, gone
- *  under a third of the way out. Where it is, not how long it's been going: the same going
- *  and coming back, so the fades are mirror images (whatever each's pace,
- *  and however far a card goes). */
-const slotFade = (p: number) => 1 - Math.min(1, Math.max(0, p) / 0.3) ** 2
-/** (Steps its slide is drawn in, its fade following.) */
-const SLIDE_STEPS = 16
+/** The card in the box fades — out, taken out; back in, put back — over
+ *  the same time, by the same curve reversed: mirror images. Out, it
+ *  starts a moment after the card does (a little way into its sink);
+ *  back, it's done the same moment before the card's at rest. */
+const SLOT_FADE_MS = 380
+const SLOT_FADE_LAG_MS = 130
+const SLOT_FADE_OUT = 'cubic-bezier(0.5, 0, 0.75, 0)' // ease-in (quartic): barely fading at first, then quickly gone
+const SLOT_FADE_IN = 'cubic-bezier(0.25, 1, 0.5, 1)' // the same, reversed: quickly there, then settling
+const LIFT_UP = 'cubic-bezier(0.32, 0, 0.67, 0)' // slow to start, gathering speed
+const DROP_IN = 'cubic-bezier(0.33, 1, 0.68, 1)' // the take-out's curve, reversed: fast, then settling
 
 /**
  * The lifted card. One continuous motion takes the card from wherever it
@@ -2946,23 +2929,9 @@ export function CardDetail({
         ? (PERSPECTIVE / 2 - lean.z) / Math.sin((lean.deg * Math.PI) / 180) -
           lean.rodOffset
         : Infinity
-    const clearOf = (o.hiddenAbove ?? o.viewTop) - 24
-    const inline = rdxCard.style.transform
-    const bottomAt = (d: number) => {
-      rdxCard.style.transform = `translateY(${d}px)`
-      return rdxCard.getBoundingClientRect().bottom
-    }
-    const b0 = bottomAt(0)
-    const within = (d: number) => Math.max(d, -maxSlide)
-    let d = within(clearOf - b0)
-    for (let i = 0; i < 4; i++) {
-      const b = bottomAt(d)
-      if (b <= clearOf || d <= -maxSlide) break
-      d = within(d * ((b0 - clearOf) / Math.max(1, b0 - b)) * 1.1)
-    }
-    rdxCard.style.transform = inline
-    // (Stopped short of out of sight, it's still gone by the time it stops:
-    // gone a third of the way — see slotFade.)
+    // Every card the same way, long or short — its top edge LIFT_DISTANCE
+    // along its face — unless that would be too close (see maxSlide).
+    const d = -Math.min(LIFT_DISTANCE, maxSlide)
     const home = 'translateY(0px)'
     // (At its speed, however far it goes.)
     const liftMs = Math.max(MOVE_MIN_MS, Math.abs(d) / LIFT_SPEED)
@@ -2979,23 +2948,25 @@ export function CardDetail({
     const anims = opening
       ? [
           // It sinks a little into its slot, then springs up out of it;
-          // and fades out as it goes, gently at first (see slotFade).
+          // and fades out as it goes, gently at first.
           rdxCard.animate(
             [
-              { offset: 0, transform: home, opacity: 1, easing: SINK },
-              ...Array.from({ length: SLIDE_STEPS + 1 }, (_, i) => {
-                const t = i / SLIDE_STEPS
-                const p = liftUp(t)
-                const sink = SINK_MS / (SINK_MS + liftMs)
-                return {
-                  offset: sink + (1 - sink) * t,
-                  transform: `translateY(${SINK_PX + (d - SINK_PX) * p}px)`,
-                  opacity: slotFade(p),
-                }
-              }),
+              { offset: 0, transform: home, easing: SINK },
+              {
+                offset: SINK_MS / (SINK_MS + liftMs),
+                transform: `translateY(${SINK_PX}px)`,
+                easing: LIFT_UP,
+              },
+              { offset: 1, transform: `translateY(${d}px)` },
             ],
             { ...lift, duration: SINK_MS + liftMs },
           ),
+          rdxCard.animate([{ opacity: 1 }, { opacity: 0 }], {
+            ...lift,
+            delay: SLOT_FADE_LAG_MS,
+            duration: SLOT_FADE_MS,
+            easing: SLOT_FADE_OUT,
+          }),
           card.animate(
             [{ transform: pose(below) }, { transform: pose(0) }],
             { ...rise, easing: RISE_EASE },
@@ -3010,24 +2981,25 @@ export function CardDetail({
         ]
       : [
           // It drops back in, past its place, and settles back up to it;
-          // fading in as it comes — the take-out's fade, mirrored (see
-          // slotFade).
+          // fading in as it comes — the take-out's fade, mirrored.
           rdxCard.animate(
             [
-              ...Array.from({ length: SLIDE_STEPS + 1 }, (_, i) => {
-                const t = i / SLIDE_STEPS
-                const p = 1 - dropIn(t) // (how far out of its slot)
-                return {
-                  offset: (dropMs / (dropMs + SETTLE_MS)) * t,
-                  transform: `translateY(${SINK_PX + (d - SINK_PX) * p}px)`,
-                  opacity: slotFade(p),
-                  ...(i === SLIDE_STEPS ? { easing: SETTLE } : {}),
-                }
-              }),
-              { offset: 1, transform: home, opacity: 1 },
+              { offset: 0, transform: `translateY(${d}px)`, easing: DROP_IN },
+              {
+                offset: dropMs / (dropMs + SETTLE_MS),
+                transform: `translateY(${SINK_PX}px)`,
+                easing: SETTLE,
+              },
+              { offset: 1, transform: home },
             ],
             { ...lift, duration: dropMs + SETTLE_MS },
           ),
+          rdxCard.animate([{ opacity: 0 }, { opacity: 1 }], {
+            ...lift,
+            delay: Math.max(0, dropMs + SETTLE_MS - SLOT_FADE_LAG_MS - SLOT_FADE_MS),
+            duration: SLOT_FADE_MS,
+            easing: SLOT_FADE_IN,
+          }),
           card.animate(
             fadingAway(fromY, fromV, cardOpacity),
             { ...fade, easing: 'linear' },
@@ -3045,8 +3017,8 @@ export function CardDetail({
     for (const a of anims) if (a) a.startTime = now
     // Opening: the rise (only it is on this card, so its fill is what's
     // dropped once it ends). Closing: whichever ends last.
-    if (opening) return anims[1]
-    return FADE_MS > dropMs + SETTLE_MS ? anims[1] : anims[0]
+    if (opening) return anims[2]
+    return FADE_MS > dropMs + SETTLE_MS ? anims[2] : anims[0]
   }
 
   // Fly out of the rolodex into place.
