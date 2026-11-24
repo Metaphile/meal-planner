@@ -346,6 +346,8 @@ interface LeftAs {
   /** The tags it's narrowed to (keys: see tagKey). */
   tags: ReadonlySet<string>
   keptTagged: ReadonlySet<string>
+  /** Whether the tag tray was open. */
+  tagTray: boolean
   /** New recipes written while it was narrowed (in it whatever it's
    *  narrowed to). */
   made: ReadonlySet<string>
@@ -369,6 +371,7 @@ const BOX: Slice<LeftAs> = {
           kept: new Set(strs(x.kept)),
           tags: new Set(strs(x.tags)),
           keptTagged: new Set(strs(x.keptTagged)),
+          tagTray: bool(x.tagTray),
           made: new Set(strs(x.made)),
         }
       : null,
@@ -440,11 +443,20 @@ export default function RecipesPage() {
   const [keptTagged, setKeptTagged] = useState<ReadonlySet<string>>(
     () => left?.keptTagged ?? new Set(),
   )
-  const [tagTray, setTagTray] = useState(false)
+  const [tagTray, setTagTray] = useState(left?.tagTray ?? false)
   // The box moves down out from under the tray while it's open: as far as
   // it's tall (screen px).
   const [trayH, setTrayH] = useState(0)
   const boxDown = tagTray ? trayH : 0
+  // (Coming back to it open: there already, not moving down — it moves only
+  // once it's been drawn.)
+  const [trayMoves, setTrayMoves] = useState(false)
+  useEffect(() => {
+    let id = requestAnimationFrame(
+      () => (id = requestAnimationFrame(() => setTrayMoves(true))),
+    )
+    return () => cancelAnimationFrame(id)
+  }, [])
   const chooseTags = (next: ReadonlySet<string>) => {
     unmake()
     setKeptTagged(
@@ -705,6 +717,7 @@ export default function RecipesPage() {
     keptFavorites,
     tags: tagsOn,
     keptTagged,
+    tagTray,
     made,
   })
   leftStateRef.current = {
@@ -714,6 +727,7 @@ export default function RecipesPage() {
     keptFavorites,
     tags: tagsOn,
     keptTagged,
+    tagTray,
     made,
   }
   const paintRef = useRef(paint)
@@ -1499,9 +1513,11 @@ export default function RecipesPage() {
               transformOrigin: '50% 0',
               // (Moved down out from under the tag tray, open: as it drops.)
               translate: `0 ${boxDown}px`,
-              transition: `translate ${TRAY_MOTION.ms}ms ${
-                tagTray ? TRAY_MOTION.down : TRAY_MOTION.up
-              }`,
+              transition: trayMoves
+                ? `translate ${TRAY_MOTION.ms}ms ${
+                    tagTray ? TRAY_MOTION.down : TRAY_MOTION.up
+                  }`
+                : undefined,
               perspective: `${PERSPECTIVE}px`,
               perspectiveOrigin: `50% ${headerU + wheel.front}px`,
               // The box in a lighter light: paper 20% toward white (ink and
