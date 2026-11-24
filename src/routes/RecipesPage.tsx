@@ -40,6 +40,7 @@ import {
 } from '../lib/uiState'
 import { ListCard } from '../components/ListCard'
 import { BoxIcon } from '../components/BoxIcon'
+import { hasTags, tagKey, TagIcon, TagTray } from '../components/TagFilter'
 import { favoriteKey, isWanted, type Recipe } from '../data/types'
 import { listPath } from '../lib/listMotion'
 import { wakeLockNow } from '../lib/wakeLock'
@@ -336,6 +337,9 @@ interface LeftAs {
   favoritesOnly: boolean
   keptFavorites: ReadonlySet<string>
   kept: ReadonlySet<string>
+  /** The tags it's narrowed to (keys: see tagKey). */
+  tags: ReadonlySet<string>
+  keptTagged: ReadonlySet<string>
   /** New recipes written while it was narrowed (in it whatever it's
    *  narrowed to). */
   made: ReadonlySet<string>
@@ -357,6 +361,8 @@ const BOX: Slice<LeftAs> = {
           favoritesOnly: bool(x.favoritesOnly),
           keptFavorites: new Set(strs(x.keptFavorites)),
           kept: new Set(strs(x.kept)),
+          tags: new Set(strs(x.tags)),
+          keptTagged: new Set(strs(x.keptTagged)),
           made: new Set(strs(x.made)),
         }
       : null,
@@ -366,6 +372,8 @@ const keepBox = (b: LeftAs) =>
     ...b,
     keptFavorites: [...b.keptFavorites],
     kept: [...b.kept],
+    tags: [...b.tags],
+    keptTagged: [...b.keptTagged],
     made: [...b.made],
   } as unknown as LeftAs)
 /** (Kept here too, switching tabs: no need to read it back.) */
@@ -418,6 +426,43 @@ export default function RecipesPage() {
     if (!favoritesOnly) setKeptFavorites(new Set(myFavorites))
     setFavoritesOnly(!favoritesOnly)
   }
+  // …and to the recipes with every tag chosen (the same way again: a tag
+  // taken off one there doesn't whisk it away).
+  const [tagsOn, setTagsOn] = useState<ReadonlySet<string>>(
+    () => left?.tags ?? new Set(),
+  )
+  const [keptTagged, setKeptTagged] = useState<ReadonlySet<string>>(
+    () => left?.keptTagged ?? new Set(),
+  )
+  const [tagTray, setTagTray] = useState(false)
+  const closeTagTray = useCallback(() => setTagTray(false), [])
+  const chooseTags = (next: ReadonlySet<string>) => {
+    unmake()
+    setKeptTagged(
+      new Set(recipes.filter((r) => hasTags(r.tags, next)).map((r) => r.id)),
+    )
+    setTagsOn(next)
+  }
+  const toggleTag = (t: string) => {
+    const next = new Set(tagsOn)
+    if (!next.delete(t)) next.add(t)
+    chooseTags(next)
+  }
+  // Every tag on any recipe (as it's first written), A to Z — and any
+  // chosen that's on none any more, to be let go of.
+  const allTags = useMemo(() => {
+    const byKey = new Map<string, string>()
+    for (const r of recipes)
+      for (const t of r.tags) {
+        const k = tagKey(t)
+        if (k && !byKey.has(k)) byKey.set(k, t.trim())
+      }
+    for (const k of tagsOn) if (!byKey.has(k)) byKey.set(k, k)
+    return [...byKey]
+      .map(([key, text]) => ({ key, text }))
+      .sort((a, b) => a.text.localeCompare(b.text))
+  }, [recipes, tagsOn])
+  const tagsKey = [...tagsOn].sort().join(',')
   // A new recipe written while the box is narrowed is in it, whatever it's
   // narrowed to (till it's not narrowed any more) — it's what you're making.
   const [made, setMade] = useState<ReadonlySet<string>>(
@@ -438,9 +483,14 @@ export default function RecipesPage() {
         ((!wantedOnly || wanted.has(r.id) || kept.has(r.id)) &&
           (!favoritesOnly ||
             myFavorites.has(r.id) ||
-            keptFavorites.has(r.id))),
+            keptFavorites.has(r.id)) &&
+          (tagsOn.size === 0 ||
+            hasTags(r.tags, tagsOn) ||
+            keptTagged.has(r.id))),
     )
   }, [
+    tagsOn,
+    keptTagged,
     made,
     recipes,
     wantedOnly,
@@ -450,8 +500,13 @@ export default function RecipesPage() {
     myFavorites,
     keptFavorites,
   ])
+  // The tags that, chosen too, would leave something in the box.
+  const tagsAvailable = useMemo(
+    () => new Set(matches.flatMap((r) => r.tags.map(tagKey))),
+    [matches],
+  )
   // Any narrowing at all (it opens on its first match).
-  const narrowed = wantedOnly || favoritesOnly
+  const narrowed = wantedOnly || favoritesOnly || tagsOn.size > 0
   const narrowedRef = useRef(narrowed)
   narrowedRef.current = narrowed
   // The rolodex layer covers the whole page, header included (so a card
@@ -643,6 +698,8 @@ export default function RecipesPage() {
     kept,
     favoritesOnly,
     keptFavorites,
+    tags: tagsOn,
+    keptTagged,
     made,
   })
   leftStateRef.current = {
@@ -650,6 +707,8 @@ export default function RecipesPage() {
     kept,
     favoritesOnly,
     keptFavorites,
+    tags: tagsOn,
+    keptTagged,
     made,
   }
   const paintRef = useRef(paint)
@@ -729,7 +788,7 @@ export default function RecipesPage() {
     const drum = drumRef.current
     // (The list's length too: how far the box was scrolled down it.)
     const measured = pageH > 0 && headerH > 0 && listH > 0
-    const key = `${wantedOnly}|${favoritesOnly}|${measured}`
+    const key = `${wantedOnly}|${favoritesOnly}|${tagsKey}|${measured}`
     const within = (p: number) => Math.min(Math.max(0, p), bounds.max * SCALE)
     if (positionedFor.current !== key) {
       const keyWas = positionedFor.current
@@ -800,7 +859,7 @@ export default function RecipesPage() {
     lastShade.current = []
     shown.current = []
     paint()
-  }, [paint, wantedOnly, favoritesOnly, narrowed, pageH, headerH, listH, bounds])
+  }, [paint, wantedOnly, favoritesOnly, tagsKey, narrowed, pageH, headerH, listH, bounds])
 
   useLayoutEffect(() => {
     const scroller = scrollRef.current
@@ -1290,6 +1349,21 @@ export default function RecipesPage() {
       <BoxIcon state={wantedOnly ? 'on' : 'off'} />
     </button>
   )
+  // Only recipes with the tags chosen (in a tray dropped from the header):
+  // a tag, drawn as the heart and the box are.
+  const tagsButton = (
+    <button
+      type="button"
+      aria-expanded={tagTray}
+      aria-label={
+        tagsOn.size ? `Filter by tags (${tagsOn.size} chosen)` : 'Filter by tags'
+      }
+      onClick={() => setTagTray(!tagTray)}
+      className="-mx-1 grid h-9 w-9 shrink-0 place-items-center"
+    >
+      <TagIcon on={tagsOn.size > 0} />
+    </button>
+  )
   // Only your favorites: the cards' heart (its size, its 1.5px outline),
   // beside it.
   const favoritesOnlyHeart = (
@@ -1311,11 +1385,22 @@ export default function RecipesPage() {
       className="absolute inset-x-0 top-0 z-[3]"
       style={{ boxShadow: '0 4px 12px -6px color-mix(in srgb, var(--color-shadow) 45%, transparent)' }}
     >
+      <TagTray
+        open={tagTray}
+        onClose={closeTagTray}
+        tags={allTags}
+        on={tagsOn}
+        available={tagsAvailable}
+        onToggle={toggleTag}
+        onClear={() => chooseTags(new Set())}
+      />
+      <div className="relative z-[2]">
       <PageHeader
         title="Meals"
         // (New recipes start on the blank card at the front of the box.)
         action={
           <div className="flex items-center gap-1">
+            {tagsButton}
             {favoritesOnlyHeart}
             {wantedOnlyBox}
             {/* Settings — your account, and the group's — in the corner. */}
@@ -1341,6 +1426,7 @@ export default function RecipesPage() {
           </div>
         }
       />
+      </div>
     </div>
   )
 
