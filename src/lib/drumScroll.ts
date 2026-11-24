@@ -164,9 +164,7 @@ export function createDrumScroll(
     last = now
     let p = pos
     if (mode === 'tween' && tween) {
-      // (A frame's time is when it began: the first can be from before the
-      // glide was set going — not a step back.)
-      const k = Math.min(1, Math.max(0, (now - tween.t0) / tween.ms))
+      const k = Math.min(1, (now - tween.t0) / tween.ms)
       p = tween.from + (tween.to - tween.from) * (1 - (1 - k) ** 3)
       if (k >= 1) {
         const done = tween.done

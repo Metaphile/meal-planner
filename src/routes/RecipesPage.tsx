@@ -274,10 +274,6 @@ function dividerTop(w: Wheel, headerU: number, phi: number): number {
   return front + ((y - front) * PERSPECTIVE) / (PERSPECTIVE - z)
 }
 
-/** Everything under the header moving down out from under the tag tray
- *  (and back up): as the tray drops. */
-const TRAY_TRANSITION = `translate ${TRAY_MOTION.ms}ms ${TRAY_MOTION.ease}`
-
 const clamp = (v: number, lo: number, hi: number) =>
   Math.min(hi, Math.max(lo, v))
 
@@ -452,23 +448,6 @@ export default function RecipesPage() {
   // it's tall (screen px).
   const [trayH, setTrayH] = useState(0)
   const boxDown = tagTray ? trayH : 0
-  // Put away with the box turned on past where it'll end (see the glide
-  // back, below): how far its scroll's held open meanwhile — shortened at
-  // once, the page would clamp it and the box would jump.
-  const [glideHold, setGlideHold] = useState<number | null>(null)
-  /** Gliding back: where the list is on screen (its own move plus
-   *  everything's, under the tray), kept there as the box turns back. */
-  const glide = useRef<{ listAt: number } | null>(null)
-  /** The list's own move, as last painted. */
-  const listTop = useRef(0)
-  const toggleTagTray = (open: boolean) => {
-    if (!open && tagTray) {
-      // (As far as it went — or as the box is, stretched past its end.)
-      setGlideHold(Math.max(bounds.max * SCALE, drumRef.current?.get() ?? 0))
-      glide.current = { listAt: boxDown + listTop.current }
-    }
-    setTagTray(open)
-  }
   // (Coming back to it open: there already, not moving down — it moves only
   // once it's been drawn.)
   const [trayMoves, setTrayMoves] = useState(false)
@@ -586,9 +565,7 @@ export default function RecipesPage() {
   // Its path as the box scrolls (see listMotion): there as the turning ends
   // (scrolled 0 past it); coming up over the bottom edge faster than the
   // finger, and settling toward the finger's pace all the way up.
-  // (Everything moved down under the tag tray, open: its end scrolled up
-  // as much further, to show.)
-  const listEnd = pageH - footH - LIST_ROOM - listH - boxDown
+  const listEnd = pageH - footH - LIST_ROOM - listH
   const listMove = useMemo(
     () =>
       listPath(
@@ -666,12 +643,6 @@ export default function RecipesPage() {
     const sheet = listRef.current
     if (sheet) {
       const top = listMove.at(at - turn)
-      listTop.current = top
-      // Gliding back (the tray put away): everything under the header moved
-      // up as the list comes down it, so the list stays where it is.
-      const layer = scrollRef.current
-      if (glide.current && layer)
-        layer.style.translate = `0 ${(glide.current.listAt - top).toFixed(1)}px`
       const y = `translate3d(0px, ${top.toFixed(1)}px, 0px)`
       if (sheet.style.transform !== y) sheet.style.transform = y
     }
@@ -793,37 +764,9 @@ export default function RecipesPage() {
       drumRef.current = null
     }
   }, [])
-  // The tag tray put away with the box turned on past where it now ends
-  // (the room it gave the shopping list's end gone): turned back to its
-  // end, in step with everything moving back up — so the list stays where
-  // it is. (Before its end is set, below: not sprung back to it.)
-  // Everything under the header moves up with the box's glide, frame for
-  // frame (see paint) — not on its own (two clocks, never quite in step:
-  // the list would bob).
   useLayoutEffect(() => {
-    if (glideHold === null) return
-    const drum = drumRef.current
-    const layer = scrollRef.current
-    if (!drum || !layer || drum.get() <= bounds.max * SCALE) {
-      glide.current = null
-      return setGlideHold(null)
-    }
-    const mine = glide.current
-    layer.style.transition = 'none'
-    paint()
-    void drum.animateTo(bounds.max * SCALE, TRAY_MOTION.ms).then(() => {
-      if (glide.current !== mine) return
-      glide.current = null
-      // (Back as React last wrote them: it won't write them again.)
-      layer.style.translate = '0 0px'
-      layer.style.transition = TRAY_TRANSITION
-      setGlideHold(null)
-    })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [glideHold, bounds])
-  useLayoutEffect(() => {
-    drumRef.current?.setMax(Math.max(bounds.max * SCALE, glideHold ?? 0))
-  }, [bounds, glideHold])
+    drumRef.current?.setMax(bounds.max * SCALE)
+  }, [bounds])
   // The shopping list's sheet. (Its length measured as it's drawn, and
   // again whenever it grows or shrinks.)
   const listRef = useRef<HTMLDivElement>(null)
@@ -992,11 +935,11 @@ export default function RecipesPage() {
     (index: number): CardOrigin => {
       const scroller = scrollRef.current!
       const r = scroller.getBoundingClientRect()
-      // The layer's top edge (the screen's, under the header — moved down
-      // with everything under it, the tag tray open) clips a card that
-      // rises past it; the wheel starts below the header.
+      // The layer's top edge (the screen's, under the header) clips a card
+      // that rises past it; the wheel starts below the header (and below
+      // the tag tray, open).
       const viewTop = r.top + scroller.clientTop
-      const wheelTop = viewTop + headerH
+      const wheelTop = viewTop + headerH + boxDown
       const off = CARD_H
       const { phi, rodY, z, rodOnScreen } = wheelSpot(index)
       // (On screen, the stage is drawn at SCALE; its poses are its own.)
@@ -1021,7 +964,7 @@ export default function RecipesPage() {
         shade: lastShade.current[index] ?? 0,
       }
     },
-    [items, wheelSpot, headerH, headerU],
+    [items, wheelSpot, headerH, headerU, boxDown],
   )
 
   // Ready a card's slot for it to slide out of (or back into): the whole
@@ -1435,7 +1378,7 @@ export default function RecipesPage() {
       aria-label={
         tagsOn.size ? `Filter by tags (${tagsOn.size} chosen)` : 'Filter by tags'
       }
-      onClick={() => toggleTagTray(!tagTray)}
+      onClick={() => setTagTray(!tagTray)}
       className="-mx-1 grid h-9 w-9 shrink-0 place-items-center"
     >
       <TagIcon on={tagsOn.size > 0} />
@@ -1471,7 +1414,7 @@ export default function RecipesPage() {
         onToggle={toggleTag}
         onClear={() => {
           chooseTags(new Set())
-          toggleTagTray(false)
+          setTagTray(false)
         }}
       />
       <div className="relative z-[2]">
@@ -1533,13 +1476,7 @@ export default function RecipesPage() {
         <div
           ref={scrollRef}
           className="scroll-y no-scrollbar absolute inset-0 z-[2] overflow-x-hidden"
-          style={{
-            touchAction: 'none',
-            // Everything under the header — the box, the shopping list —
-            // moved down out from under the tag tray, open: as it drops.
-            translate: `0 ${boxDown}px`,
-            transition: trayMoves ? TRAY_TRANSITION : undefined,
-          }}
+          style={{ touchAction: 'none' }}
         >
           {/* The shopping list's sheet: pinned to the screen (in this layer,
               so a drag on it is the drum's), waiting just below the bottom
@@ -1574,6 +1511,13 @@ export default function RecipesPage() {
               marginBottom: pageH - pageH / SCALE,
               transform: `scale(${SCALE})`,
               transformOrigin: '50% 0',
+              // (Moved down out from under the tag tray, open: as it drops.)
+              translate: `0 ${boxDown}px`,
+              transition: trayMoves
+                ? `translate ${TRAY_MOTION.ms}ms ${
+                    tagTray ? TRAY_MOTION.down : TRAY_MOTION.up
+                  }`
+                : undefined,
               perspective: `${PERSPECTIVE}px`,
               perspectiveOrigin: `50% ${headerU + wheel.front}px`,
               // The box in a lighter light: paper 20% toward white (ink and
@@ -1607,7 +1551,7 @@ export default function RecipesPage() {
             ))}
           </div>
           {/* The drum's travel, from one stop to the other. */}
-          <div style={{ height: Math.max(bounds.max * SCALE, glideHold ?? 0) }} />
+          <div style={{ height: bounds.max * SCALE }} />
         </div>
         {header}
       </>
