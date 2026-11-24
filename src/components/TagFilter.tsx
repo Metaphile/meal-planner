@@ -1,5 +1,3 @@
-import { useLayoutEffect, useRef } from 'react'
-
 /** A tag as it's matched: its words, whatever their case or spacing. */
 export const tagKey = (t: string) => t.trim().toLowerCase()
 
@@ -11,9 +9,9 @@ export function hasTags(tags: readonly string[], on: ReadonlySet<string>) {
   return true
 }
 
-/** The tray's drop (and the box's, moving down out from under it): its
- *  length, and its easing — dropping, and going back up. */
-export const TRAY_MOTION = {
+/** The tray's drop: its length, and its easing — dropping, and going back
+ *  up. */
+const TRAY_MOTION = {
   ms: 200,
   down: 'cubic-bezier(0, 0, 0.58, 1)', // (ease-out)
   up: 'cubic-bezier(0.42, 0, 1, 1)', // (ease-in)
@@ -64,13 +62,12 @@ export function TagIcon({ on }: { on: boolean }) {
  * every tag on any recipe, A to Z, each tapped on or off. With more than
  * one on, the box holds the recipes that have every one of them — so a tag
  * no recipe left in the box has is faint, and can't be chosen (it would
- * leave the box empty). Open, the box moves down out from under it (see
- * TRAY_MOTION), still there to turn and take cards from. Put away by its tag in the header (the tags chosen
+ * leave the box empty). Open, the box is still there to turn and take
+ * cards from, under it. Put away by its tag in the header (the tags chosen
  * stay on) or by Clear (all of them let go).
  */
 export function TagTray({
   open,
-  onHeight,
   tags,
   on,
   available,
@@ -78,8 +75,6 @@ export function TagTray({
   onClear,
 }: {
   open: boolean
-  /** Its height (px), as it's laid out — and whenever that changes. */
-  onHeight: (h: number) => void
   /** Every tag: its key and how it's written. */
   tags: ReadonlyArray<{ key: string; text: string }>
   on: ReadonlySet<string>
@@ -88,14 +83,6 @@ export function TagTray({
   onToggle: (key: string) => void
   onClear: () => void
 }) {
-  const panel = useRef<HTMLDivElement>(null)
-  useLayoutEffect(() => {
-    const el = panel.current!
-    onHeight(el.offsetHeight)
-    const ro = new ResizeObserver(() => onHeight(el.offsetHeight))
-    ro.observe(el)
-    return () => ro.disconnect()
-  }, [onHeight])
   // Drops from behind the header (cut off at its foot: shadow below).
   return (
     <div
@@ -103,7 +90,6 @@ export function TagTray({
       style={{ clipPath: 'inset(0 -30px -30px -30px)' }}
     >
       <div
-        ref={panel}
         role="group"
         aria-label="Tags"
         aria-hidden={!open}

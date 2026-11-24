@@ -40,13 +40,7 @@ import {
 } from '../lib/uiState'
 import { ListCard } from '../components/ListCard'
 import { BoxIcon } from '../components/BoxIcon'
-import {
-  hasTags,
-  tagKey,
-  TagIcon,
-  TagTray,
-  TRAY_MOTION,
-} from '../components/TagFilter'
+import { hasTags, tagKey, TagIcon, TagTray } from '../components/TagFilter'
 import { favoriteKey, isWanted, type Recipe } from '../data/types'
 import { listPath } from '../lib/listMotion'
 import { wakeLockNow } from '../lib/wakeLock'
@@ -444,19 +438,6 @@ export default function RecipesPage() {
     () => left?.keptTagged ?? new Set(),
   )
   const [tagTray, setTagTray] = useState(left?.tagTray ?? false)
-  // The box moves down out from under the tray while it's open: as far as
-  // it's tall (screen px).
-  const [trayH, setTrayH] = useState(0)
-  const boxDown = tagTray ? trayH : 0
-  // (Coming back to it open: there already, not moving down — it moves only
-  // once it's been drawn.)
-  const [trayMoves, setTrayMoves] = useState(false)
-  useEffect(() => {
-    let id = requestAnimationFrame(
-      () => (id = requestAnimationFrame(() => setTrayMoves(true))),
-    )
-    return () => cancelAnimationFrame(id)
-  }, [])
   const chooseTags = (next: ReadonlySet<string>) => {
     unmake()
     setKeptTagged(
@@ -936,10 +917,9 @@ export default function RecipesPage() {
       const scroller = scrollRef.current!
       const r = scroller.getBoundingClientRect()
       // The layer's top edge (the screen's, under the header) clips a card
-      // that rises past it; the wheel starts below the header (and below
-      // the tag tray, open).
+      // that rises past it; the wheel starts below the header.
       const viewTop = r.top + scroller.clientTop
-      const wheelTop = viewTop + headerH + boxDown
+      const wheelTop = viewTop + headerH
       const off = CARD_H
       const { phi, rodY, z, rodOnScreen } = wheelSpot(index)
       // (On screen, the stage is drawn at SCALE; its poses are its own.)
@@ -964,7 +944,7 @@ export default function RecipesPage() {
         shade: lastShade.current[index] ?? 0,
       }
     },
-    [items, wheelSpot, headerH, headerU, boxDown],
+    [items, wheelSpot, headerH, headerU],
   )
 
   // Ready a card's slot for it to slide out of (or back into): the whole
@@ -1407,7 +1387,6 @@ export default function RecipesPage() {
     >
       <TagTray
         open={tagTray}
-        onHeight={setTrayH}
         tags={allTags}
         on={tagsOn}
         available={tagsAvailable}
@@ -1511,13 +1490,6 @@ export default function RecipesPage() {
               marginBottom: pageH - pageH / SCALE,
               transform: `scale(${SCALE})`,
               transformOrigin: '50% 0',
-              // (Moved down out from under the tag tray, open: as it drops.)
-              translate: `0 ${boxDown}px`,
-              transition: trayMoves
-                ? `translate ${TRAY_MOTION.ms}ms ${
-                    tagTray ? TRAY_MOTION.down : TRAY_MOTION.up
-                  }`
-                : undefined,
               perspective: `${PERSPECTIVE}px`,
               perspectiveOrigin: `50% ${headerU + wheel.front}px`,
               // The box in a lighter light: paper 20% toward white (ink and
