@@ -1209,22 +1209,28 @@ function IngredientTable({
     e.preventDefault()
     const rows = groups[g]?.rows
     if (!rows || blank(rows[i])) return
-    const next = rows[i + 1]
-    if (next && blank(next)) {
-      focusRid.current = next.rid ?? null
-    } else {
-      const rid = newEditId()
-      focusRid.current = rid
-      set(
-        groups.map((x, k) =>
-          k === g
-            ? { ...x, rows: [...rows.slice(0, i + 1), { name: '', rid }, ...rows.slice(i + 1)] }
-            : x,
-        ),
-        rid,
-      )
+    lineAt(g, i + 1)
+  }
+  /** On to a line to write on at `at` in section `g`: the one there, if it's
+   *  blank; else a blank one opened there. */
+  const lineAt = (g: number, at: number) => {
+    const rows = groups[g]?.rows
+    if (!rows) return
+    const there = rows[at]
+    if (there && blank(there)) {
+      focusRid.current = there.rid ?? null
+      return focusLine()
     }
-    if (next && blank(next)) focusLine()
+    const rid = newEditId()
+    focusRid.current = rid
+    set(
+      groups.map((x, k) =>
+        k === g
+          ? { ...x, rows: [...rows.slice(0, at), { name: '', rid }, ...rows.slice(at)] }
+          : x,
+      ),
+      rid,
+    )
   }
   const tableRef = useRef<HTMLDivElement>(null)
   const focusLine = () => {
@@ -1290,6 +1296,8 @@ function IngredientTable({
     placeholder: string,
     readOnly = false,
     focusProps?: { onFocus: () => void; onBlur: () => void },
+    /** Return pressed in it (else: on to its section's first line). */
+    onReturn?: () => void,
   ) => (
     <input
       value={value}
@@ -1300,6 +1308,7 @@ function IngredientTable({
       onKeyDown={(e) => {
         if (e.key !== 'Enter') return
         e.preventDefault()
+        if (onReturn) return onReturn()
         e.currentTarget
           .closest('[role=rowgroup]')
           ?.querySelector<HTMLInputElement>('[role=row][data-g] input:not([readonly])')
@@ -1553,6 +1562,11 @@ function IngredientTable({
                 // (Untitled: that a heading's optional.)
                 HEADING_HINT,
                 group.struck,
+                undefined,
+                // Return: a new line at the top of the section, to write
+                // the next ingredient on (as Return on a line opens one
+                // after it) — or on to the top line, blank already.
+                () => lineAt(g, 0),
               )}
             </div>
             {/* (Raised as the title is: written on the same line.) */}
