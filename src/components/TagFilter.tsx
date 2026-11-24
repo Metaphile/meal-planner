@@ -11,12 +11,13 @@ export function hasTags(tags: readonly string[], on: ReadonlySet<string>) {
   return true
 }
 
-/** The tray's drop (and the box's, moving down out from under it): its
- *  length, and its easing — dropping, and going back up. */
+/** The tray's drop (and everything under the header, moving down out from
+ *  under it): its length, and its easing, both ways — the drum's own glide
+ *  (drumScroll's animateTo: an ease-out cubic), so the box can be turned
+ *  in step with it. */
 export const TRAY_MOTION = {
   ms: 200,
-  down: 'cubic-bezier(0, 0, 0.58, 1)', // (ease-out)
-  up: 'cubic-bezier(0.42, 0, 1, 1)', // (ease-in)
+  ease: 'cubic-bezier(0.33, 1, 0.68, 1)',
 }
 
 /** px: the tag icon's size in the header — the heart's (HEART_SIZE). */
@@ -113,9 +114,7 @@ export function TagTray({
             : 'invisible -translate-y-full'
         }`}
         style={{
-          transition: `translate ${TRAY_MOTION.ms}ms ${
-            open ? TRAY_MOTION.down : TRAY_MOTION.up
-          }, visibility ${TRAY_MOTION.ms}ms`,
+          transition: `translate ${TRAY_MOTION.ms}ms ${TRAY_MOTION.ease}, visibility ${TRAY_MOTION.ms}ms`,
           boxShadow:
             '0 6px 14px -6px color-mix(in srgb, var(--color-shadow) 45%, transparent)',
         }}
