@@ -1694,7 +1694,6 @@ const RecipeCardBack = forwardRef<
   // What the recipe said when its editing began.
   const [base] = useState<RecipeText>(() => kept?.base ?? textOf(recipe))
   const [title, setTitle] = useState(kept?.title ?? recipe.title)
-  const titleTapIn = useRef(false)
   const titleRef = useRef<HTMLInputElement>(null)
   const [titleFocused, setTitleFocused] = useState(false)
   const [groups, setGroups] = useState<Group[]>(() =>
@@ -1878,7 +1877,7 @@ const RecipeCardBack = forwardRef<
           )}
           {/* Not being written in, the title is shown as on the front (a
               long one cut off, feathered, dragged sideways to read); tapped,
-              it's written in, the caret at its end. */}
+              it's written in, the caret where the tap fell. */}
           <div ref={titleBoxRef} className="relative flex min-w-0 flex-1">
           {/* With changes not yet saved: an asterisk just past the title's
               end — beside it, not in it (in red, not the pen's blue, so it's
@@ -1916,19 +1915,6 @@ const RecipeCardBack = forwardRef<
             onChange={(e) => setTitle(e.target.value)}
             onFocus={() => setTitleFocused(true)}
             onBlur={() => setTitleFocused(false)}
-            // Tapped into, the caret goes to the end of the title (not where
-            // the tap fell). Only on the tap that brings it in: once it's
-            // being written in, a tap places the caret as usual.
-            onPointerDown={(e) => {
-              titleTapIn.current = document.activeElement !== e.currentTarget
-            }}
-            onClick={(e) => {
-              if (!titleTapIn.current) return
-              titleTapIn.current = false
-              const end = e.currentTarget.value.length
-              e.currentTarget.setSelectionRange(end, end)
-              e.currentTarget.scrollLeft = e.currentTarget.scrollWidth
-            }}
             // (No "name" or "title" here: Safari would offer to AutoFill a
             // contact.)
             placeholder="Recipe"
@@ -1944,14 +1930,21 @@ const RecipeCardBack = forwardRef<
             <div
               aria-hidden
               className="absolute inset-0 flex cursor-text items-center"
-              onClick={() => {
+              onClick={(e) => {
                 const field = titleRef.current
                 if (!field) return
+                const shown = writingIn(e.currentTarget)
+                const at = shown ? caretNearest(shown, e.clientX) : field.value.length
+                // (Cut off and slid along: the field slid as far, so the
+                // writing stays where it was.)
+                const slid = shown
+                  ? field.getBoundingClientRect().left -
+                    shown.parentElement!.getBoundingClientRect().left
+                  : 0
                 field.focus()
                 setTitleFocused(true) // (whether or not the window has focus)
-                const end = field.value.length
-                field.setSelectionRange(end, end)
-                field.scrollLeft = field.scrollWidth
+                field.setSelectionRange(at, at)
+                if (field.scrollWidth > field.clientWidth) field.scrollLeft = slid
               }}
             >
               <div className="min-w-0 flex-1 text-center text-hand-xl font-semibold leading-[30px]">
@@ -3605,4 +3598,33 @@ export function CardDetail({
     </div>,
     document.body,
   )
+}
+
+/** The writing in `el` (its first run of text), if any. */
+function writingIn(el: Element): Text | null {
+  return document.createTreeWalker(el, NodeFilter.SHOW_TEXT).nextNode() as Text | null
+}
+
+/** Where in `text` a caret at `x` (on the screen) would go: between the
+ *  two letters nearest it — before the first, or after the last, past
+ *  either end. */
+function caretNearest(text: Text, x: number): number {
+  const n = text.length
+  const range = document.createRange()
+  const edge = (i: number) => {
+    range.setStart(text, i < n ? i : n - 1)
+    range.setEnd(text, i < n ? i + 1 : n)
+    const r = range.getBoundingClientRect()
+    return i < n ? r.left : r.right
+  }
+  let best = n
+  let bestD = Infinity
+  for (let i = 0; i <= n; i++) {
+    const d = Math.abs(edge(i) - x)
+    if (d < bestD) {
+      bestD = d
+      best = i
+    }
+  }
+  return n ? best : 0
 }
