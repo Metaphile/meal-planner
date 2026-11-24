@@ -220,6 +220,8 @@ export function createDrumScroll(
   const onPointerDown = (e: PointerEvent) => {
     if (pointerId !== -1) return
     if (e.pointerType === 'mouse' && e.button !== 0) return
+    // (A line's grip — on the shopping list: the drag is the line's.)
+    if ((e.target as Element | null)?.closest?.('[data-drag-handle]')) return
     caught = mode === 'momentum' || mode === 'spring' || mode === 'tween'
     const wasSpring = mode === 'spring'
     stop()

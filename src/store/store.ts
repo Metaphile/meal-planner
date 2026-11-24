@@ -60,6 +60,8 @@ interface AppState {
     patch: Partial<Ingredient & Pick<AddOn, 'have'>>,
   ) => void
   removeAddOn: (id: string) => void
+  /** Move an add-on to just before another (`before`, its id) — or last. */
+  moveAddOn: (id: string, before?: string) => void
 
   // Haves
   /** Tick a line (having all it needs: `amount`), or untick it. */
@@ -220,6 +222,36 @@ export const useStore = create<AppState>((set, get) => ({
   removeAddOn: (id) => {
     set((s) => ({ addons: s.addons.filter((a) => a.id !== id) }))
     enqueueDelete('addons', id)
+  },
+
+  moveAddOn: (id, before) => {
+    const addons = get().addons
+    const moving = addons.find((a) => a.id === id)
+    if (!moving || before === id) return
+    const others = addons.filter((a) => a.id !== id)
+    const at = before === undefined ? others.length : others.findIndex((a) => a.id === before)
+    if (at < 0) return
+    const prev = others[at - 1]?.position
+    const next = others[at]?.position
+    const position =
+      prev === undefined
+        ? next === undefined
+          ? 0
+          : next - 1
+        : next === undefined
+          ? prev + 1
+          : (prev + next) / 2
+    // (Halved too often to tell apart: all of them renumbered, in order.)
+    if (prev !== undefined && next !== undefined && next - prev < 1e-9) {
+      const order = [...others.slice(0, at), moving, ...others.slice(at)]
+      const renumbered = order.map((a, k) => ({ ...a, position: k }))
+      set({ addons: renumbered })
+      renumbered.forEach((a) => enqueuePut('addons', a))
+      return
+    }
+    const moved = { ...moving, position }
+    set({ addons: [...others, moved].sort(byPos) })
+    enqueuePut('addons', moved)
   },
 
   setHave: (key, have, amount, line) => {

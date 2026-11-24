@@ -3,11 +3,14 @@ import { flushSync } from 'react-dom'
 import { useStore } from '../store/store'
 import type { AddOn, Ingredient } from '../data/types'
 import { Tickbox } from './IngredientsList'
+import { dragRow, GripIcon } from './dragLines'
 
-// The lines: a box to tick once it's got, and what it is, written in a word
-// or a few ("2 bags of ice"). (The box where the shopping list's are, before
-// its lines.)
+// The lines: a box to tick once it's got, what it is, written in a word or
+// a few ("2 bags of ice"), and — for whoever can change the list — a grip
+// to move it up or down by, at the end of the line. (The box where the
+// shopping list's are, before its lines.)
 const COLS = 'grid grid-cols-[1.75rem_minmax(0,1fr)]'
+const COLS_GRIP = 'grid grid-cols-[1.75rem_minmax(0,1fr)_1.5rem]'
 const CELL =
   // (A field centres its writing in what its padding leaves: padded below,
   // it's 2px high. Its height and line height: 30 and 24 — larger, on the
@@ -37,6 +40,7 @@ export function AddOnsList({
 }) {
   const addons = useStore((s) => s.addons)
   const add = useStore((s) => s.addAddOn)
+  const move = useStore((s) => s.moveAddOn)
   const tableRef = useRef<HTMLDivElement>(null)
   // Return on a line: on to the next — a blank one after it if there is,
   // else one opened just after it (as on a card's ingredient lines); the
@@ -79,11 +83,17 @@ export function AddOnsList({
           <AddOnLine
             key={a.id}
             addon={a}
+            at={i}
             canEdit={canEdit}
             onReturn={() => onReturn(i)}
+            // (Dragged by its grip: to just before the line at `to`, or —
+            // before the empty line at the end — last.)
+            onDrag={(e) =>
+              dragRow(e, (to) => move(a.id, addons[to.i]?.id))
+            }
           />
         ))}
-        {canEdit && <SpareLine />}
+        {canEdit && <SpareLine at={addons.length} />}
         {!canEdit && addons.length === 0 && (
           <p className="py-1 text-center text-ink-faint">Nothing yet.</p>
         )}
@@ -106,13 +116,19 @@ const blank = (a: Ingredient) => !addOnText(a).trim()
 
 function AddOnLine({
   addon,
+  at,
   canEdit,
   onReturn,
+  onDrag,
 }: {
   addon: AddOn
+  /** Where it is among them (for dragRow: every line's in section 0). */
+  at: number
   canEdit: boolean
   /** Return pressed on it. */
   onReturn: () => void
+  /** Its grip pressed. */
+  onDrag: (e: React.PointerEvent<HTMLElement>) => void
 }) {
   const update = useStore((s) => s.updateAddOn)
   const remove = useStore((s) => s.removeAddOn)
@@ -149,7 +165,9 @@ function AddOnLine({
       ref={rowRef}
       role="row"
       data-addon={addon.id}
-      className={`${COLS} items-center border-b border-ruled-line`}
+      data-g={0}
+      data-i={at}
+      className={`${canEdit ? COLS_GRIP : COLS} items-center border-b border-ruled-line`}
       onPointerDownCapture={() => {
         tapping.current = true
         const done = () => setTimeout(() => (tapping.current = false))
@@ -211,12 +229,29 @@ function AddOnLine({
         </div>
       )}
       </div>
+      {canEdit &&
+        (empty ? (
+          <span /> // (nothing on it yet: nothing to move)
+        ) : (
+          <span
+            role="button"
+            aria-label={`Move ${addOnText(addon).trim()}`}
+            data-drag-handle
+            onPointerDown={onDrag}
+            // (Its dots at the end of the line, where the writing could
+            // reach; it can be caught a little past it, at the sheet's
+            // margin.)
+            className="-mr-3 grid h-[var(--cell-h,30px)] cursor-grab touch-none select-none place-items-center justify-items-end pr-3 text-pencil active:cursor-grabbing"
+          >
+            <GripIcon />
+          </span>
+        ))}
     </div>
   )
 }
 
 /** The empty line at the end: written on, it becomes an add-on. */
-function SpareLine() {
+function SpareLine({ at }: { at: number }) {
   const add = useStore((s) => s.addAddOn)
   const [text, setText] = useState('')
   const fieldRef = useRef<HTMLInputElement>(null)
@@ -229,7 +264,9 @@ function SpareLine() {
     <div
       role="row"
       data-spare
-      className={`${COLS} items-center border-b border-ruled-line`}
+      data-g={0}
+      data-i={at}
+      className={`${COLS_GRIP} items-center border-b border-ruled-line`}
     >
       <span />
       <input
@@ -262,6 +299,7 @@ function SpareLine() {
         enterKeyHint="next"
         className={`${CELL} placeholder:text-pencil`}
       />
+      <span />
     </div>
   )
 }
