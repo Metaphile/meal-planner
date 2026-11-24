@@ -448,19 +448,15 @@ export default function RecipesPage() {
     if (!next.delete(t)) next.add(t)
     chooseTags(next)
   }
-  // Every tag on any recipe (as it's first written), A to Z — and any
-  // chosen that's on none any more, to be let go of.
+  // Every tag on any recipe, A to Z — lowercase, however it's written on
+  // a card ("Dinner" and "dinner" are one tag) — and any chosen that's on
+  // none any more, to be let go of.
   const allTags = useMemo(() => {
-    const byKey = new Map<string, string>()
-    for (const r of recipes)
-      for (const t of r.tags) {
-        const k = tagKey(t)
-        if (k && !byKey.has(k)) byKey.set(k, t.trim())
-      }
-    for (const k of tagsOn) if (!byKey.has(k)) byKey.set(k, k)
-    return [...byKey]
-      .map(([key, text]) => ({ key, text }))
-      .sort((a, b) => a.text.localeCompare(b.text))
+    const keys = new Set(tagsOn)
+    for (const r of recipes) for (const t of r.tags) if (tagKey(t)) keys.add(tagKey(t))
+    return [...keys]
+      .sort((a, b) => a.localeCompare(b))
+      .map((key) => ({ key, text: key }))
   }, [recipes, tagsOn])
   const tagsKey = [...tagsOn].sort().join(',')
   // A new recipe written while the box is narrowed is in it, whatever it's
