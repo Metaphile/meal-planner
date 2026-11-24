@@ -21,13 +21,13 @@ const VIEW = { x: 2.7, y: 2.3, w: 19.6 }
  * the header's heart and box are — a 1.5px line; paper inside, or (some tag
  * chosen) in the heart's colours, as the heart and the box are when on.
  */
-export function TagIcon({ on, size = SIZE }: { on: boolean; size?: number }) {
+export function TagIcon({ on }: { on: boolean }) {
   return (
     <svg
       // (Fitted to the drawing, line and all, as the heart's is.)
       viewBox={`${VIEW.x} ${VIEW.y} ${VIEW.w} ${VIEW.w}`}
-      width={size}
-      height={size}
+      width={SIZE}
+      height={SIZE}
       aria-hidden
       className={`block shrink-0 ${on ? 'text-heart-edge' : 'text-line'}`}
     >
@@ -36,7 +36,7 @@ export function TagIcon({ on, size = SIZE }: { on: boolean; size?: number }) {
         d="M3.5 4.6v6.1c0 .55.22 1.08.61 1.47l8.2 8.2a2 2 0 0 0 2.83 0l5.6-5.6a2 2 0 0 0 0-2.83l-8.2-8.2A2.08 2.08 0 0 0 11.07 3.1H5a1.5 1.5 0 0 0-1.5 1.5Z"
         fill={on ? 'var(--color-heart)' : 'var(--color-paper)'}
         stroke="currentColor"
-        strokeWidth={(1.5 * VIEW.w) / size}
+        strokeWidth={(1.5 * VIEW.w) / SIZE}
         strokeLinejoin="round"
       />
       <circle
@@ -45,7 +45,7 @@ export function TagIcon({ on, size = SIZE }: { on: boolean; size?: number }) {
         r="1.6"
         fill="none"
         stroke="currentColor"
-        strokeWidth={(1.5 * VIEW.w) / size}
+        strokeWidth={(1.5 * VIEW.w) / SIZE}
       />
     </svg>
   )
