@@ -26,6 +26,11 @@ const TRAY_MOTION = {
 const SIZE = 20
 /** The drawing's bounds, its line included. */
 const VIEW = { x: 2.7, y: 2.3, w: 19.6 }
+/** How far (in its picture's units) it's drawn down from its box: its
+ *  weight is high in it (its wide end, at the top), so centred on its
+ *  neighbours by its box, it looks to sit high. Lowered by this, its
+ *  weight's middle is its box's. (As the star's lifted: STAR_LIFT.) */
+const DROP = 0.77
 
 /**
  * A luggage tag, its point to the top left, a hole in its point: drawn as
@@ -40,7 +45,8 @@ export function TagIcon({ on }: { on: boolean }) {
       width={SIZE}
       height={SIZE}
       aria-hidden
-      className={`block shrink-0 ${on ? 'text-star-edge' : 'text-line'}`}
+      className={`relative block shrink-0 ${on ? 'text-star-edge' : 'text-line'}`}
+      style={{ top: (DROP * SIZE) / VIEW.w }}
     >
       <path
         // (Its point at the top left; its square end at the bottom right.)

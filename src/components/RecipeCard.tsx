@@ -407,7 +407,8 @@ function StarRings({ count }: { count: number }) {
       className="pointer-events-none absolute"
       style={{
         left: -room,
-        top: -room,
+        // (Lifted with the star: see STAR_LIFT.)
+        top: -room - STAR_LIFT / k,
         width: STAR_SIZE + 2 * room,
         height: (STAR_SIZE * STAR_BOX.h) / STAR_BOX.w + 2 * room,
       }}
@@ -464,6 +465,13 @@ const STAR_PATH =
  *  picture is the star, no margin around it. */
 const STAR_BOX = { x: 2.62, y: 2.3, w: 18.76, h: 17.93 }
 
+/** How far (in its picture's units) the star's drawn up from its box: its
+ *  weight is low in it (between its feet, under its one point), so centred
+ *  on its neighbours by its box, it looks to sit low. Lifted by this, its
+ *  weight's middle is its box's. (The whole picture moved, not just the
+ *  star in it: nothing's drawn outside it.) */
+const STAR_LIFT = 0.84
+
 /** A star, filled (lavender, inked) when on. `size` is its width. */
 export function StarIcon({ on, size = 18 }: { on: boolean; size?: number }) {
   return (
@@ -471,7 +479,8 @@ export function StarIcon({ on, size = 18 }: { on: boolean; size?: number }) {
       viewBox={`${STAR_BOX.x} ${STAR_BOX.y} ${STAR_BOX.w} ${STAR_BOX.h}`}
       width={size}
       height={(size * STAR_BOX.h) / STAR_BOX.w}
-      className={`block shrink-0 ${on ? 'text-star-edge' : 'text-line'}`}
+      className={`relative block shrink-0 ${on ? 'text-star-edge' : 'text-line'}`}
+      style={{ top: (-STAR_LIFT * size) / STAR_BOX.w }}
       aria-hidden
     >
       <path
