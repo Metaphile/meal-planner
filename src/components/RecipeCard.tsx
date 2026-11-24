@@ -1943,8 +1943,12 @@ const RecipeCardBack = forwardRef<
                   : 0
                 field.focus()
                 setTitleFocused(true) // (whether or not the window has focus)
-                field.setSelectionRange(at, at)
-                if (field.scrollWidth > field.clientWidth) field.scrollLeft = slid
+                const place = () => {
+                  field.setSelectionRange(at, at)
+                  if (field.scrollWidth > field.clientWidth) field.scrollLeft = slid
+                }
+                place()
+                keepCaret(field, place)
               }}
             >
               <div className="min-w-0 flex-1 text-center text-hand-xl font-semibold leading-[30px]">
@@ -3627,4 +3631,28 @@ function caretNearest(text: Text, x: number): number {
     }
   }
   return n ? best : 0
+}
+
+/**
+ * iOS, after a tap that lands in a field, moves the caret to the nearest
+ * word's edge (its own way of placing it) — after the caret's been put where
+ * the tap fell. So for a moment, a caret moved by nothing of yours (no
+ * typing, no tap, no key) is put back (`place`).
+ */
+function keepCaret(field: HTMLInputElement, place: () => void) {
+  const at = field.selectionStart
+  const onChange = () => {
+    if (document.activeElement !== field) return stop()
+    if (field.selectionStart !== at || field.selectionEnd !== at) place()
+  }
+  const stop = () => {
+    clearTimeout(timer)
+    document.removeEventListener('selectionchange', onChange)
+    for (const t of ['input', 'keydown', 'pointerdown', 'blur'])
+      field.removeEventListener(t, stop)
+  }
+  const timer = setTimeout(stop, 600)
+  document.addEventListener('selectionchange', onChange)
+  for (const t of ['input', 'keydown', 'pointerdown', 'blur'])
+    field.addEventListener(t, stop)
 }
