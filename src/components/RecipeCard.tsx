@@ -36,6 +36,7 @@ import { Amount } from './Unit'
 import { OneLine } from './OneLine'
 import { BoxIcon } from './BoxIcon'
 import { dragRow, dragSection, GripIcon } from './dragLines'
+import { TagIcon } from './TagFilter'
 import { ConfirmDialog } from './ui'
 import { arcThrough, sampleTimes, type Arc } from '../lib/arc'
 import { useWakeLock } from '../lib/wakeLock'
@@ -124,8 +125,11 @@ function CardBody({ recipe, peek }: { recipe: Recipe; peek: boolean }) {
       )}
       {/* (Peeking, below what can show: not drawn.) */}
       {!peek && recipe.tags.length > 0 && (
-        <p className="mt-[var(--rule)] text-ink-soft">
-          {recipe.tags.join(' · ')}
+        // (Laid out as the favorites under it: its mark, then its words.)
+        <p className="mt-[var(--rule)] flex items-center gap-1.5 text-ink-soft">
+          <span className="sr-only">Tags</span>
+          <TagIcon on={false} size={17} />
+          <span className="min-w-0">{recipe.tags.join(' · ')}</span>
         </p>
       )}
       {/* (Right under its tags; with none, a line left blank above it.) */}
