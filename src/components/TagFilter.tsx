@@ -22,30 +22,30 @@ const TRAY_MOTION = {
   up: 'cubic-bezier(0.42, 0, 1, 1)', // (ease-in)
 }
 
-/** px: the tag icon's size in the header — the heart's (HEART_SIZE). */
+/** px: the tag icon's size in the header — the star's (STAR_SIZE). */
 const SIZE = 20
 /** The drawing's bounds, its line included. */
 const VIEW = { x: 2.7, y: 2.3, w: 19.6 }
 
 /**
  * A luggage tag, its point to the top left, a hole in its point: drawn as
- * the header's heart and box are — a 1.5px line; paper inside, or (some tag
- * chosen) in the heart's colours, as the heart and the box are when on.
+ * the header's star and box are — a 1.5px line; paper inside, or (some tag
+ * chosen) in the star's colours, as the star and the box are when on.
  */
 export function TagIcon({ on }: { on: boolean }) {
   return (
     <svg
-      // (Fitted to the drawing, line and all, as the heart's is.)
+      // (Fitted to the drawing, line and all, as the star's is.)
       viewBox={`${VIEW.x} ${VIEW.y} ${VIEW.w} ${VIEW.w}`}
       width={SIZE}
       height={SIZE}
       aria-hidden
-      className={`block shrink-0 ${on ? 'text-heart-edge' : 'text-line'}`}
+      className={`block shrink-0 ${on ? 'text-star-edge' : 'text-line'}`}
     >
       <path
         // (Its point at the top left; its square end at the bottom right.)
         d="M3.5 4.6v6.1c0 .55.22 1.08.61 1.47l8.2 8.2a2 2 0 0 0 2.83 0l5.6-5.6a2 2 0 0 0 0-2.83l-8.2-8.2A2.08 2.08 0 0 0 11.07 3.1H5a1.5 1.5 0 0 0-1.5 1.5Z"
-        fill={on ? 'var(--color-heart)' : 'var(--color-paper)'}
+        fill={on ? 'var(--color-star)' : 'var(--color-paper)'}
         stroke="currentColor"
         strokeWidth={(1.5 * VIEW.w) / SIZE}
         strokeLinejoin="round"
@@ -129,7 +129,7 @@ export function TagTray({
                   onClick={() => onToggle(key)}
                   className={`h-8 rounded-full border-[1.5px] px-3 font-hand text-hand-sm leading-none ${
                     chosen
-                      ? 'border-heart-edge bg-heart text-on-heart'
+                      ? 'border-star-edge bg-star text-on-star'
                       : 'border-paper-edge-strong bg-paper text-ink'
                   } ${can ? '' : 'opacity-40'}`}
                 >

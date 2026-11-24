@@ -158,7 +158,7 @@ function TagLine({ tags }: { tags: string[] }) {
   )
 }
 
-/** Under a card's tags: who's favorited it — "♥ by you, Rey, Tara" (you
+/** Under a card's tags: who's favorited it — "★ by you, Rey, Tara" (you
  *  first, if it's yours; then the others, by name). With `gap`, a line left
  *  blank above it. */
 function FavoritedBy({ recipeId, gap }: { recipeId: string; gap: boolean }) {
@@ -173,8 +173,8 @@ function FavoritedBy({ recipeId, gap }: { recipeId: string; gap: boolean }) {
       className={`flex items-center gap-1.5 text-ink-soft ${gap ? 'mt-[var(--rule)]' : ''}`}
     >
       <span className="sr-only">Favorited</span>
-      {/* (Outlined, filled: a favorite's heart, as at the top.) */}
-      <HeartIcon on size={17} />
+      {/* (Outlined, filled: a favorite's star, as at the top.) */}
+      <StarIcon on size={17} />
       <span className="min-w-0">by {names}</span>
     </p>
   )
@@ -231,10 +231,10 @@ export const RecipeCard = forwardRef<HTMLDivElement, CardProps>(
         <div className="relative flex min-h-0 flex-1 flex-col">
           <div className="paper-frame" />
           <div className="px-5 pt-3.5">
-            {/* (The heart and the box, centred on the title's line: midway
+            {/* (The star and the box, centred on the title's line: midway
                 between the frame and the rule.) */}
             <div className="paper-rule flex items-center gap-2 pb-1.5">
-              <FavoriteHeart recipeId={recipe.id} />
+              <FavoriteStar recipeId={recipe.id} />
               <div
                 className={`font-hand min-w-0 flex-1 text-center font-semibold ${
                   large ? 'text-hand-xl leading-[26px]' : 'text-hand-xl leading-[25px]'
@@ -316,11 +316,11 @@ export function EditButton({ onEdit }: { onEdit: () => void }) {
 
 
 /**
- * A favorite: a heart before the title, everyone's own (readers too). Like
+ * A favorite: a star before the title, everyone's own (readers too). Like
  * the Want box, it's marked right there in the box — and on a card's back
  * too, where (unlike the rest of the back) it's kept at once, not on Save.
  */
-function FavoriteHeart({ recipeId }: { recipeId: string }) {
+function FavoriteStar({ recipeId }: { recipeId: string }) {
   const { user } = useAuth()
   const on = useIsFavorite(user?.id, recipeId)
   // Others who've favorited it, under yours (two at most: enough to say a
@@ -328,7 +328,7 @@ function FavoriteHeart({ recipeId }: { recipeId: string }) {
   const othersAll = useOthersFavorites(recipeId, user?.id)
   const others = Math.min(RINGS.length, othersAll)
   const setFavorite = useStore((s) => s.setFavorite)
-  const heartRef = useRef<HTMLSpanElement>(null)
+  const starRef = useRef<HTMLSpanElement>(null)
   return (
     <button
       type="button"
@@ -343,29 +343,29 @@ function FavoriteHeart({ recipeId }: { recipeId: string }) {
         e.stopPropagation() // (not taking the card out)
         if (!user) return
         setFavorite(user.id, recipeId, !on)
-        twinkle(heartRef.current, !on)
+        twinkle(starRef.current, !on)
       }}
-      // A generous target around the small heart, taking no room: in the row
-      // it's as wide as the Want box (HEART_ROOM), so a title between them
-      // is centred on the card. (The heart itself a touch wider: it looks
+      // A generous target around the small star, taking no room: in the row
+      // it's as wide as the Want box (STAR_ROOM), so a title between them
+      // is centred on the card. (The star itself a touch wider: it looks
       // smaller than a square its size. It reaches a little past its room.)
       className="-m-2 flex shrink-0 justify-center p-2"
-      style={{ width: HEART_ROOM + 16 }}
+      style={{ width: STAR_ROOM + 16 }}
     >
       <span className="relative block">
         {/* Others' favorites: outlines around yours, each further out
             and fainter. See RINGS. */}
-        {others > 0 && <HeartRings count={others} />}
-        <span ref={heartRef} className="relative block">
-          <HeartIcon on={on} size={HEART_SIZE} />
+        {others > 0 && <StarRings count={others} />}
+        <span ref={starRef} className="relative block">
+          <StarIcon on={on} size={STAR_SIZE} />
         </span>
       </span>
     </button>
   )
 }
 
-/** Others' favorites, as outlines around your heart — one for each (two
- *  at most), nested: each its own way out from the heart all round (traced
+/** Others' favorites, as outlines around your star — one for each (two
+ *  at most), nested: each its own way out from the star all round (traced
  *  at that distance, its corners rounded), 1px, in the favorite's ink, and
  *  fainter than the one inside it. Fixed: nothing per recipe or person, so
  *  so many always looks the same. (Distances in px.) */
@@ -374,16 +374,16 @@ const RINGS = [
   { out: 4.3, opacity: 0.25 },
 ]
 
-/** The outlines around a heart (see RINGS): drawn behind it, reaching out
- *  past it. Each is the heart traced wide in the ring's colour, then traced
+/** The outlines around a star (see RINGS): drawn behind it, reaching out
+ *  past it. Each is the star traced wide in the ring's colour, then traced
  *  a line narrower in the paper's — leaving just the line. All solid: the
  *  ring's colour is mixed with the paper's (not faded), and there are no
  *  masks — on a card tilted in the box, a mask or a faded layer could be
  *  redrawn stale as the card came back into view (a faint box round the
- *  heart, rings broken up). And it's drawn on a box with room for the
+ *  star, rings broken up). And it's drawn on a box with room for the
  *  rings (nothing drawn outside it, to be cut off). */
-function HeartRings({ count }: { count: number }) {
-  const k = HEART_BOX.w / HEART_SIZE // its picture's units per px
+function StarRings({ count }: { count: number }) {
+  const k = STAR_BOX.w / STAR_SIZE // its picture's units per px
   const line = 1
   const rings = RINGS.slice(0, count)
   // Room all round for the outermost ring (px), and in its picture's units.
@@ -392,7 +392,7 @@ function HeartRings({ count }: { count: number }) {
   const tracing = (d: number, colour: string, i: string) => (
     <path
       key={i}
-      d={HEART_PATH}
+      d={STAR_PATH}
       strokeWidth={2 * d * k}
       strokeLinejoin="round"
       style={{ fill: colour, stroke: colour }}
@@ -401,15 +401,15 @@ function HeartRings({ count }: { count: number }) {
   return (
     <svg
       aria-hidden
-      viewBox={`${HEART_BOX.x - m} ${HEART_BOX.y - m} ${HEART_BOX.w + 2 * m} ${
-        HEART_BOX.h + 2 * m
+      viewBox={`${STAR_BOX.x - m} ${STAR_BOX.y - m} ${STAR_BOX.w + 2 * m} ${
+        STAR_BOX.h + 2 * m
       }`}
       className="pointer-events-none absolute"
       style={{
         left: -room,
         top: -room,
-        width: HEART_SIZE + 2 * room,
-        height: (HEART_SIZE * HEART_BOX.h) / HEART_BOX.w + 2 * room,
+        width: STAR_SIZE + 2 * room,
+        height: (STAR_SIZE * STAR_BOX.h) / STAR_BOX.w + 2 * room,
       }}
     >
       {/* The outermost first: each ring inside it is drawn over its
@@ -417,7 +417,7 @@ function HeartRings({ count }: { count: number }) {
       {[...rings].reverse().flatMap((r, i) => [
         tracing(
           r.out + line / 2,
-          `color-mix(in srgb, var(--color-heart-edge) ${r.opacity * 100}%, var(--color-paper))`,
+          `color-mix(in srgb, var(--color-star-edge) ${r.opacity * 100}%, var(--color-paper))`,
           `${i}a`,
         ),
         tracing(r.out - line / 2, 'var(--color-paper)', `${i}b`),
@@ -427,7 +427,7 @@ function HeartRings({ count }: { count: number }) {
 }
 
 /**
- * A heart toggled by a tap: on, it beats — swelling, and springing back;
+ * A star toggled by a tap: on, it pops — swelling, and springing back;
  * off, it gives a small shrug. (Only when tapped: not when a
  * favorite arrives from another device. Not with reduced motion.)
  */
@@ -450,36 +450,36 @@ function twinkle(el: HTMLElement | null, on: boolean) {
   )
 }
 
-/** px: the heart's room in a card's title row — the Want box's width. */
-const HEART_ROOM = 18
+/** px: the star's room in a card's title row — the Want box's width. */
+const STAR_ROOM = 18
 
-/** px: the heart's width in a card's title row (and the header's). */
-export const HEART_SIZE = 20
+/** px: the star's width in a card's title row (and the header's). */
+export const STAR_SIZE = 20
 
-/** A heart (in its picture's units). */
-const HEART_PATH =
-  'M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z'
+/** A five-pointed star (in its picture's units). */
+const STAR_PATH =
+  'M12 3.2l2.62 5.31 5.86.85-4.24 4.13 1 5.84L12 16.58l-5.24 2.75 1-5.84-4.24-4.13 5.86-.85z'
 
-/** The heart's own bounds (its outline's, with room for the stroke): its
- *  picture is the heart, no margin around it. */
-const HEART_BOX = { x: 1.3, y: 2.3, w: 21.4, h: 19.75 }
+/** The star's own bounds (its outline's, with room for the stroke): its
+ *  picture is the star, no margin around it. */
+const STAR_BOX = { x: 2.62, y: 2.3, w: 18.76, h: 17.93 }
 
-/** A heart, filled (lavender, inked) when on. `size` is its width. */
-export function HeartIcon({ on, size = 18 }: { on: boolean; size?: number }) {
+/** A star, filled (lavender, inked) when on. `size` is its width. */
+export function StarIcon({ on, size = 18 }: { on: boolean; size?: number }) {
   return (
     <svg
-      viewBox={`${HEART_BOX.x} ${HEART_BOX.y} ${HEART_BOX.w} ${HEART_BOX.h}`}
+      viewBox={`${STAR_BOX.x} ${STAR_BOX.y} ${STAR_BOX.w} ${STAR_BOX.h}`}
       width={size}
-      height={(size * HEART_BOX.h) / HEART_BOX.w}
-      className={`block shrink-0 ${on ? 'text-heart-edge' : 'text-line'}`}
+      height={(size * STAR_BOX.h) / STAR_BOX.w}
+      className={`block shrink-0 ${on ? 'text-star-edge' : 'text-line'}`}
       aria-hidden
     >
       <path
-        d={HEART_PATH}
-        fill={on ? 'var(--color-heart)' : 'var(--color-paper)'}
+        d={STAR_PATH}
+        fill={on ? 'var(--color-star)' : 'var(--color-paper)'}
         stroke="currentColor"
         // (Drawn 1.5px wide whatever its size, like the Want box's border.)
-        strokeWidth={(1.5 * HEART_BOX.w) / size}
+        strokeWidth={(1.5 * STAR_BOX.w) / size}
         strokeLinejoin="round"
       />
     </svg>
@@ -1895,14 +1895,14 @@ const RecipeCardBack = forwardRef<
       <div className="handwritten relative flex flex-1 flex-col">
         {/* (Underlined in the same pen as the writing.) */}
         <div className="mx-5 mt-3.5 flex items-center gap-2 border-b-[1.5px] border-pen pb-0.5">
-          {/* The favorite heart, as on the front — kept at once. (Not on a
+          {/* The favorite star, as on the front — kept at once. (Not on a
               new card until it's saved: there's no recipe yet.) */}
           {isNew ? (
-            // (Room the heart would take, so the title sits centred between
+            // (Room the star would take, so the title sits centred between
             // it and the asterisk's room.)
-            <span aria-hidden className="shrink-0" style={{ width: HEART_ROOM }} />
+            <span aria-hidden className="shrink-0" style={{ width: STAR_ROOM }} />
           ) : (
-            <FavoriteHeart recipeId={recipe.id} />
+            <FavoriteStar recipeId={recipe.id} />
           )}
           {/* Not being written in, the title is shown as on the front (a
               long one cut off, feathered, dragged sideways to read); tapped,
@@ -1983,8 +1983,8 @@ const RecipeCardBack = forwardRef<
             </div>
           )}
           </div>
-          {/* (Balancing the heart, so the title sits centred.) */}
-          <span aria-hidden className="shrink-0" style={{ width: HEART_ROOM }} />
+          {/* (Balancing the star, so the title sits centred.) */}
+          <span aria-hidden className="shrink-0" style={{ width: STAR_ROOM }} />
         </div>
         <div className="mx-5 mt-3.5 mb-4 flex flex-col gap-4">
           <IngredientTable

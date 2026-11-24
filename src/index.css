@@ -65,7 +65,7 @@
   --color-accent-text: #73688d;
   --color-accent-ink: #443d54;
 
-  /* Lines drawn round things, 1.5px: an empty box, a heart not yet
+  /* Lines drawn round things, 1.5px: an empty box, a star not yet
      yours, the header's icons — the same colour all (3:1 on paper, and on
      the counter). */
   --color-line: var(--color-ink-faint);
@@ -76,11 +76,11 @@
   --color-on-counter-soft: var(--color-ink-soft);
   --color-on-counter-danger: var(--color-danger);
 
-  /* A favorite's heart — and a ticked box (wanted, on hand, got): the
+  /* A favorite's star — and a ticked box (wanted, on hand, got): the
      accent's, unless a theme says otherwise; and the tick on it. */
-  --color-heart: var(--color-accent);
-  --color-heart-edge: var(--color-accent-edge);
-  --color-on-heart: var(--color-accent-ink);
+  --color-star: var(--color-accent);
+  --color-star-edge: var(--color-accent-edge);
+  --color-on-star: var(--color-accent-ink);
 
   /* Danger (and short of what's needed): its colour, a light edge, and what's
      written on it. */
@@ -138,20 +138,20 @@
    on paper, its text 4.5:1, its ink 5.5:1 on its fill. (Kraft's counter is
    dark: what's on it is written in cream, 11:1.) Night restates them all,
    for dark paper, keeping the same contrasts. */
-/* Each theme's hearts — and ticked boxes — stand apart from its accent
+/* Each theme's stars — and ticked boxes — stand apart from its accent
    (across the colour wheel from it), outlined 3:1 on its paper and its
    counter, their ticks 3:1 or more on them. Lavender's (the default: no
    data-theme): yellow, a deeper gold round them. */
 :root:not([data-theme]) {
-  --color-heart: #f4cd4b;
-  --color-heart-edge: #aa7c03;
-  --color-on-heart: #392c00;
+  --color-star: #f4cd4b;
+  --color-star-edge: #aa7c03;
+  --color-on-star: #392c00;
 }
 :root[data-theme='sage'] {
-  /* Hearts: raspberry — opposite the green, echoing the blush counter. */
-  --color-heart: #d55078;
-  --color-heart-edge: #a82e57;
-  --color-on-heart: #ffffff;
+  /* Stars: raspberry — opposite the green, echoing the blush counter. */
+  --color-star: #d55078;
+  --color-star-edge: #a82e57;
+  --color-on-star: #ffffff;
   --color-accent: #aec8b2;
   --color-accent-edge: #6d9b76;
   --color-accent-text: #547a5c;
@@ -160,10 +160,10 @@
   --color-counter-deep: #d1c0bb;
 }
 :root[data-theme='rose'] {
-  /* Hearts: teal — opposite the pink, echoing the cool counter. */
-  --color-heart: #43b2ac;
-  --color-heart-edge: #23928d;
-  --color-on-heart: #003634;
+  /* Stars: teal — opposite the pink, echoing the cool counter. */
+  --color-star: #43b2ac;
+  --color-star-edge: #23928d;
+  --color-on-star: #003634;
   --color-accent: #dab5ba;
   --color-accent-edge: #bc7f88;
   --color-accent-text: #915f66;
@@ -173,7 +173,7 @@
 }
 :root[data-theme='kraft'] {
   /* Kraft-paper dividers on a dark walnut counter — written on in cream —
-     and red hearts. */
+     and red stars. */
   --color-accent: #d6ba86;
   --color-accent-edge: #a67e44;
   --color-accent-text: #8b6330;
@@ -183,15 +183,15 @@
   --color-on-counter: #f0e7d6;
   --color-on-counter-soft: #c5b9a5;
   --color-on-counter-danger: #f18a76;
-  --color-heart: #e54c4a;
-  --color-heart-edge: #b02a2d;
-  --color-on-heart: #ffffff;
+  --color-star: #e54c4a;
+  --color-star-edge: #b02a2d;
+  --color-on-star: #ffffff;
 }
 :root[data-theme='night'] {
-  /* Hearts: amber, glowing on the dark paper (Lavender's yellow, by night). */
-  --color-heart: #f5ae39;
-  --color-heart-edge: #ffc674;
-  --color-on-heart: #402800;
+  /* Stars: amber, glowing on the dark paper (Lavender's yellow, by night). */
+  --color-star: #f5ae39;
+  --color-star-edge: #ffc674;
+  --color-on-star: #402800;
   color-scheme: dark;
   --color-counter: #19201c;
   --color-counter-deep: #111814;
@@ -419,13 +419,13 @@ body {
       no-repeat 0 calc(0.775em - 0.5px) / 100% 1px;
   }
   /* A tag the box is narrowed to, on a card: gone over with a highlighter,
-     in the hearts' colour (the tray's chosen tags'). Through the writing's
+     in the stars' colour (the tray's chosen tags'). Through the writing's
      small letters and a little above and below — not its whole box. */
   .tag-on {
     color: var(--color-ink);
     background: linear-gradient(
-        color-mix(in srgb, var(--color-heart) 55%, transparent),
-        color-mix(in srgb, var(--color-heart) 55%, transparent)
+        color-mix(in srgb, var(--color-star) 55%, transparent),
+        color-mix(in srgb, var(--color-star) 55%, transparent)
       )
       no-repeat 0 0.42em / 100% 0.62em;
     border-radius: 0.2em;

@@ -19,8 +19,8 @@ import {
   HAND,
   RecipeCard,
   PERSPECTIVE,
-  HEART_SIZE,
-  HeartIcon,
+  STAR_SIZE,
+  StarIcon,
   type CardOrigin,
   type Hand,
 } from '../components/RecipeCard'
@@ -412,7 +412,7 @@ export default function RecipesPage() {
       setKept(new Set(wants.filter(isWanted).map((w) => w.recipeId)))
     setWantedOnly(!wantedOnly)
   }
-  // …and, hearted, to just your favorites (the same way: unhearting one
+  // …and, starred, to just your favorites (the same way: unstarring one
   // there doesn't whisk it away).
   const { user } = useAuth()
   const favorites = useStore((s) => s.favorites)
@@ -1356,7 +1356,7 @@ export default function RecipesPage() {
     </button>
   )
   // Only recipes with the tags chosen (in a tray dropped from the header):
-  // a tag, drawn as the heart and the box are.
+  // a tag, drawn as the star and the box are.
   const tagsButton = (
     <button
       type="button"
@@ -1370,9 +1370,9 @@ export default function RecipesPage() {
       <TagIcon on={tagsOn.size > 0} />
     </button>
   )
-  // Only your favorites: the cards' heart (its size, its 1.5px outline),
+  // Only your favorites: the cards' star (its size, its 1.5px outline),
   // beside it.
-  const favoritesOnlyHeart = (
+  const favoritesOnlyStar = (
     <button
       type="button"
       aria-pressed={favoritesOnly}
@@ -1380,7 +1380,7 @@ export default function RecipesPage() {
       onClick={toggleFavoritesOnly}
       className="-mx-1 grid h-9 w-9 shrink-0 place-items-center"
     >
-      <HeartIcon on={favoritesOnly} size={HEART_SIZE} />
+      <StarIcon on={favoritesOnly} size={STAR_SIZE} />
     </button>
   )
   const header = (
@@ -1409,13 +1409,13 @@ export default function RecipesPage() {
         action={
           <div className="flex items-center gap-1">
             {tagsButton}
-            {favoritesOnlyHeart}
+            {favoritesOnlyStar}
             {wantedOnlyBox}
             {/* Settings — your account, and the group's — in the corner. */}
             <Link
               to="/account"
               aria-label="Account"
-              // (In the line colour, a 1.5px line: as the heart and the box.)
+              // (In the line colour, a 1.5px line: as the star and the box.)
               className="grid h-9 w-9 place-items-center rounded-full text-line active:bg-on-counter/10"
             >
               <svg

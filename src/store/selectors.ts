@@ -63,7 +63,7 @@ export function useIsFavorite(userId: string | undefined, recipeId: string) {
   )
 }
 
-/** Who else has favorited a recipe (not `me`: your own is the heart on the
+/** Who else has favorited a recipe (not `me`: your own is the star on the
  *  card): their names, in order, joined by commas ("" if nobody). (One
  *  string, so it re-renders only when the names change.) */
 export function useFavoritedBy(recipeId: string, me?: string): string {

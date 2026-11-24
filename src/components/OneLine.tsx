@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 
 /** px: how far the line's box reaches out either side of its column (into
- *  the space beside it: on a card, between the title and the heart and the
+ *  the space beside it: on a card, between the title and the star and the
  *  box). */
 const OUTSET = 8
 /** px: how far a cut-off end fades. */

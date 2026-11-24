@@ -1,11 +1,11 @@
 /**
  * The box to tick — on a card (wanted), the shopping list (got), the
- * header's filter — drawn as the hearts and the header's icons are: an SVG
+ * header's filter — drawn as the stars and the header's icons are: an SVG
  * line, 1.5px, its middle on the path. (Not a CSS border: on an iPhone's
  * screen, three pixels to a point, a border's 4.5 pixels are rounded to 4,
- * and the box looked lighter than the heart beside it.)
+ * and the box looked lighter than the star beside it.)
  *
- * Empty: paper, outlined in the line colour. Ticked: in the heart's colours,
+ * Empty: paper, outlined in the line colour. Ticked: in the star's colours,
  * ✓ in its ink. Short (ticked, but needed more since): danger's, –.
  */
 export function BoxIcon({
@@ -20,7 +20,7 @@ export function BoxIcon({
   const k = size / 18 // (the tick's drawing is for an 18px box)
   const [fill, edge, mark] =
     state === 'on'
-      ? ['var(--color-heart)', 'var(--color-heart-edge)', 'var(--color-on-heart)']
+      ? ['var(--color-star)', 'var(--color-star-edge)', 'var(--color-on-star)']
       : state === 'short'
         ? ['var(--color-danger)', 'var(--color-danger)', 'var(--color-on-danger)']
         : ['var(--color-paper)', 'var(--color-line)', '']
