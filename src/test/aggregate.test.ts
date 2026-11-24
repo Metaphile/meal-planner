@@ -123,6 +123,21 @@ describe('aggregateIngredients', () => {
     })
   })
 
+  it("keeps a recipe's tag on its ingredient of the same name", () => {
+    const spaghetti: Recipe = {
+      id: 'r-spaghetti',
+      title: 'Spaghetti',
+      tags: [],
+      ingredients: [{ name: 'spaghetti', quantity: 1, unit: 'lb' }],
+    }
+    const out = aggregateIngredients([meal([rc('r-spaghetti')])], [spaghetti])
+    expect(out[0].sources).toEqual(['Spaghetti'])
+    expect(
+      aggregateWanted([{ id: 'r-spaghetti', recipeId: 'r-spaghetti', count: 1 }], [spaghetti])[0]
+        .sources,
+    ).toEqual(['Spaghetti'])
+  })
+
   it('skips excluded meals and missing recipe refs safely', () => {
     expect(
       aggregateIngredients([meal([rc('r-pancakes')], false)], recipes),

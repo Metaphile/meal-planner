@@ -45,7 +45,8 @@ function keyFor(ing: Ingredient): string {
  *  - excluded meals and missing recipe refs are skipped safely.
  *  - sources: recipe -> recipe.title, item -> its own name; sorted & de-duped.
  *    If a line's only source is an item whose name equals the line itself, the
- *    (redundant) self-tag is suppressed.
+ *    (redundant) self-tag is suppressed. (Only an item's: a recipe named as
+ *    one of its ingredients — "Spaghetti" — still tags it.)
  *  - output sorted alphabetically by name (then unit).
  */
 export function aggregateIngredients(
@@ -63,7 +64,7 @@ export function aggregateIngredients(
           for (const ing of shoppable(recipe)) add(ing, recipe.title, 1)
         } else {
           // Simple item: tag it with its own name.
-          add(component, component.name, 1)
+          add(component, component.name, 1, true)
         }
       }
     }
@@ -92,7 +93,13 @@ export function aggregateWanted(
   })
 }
 
-type Add = (ing: Ingredient, source: string, times: number) => void
+type Add = (
+  ing: Ingredient,
+  source: string,
+  times: number,
+  /** A simple item, tagged with its own name. */
+  item?: boolean,
+) => void
 
 /** Group, sum and tag the lines `collect` adds (see aggregateIngredients). */
 function aggregate(collect: (add: Add) => void): AggregatedIngredient[] {
@@ -106,10 +113,12 @@ function aggregate(collect: (add: Add) => void): AggregatedIngredient[] {
       quantity?: number
       hasQuantity: boolean
       sources: Set<string>
+      /** Sources that are simple items, tagged with their own names. */
+      items: Set<string>
     }
   >()
 
-  const add: Add = (ing, source, times) => {
+  const add: Add = (ing, source, times, item = false) => {
     if (!norm(ing.name)) return // skip blank ingredient names
     const key = keyFor(ing)
     let group = groups.get(key)
@@ -120,6 +129,7 @@ function aggregate(collect: (add: Add) => void): AggregatedIngredient[] {
         quantity: undefined,
         hasQuantity: false,
         sources: new Set(),
+        items: new Set(),
       }
       groups.set(key, group)
     }
@@ -127,7 +137,10 @@ function aggregate(collect: (add: Add) => void): AggregatedIngredient[] {
       group.quantity = (group.quantity ?? 0) + ing.quantity * times
       group.hasQuantity = true
     }
-    if (source.trim()) group.sources.add(source.trim())
+    if (source.trim()) {
+      group.sources.add(source.trim())
+      if (item) group.items.add(source.trim())
+    }
   }
 
   collect(add)
@@ -137,7 +150,11 @@ function aggregate(collect: (add: Add) => void): AggregatedIngredient[] {
       let sources = [...g.sources].sort((a, b) => a.localeCompare(b))
       // Suppress a lone self-referential item tag (e.g. "Garlic bread" used
       // only as a standalone item shouldn't tag itself with "Garlic bread").
-      if (sources.length === 1 && norm(sources[0]) === norm(g.name)) {
+      if (
+        sources.length === 1 &&
+        g.items.has(sources[0]) &&
+        norm(sources[0]) === norm(g.name)
+      ) {
         sources = []
       }
       return {
