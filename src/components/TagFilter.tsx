@@ -1,5 +1,3 @@
-import { useEffect } from 'react'
-
 /** A tag as it's matched: its words, whatever their case or spacing. */
 export const tagKey = (t: string) => t.trim().toLowerCase()
 
@@ -56,12 +54,12 @@ export function TagIcon({ on }: { on: boolean }) {
  * every tag on any recipe, A to Z, each tapped on or off. With more than
  * one on, the box holds the recipes that have every one of them — so a tag
  * no recipe left in the box has is faint, and can't be chosen (it would
- * leave the box empty). A tap anywhere off the tray (or Escape) puts it
- * away; the tags chosen stay on.
+ * leave the box empty). Open, the box is still there to turn and take
+ * cards from, under it. Put away by its tag in the header (the tags chosen
+ * stay on) or by Clear (all of them let go).
  */
 export function TagTray({
   open,
-  onClose,
   tags,
   on,
   available,
@@ -69,7 +67,6 @@ export function TagTray({
   onClear,
 }: {
   open: boolean
-  onClose: () => void
   /** Every tag: its key and how it's written. */
   tags: ReadonlyArray<{ key: string; text: string }>
   on: ReadonlySet<string>
@@ -78,82 +75,64 @@ export function TagTray({
   onToggle: (key: string) => void
   onClear: () => void
 }) {
-  useEffect(() => {
-    if (!open) return
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [open, onClose])
+  // Drops from behind the header (cut off at its foot: shadow below).
   return (
-    <>
-      {/* (Off the tray: a tap there only puts it away — it doesn't take
-          out the card under it.) */}
-      {open && (
-        <div
-          aria-hidden
-          className="fixed inset-0 z-0"
-          onClick={onClose}
-          style={{ touchAction: 'none' }}
-        />
-      )}
-      {/* Drops from behind the header (cut off at its foot: shadow below). */}
+    <div
+      className="pointer-events-none absolute inset-x-0 top-full z-[1]"
+      style={{ clipPath: 'inset(0 -30px -30px -30px)' }}
+    >
       <div
-        className="pointer-events-none absolute inset-x-0 top-full z-[1]"
-        style={{ clipPath: 'inset(0 -30px -30px -30px)' }}
+        role="group"
+        aria-label="Tags"
+        aria-hidden={!open}
+        className={`no-scrollbar max-h-[45vh] overflow-y-auto bg-counter px-4 pt-1 pb-3.5 transition-[transform,visibility] duration-200 ${
+          open
+            ? 'pointer-events-auto visible translate-y-0 ease-out'
+            : 'invisible -translate-y-full ease-in'
+        }`}
+        style={{
+          boxShadow:
+            '0 6px 14px -6px color-mix(in srgb, var(--color-shadow) 45%, transparent)',
+        }}
       >
-        <div
-          role="group"
-          aria-label="Tags"
-          aria-hidden={!open}
-          className={`no-scrollbar max-h-[45vh] overflow-y-auto bg-counter px-4 pt-1 pb-3.5 transition-[transform,visibility] duration-200 ${
-            open
-              ? 'pointer-events-auto visible translate-y-0 ease-out'
-              : 'invisible -translate-y-full ease-in'
-          }`}
-          style={{
-            boxShadow:
-              '0 6px 14px -6px color-mix(in srgb, var(--color-shadow) 45%, transparent)',
-          }}
-        >
-          {tags.length === 0 ? (
-            <p className="py-1 font-hand text-hand-sm text-on-counter-soft">
-              No tags yet — add some on a card’s back.
-            </p>
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              {tags.map(({ key, text }) => {
-                const chosen = on.has(key)
-                const can = chosen || available.has(key)
-                return (
-                  <button
-                    key={key}
-                    type="button"
-                    aria-pressed={chosen}
-                    disabled={!can}
-                    onClick={() => onToggle(key)}
-                    className={`h-8 rounded-full border-[1.5px] px-3 font-hand text-hand-sm leading-none ${
-                      chosen
-                        ? 'border-heart-edge bg-heart text-on-heart'
-                        : 'border-paper-edge-strong bg-paper text-ink'
-                    } ${can ? '' : 'opacity-40'}`}
-                  >
-                    {text}
-                  </button>
-                )
-              })}
-              {on.size > 0 && (
+        {tags.length === 0 ? (
+          <p className="py-1 font-hand text-hand-sm text-on-counter-soft">
+            No tags yet — add some on a card’s back.
+          </p>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {tags.map(({ key, text }) => {
+              const chosen = on.has(key)
+              const can = chosen || available.has(key)
+              return (
                 <button
+                  key={key}
                   type="button"
-                  onClick={onClear}
-                  className="h-8 px-2 font-hand text-hand-sm leading-none text-on-counter-soft underline decoration-1 underline-offset-4"
+                  aria-pressed={chosen}
+                  disabled={!can}
+                  onClick={() => onToggle(key)}
+                  className={`h-8 rounded-full border-[1.5px] px-3 font-hand text-hand-sm leading-none ${
+                    chosen
+                      ? 'border-heart-edge bg-heart text-on-heart'
+                      : 'border-paper-edge-strong bg-paper text-ink'
+                  } ${can ? '' : 'opacity-40'}`}
                 >
-                  Clear
+                  {text}
                 </button>
-              )}
-            </div>
-          )}
-        </div>
+              )
+            })}
+            {on.size > 0 && (
+              <button
+                type="button"
+                onClick={onClear}
+                className="h-8 px-2 font-hand text-hand-sm leading-none text-on-counter-soft underline decoration-1 underline-offset-4"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+        )}
       </div>
-    </>
+    </div>
   )
 }

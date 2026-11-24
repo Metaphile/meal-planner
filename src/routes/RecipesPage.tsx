@@ -435,7 +435,6 @@ export default function RecipesPage() {
     () => left?.keptTagged ?? new Set(),
   )
   const [tagTray, setTagTray] = useState(false)
-  const closeTagTray = useCallback(() => setTagTray(false), [])
   const chooseTags = (next: ReadonlySet<string>) => {
     unmake()
     setKeptTagged(
@@ -1383,12 +1382,14 @@ export default function RecipesPage() {
     >
       <TagTray
         open={tagTray}
-        onClose={closeTagTray}
         tags={allTags}
         on={tagsOn}
         available={tagsAvailable}
         onToggle={toggleTag}
-        onClear={() => chooseTags(new Set())}
+        onClear={() => {
+          chooseTags(new Set())
+          setTagTray(false)
+        }}
       />
       <div className="relative z-[2]">
       <PageHeader
