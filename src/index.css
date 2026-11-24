@@ -418,6 +418,21 @@ body {
       )
       no-repeat 0 calc(0.775em - 0.5px) / 100% 1px;
   }
+  /* A tag the box is narrowed to, on a card: gone over with a highlighter,
+     in the hearts' colour (the tray's chosen tags'). Through the writing's
+     small letters and a little above and below — not its whole box. */
+  .tag-on {
+    color: var(--color-ink);
+    background: linear-gradient(
+        color-mix(in srgb, var(--color-heart) 55%, transparent),
+        color-mix(in srgb, var(--color-heart) 55%, transparent)
+      )
+      no-repeat 0 0.42em / 100% 0.62em;
+    border-radius: 0.2em;
+    padding: 0 0.12em;
+    margin: 0 -0.12em;
+    box-decoration-break: clone;
+  }
   .handwritten ::placeholder {
     color: var(--color-pencil);
     opacity: 1;

@@ -1,3 +1,8 @@
+import { createContext } from 'react'
+
+/** The tags the box is narrowed to (keys): marked on the cards. */
+export const TagsOn = createContext<ReadonlySet<string>>(new Set())
+
 /** A tag as it's matched: its words, whatever their case or spacing. */
 export const tagKey = (t: string) => t.trim().toLowerCase()
 

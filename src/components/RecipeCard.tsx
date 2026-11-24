@@ -1,5 +1,7 @@
 import {
   forwardRef,
+  Fragment,
+  useContext,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -36,6 +38,7 @@ import { Amount } from './Unit'
 import { OneLine } from './OneLine'
 import { BoxIcon } from './BoxIcon'
 import { dragRow, dragSection, GripIcon } from './dragLines'
+import { tagKey, TagsOn } from './TagFilter'
 import { ConfirmDialog } from './ui'
 import { arcThrough, sampleTimes, type Arc } from '../lib/arc'
 import { useWakeLock } from '../lib/wakeLock'
@@ -123,11 +126,7 @@ function CardBody({ recipe, peek }: { recipe: Recipe; peek: boolean }) {
         })
       )}
       {/* (Peeking, below what can show: not drawn.) */}
-      {!peek && recipe.tags.length > 0 && (
-        <p className="mt-[var(--rule)] text-ink-soft">
-          {recipe.tags.join(' · ')}
-        </p>
-      )}
+      {!peek && recipe.tags.length > 0 && <TagLine tags={recipe.tags} />}
       {/* (Right under its tags; with none, a line left blank above it.) */}
       {!peek && (
         <FavoritedBy recipeId={recipe.id} gap={recipe.tags.length === 0} />
@@ -140,6 +139,22 @@ function CardBody({ recipe, peek }: { recipe: Recipe; peek: boolean }) {
         </>
       )}
     </>
+  )
+}
+
+/** A card's tags — any the box is narrowed to marked, as with a
+ *  highlighter (see `.tag-on`). */
+function TagLine({ tags }: { tags: string[] }) {
+  const on = useContext(TagsOn)
+  return (
+    <p className="mt-[var(--rule)] text-ink-soft">
+      {tags.map((t, i) => (
+        <Fragment key={i}>
+          {i > 0 && ' · '}
+          {on.has(tagKey(t)) ? <span className="tag-on">{t}</span> : t}
+        </Fragment>
+      ))}
+    </p>
   )
 }
 

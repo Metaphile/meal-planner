@@ -40,7 +40,13 @@ import {
 } from '../lib/uiState'
 import { ListCard } from '../components/ListCard'
 import { BoxIcon } from '../components/BoxIcon'
-import { hasTags, tagKey, TagIcon, TagTray } from '../components/TagFilter'
+import {
+  hasTags,
+  tagKey,
+  TagIcon,
+  TagsOn,
+  TagTray,
+} from '../components/TagFilter'
 import { favoriteKey, isWanted, type Recipe } from '../data/types'
 import { listPath } from '../lib/listMotion'
 import { wakeLockNow } from '../lib/wakeLock'
@@ -1433,6 +1439,8 @@ export default function RecipesPage() {
   )
 
   return (
+    // (The tags it's narrowed to, marked on the cards.)
+    <TagsOn.Provider value={tagsOn}>
     <div className="relative h-full">
       <>
         {/* (The room the screen keeps at its foot, to measure.) */}
@@ -1599,6 +1607,7 @@ export default function RecipesPage() {
         />
       )}
     </div>
+    </TagsOn.Provider>
   )
 }
 
