@@ -41,6 +41,7 @@ import { dragRow, dragSection, GripIcon } from './dragLines'
 import { tagKey, TagsOn } from './TagFilter'
 import { ConfirmDialog } from './ui'
 import { arcThrough, sampleTimes, type Arc } from '../lib/arc'
+import { splitLinks } from '../lib/links'
 import { useWakeLock } from '../lib/wakeLock'
 import { loadDraft, saveDraft as keepDraft, type RecipeText } from '../lib/draft'
 import {
@@ -87,7 +88,16 @@ const HEADING = 'text-hand-lg font-semibold text-ink-soft'
 /** Ingredient lines that can show on a peeking card (more than fit). */
 const PEEK_LINES = 16
 
-function CardBody({ recipe, peek }: { recipe: Recipe; peek: boolean }) {
+function CardBody({
+  recipe,
+  peek,
+  links,
+}: {
+  recipe: Recipe
+  peek: boolean
+  /** Web addresses in its notes can be followed (in hand). */
+  links: boolean
+}) {
   // Its sections — a titled one empty or not (a heading with nothing under
   // it), but not one with no heading and nothing in it: there's nothing to
   // show (older recipes may still have one). Each headed by its title, if
@@ -135,12 +145,47 @@ function CardBody({ recipe, peek }: { recipe: Recipe; peek: boolean }) {
         <>
           <div className="h-[var(--rule)]" />
           <div className={HEADING}>Notes</div>
-          <p className="whitespace-pre-wrap pb-[var(--rule)]">{recipe.notes}</p>
+          {/* (A word too long for the line — an address, say — broken
+              where it must, as it is when it's written on the back.) */}
+          <p className="whitespace-pre-wrap break-words pb-[var(--rule)]">
+            <Linked text={recipe.notes} live={links} />
+          </p>
         </>
       )}
     </>
   )
 }
+
+/**
+ * Text with any web addresses in it underlined — and, `live`, followed when
+ * tapped, in a new tab (a card in hand). Not live (a card in the box, where a
+ * tap takes the card out), they look just the same: nothing changes as the
+ * card's taken out.
+ */
+function Linked({ text, live }: { text: string; live: boolean }) {
+  return splitLinks(text).map((p, i) =>
+    !p.href ? (
+      <Fragment key={i}>{p.text}</Fragment>
+    ) : live ? (
+      <a
+        key={i}
+        href={p.href}
+        target="_blank"
+        rel="noopener noreferrer"
+        // (Not a tap on the card too.)
+        onClick={(e) => e.stopPropagation()}
+        className={LINK}
+      >
+        {p.text}
+      </a>
+    ) : (
+      <span key={i} className={LINK}>
+        {p.text}
+      </span>
+    ),
+  )
+}
+const LINK = 'text-accent-text underline decoration-1 underline-offset-[3px]'
 
 /** A card's tags — any the box is narrowed to marked, as with a
  *  highlighter (see `.tag-on`). */
@@ -259,7 +304,11 @@ export const RecipeCard = forwardRef<HTMLDivElement, CardProps>(
               scrollable ? 'scroll-y no-scrollbar' : 'overflow-hidden'
             }`}
           >
-            <CardBody recipe={recipe} peek={peekHeight !== undefined} />
+            <CardBody
+              recipe={recipe}
+              peek={peekHeight !== undefined}
+              links={large}
+            />
           </div>
         </div>
 
