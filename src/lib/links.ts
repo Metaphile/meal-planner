@@ -44,3 +44,25 @@ export function splitLinks(text: string): Piece[] {
   if (at < text.length) pieces.push({ text: text.slice(at) })
   return pieces
 }
+
+/**
+ * A web address in the pieces it's best broken between, at the end of a
+ * line, so it reads as an address: after a slash (all of "//" together) and
+ * before "?", "&" or "#" — not "…scratch.co / m/…". (Joined: the address.)
+ */
+export function addressParts(url: string): string[] {
+  const parts: string[] = []
+  let from = 0
+  for (let i = 0; i < url.length; i++) {
+    const c = url[i]
+    const after = c === '/' && url[i + 1] !== '/' ? i + 1 : -1
+    const before = '?&#'.includes(c) && i > from ? i : -1
+    const at = after > 0 ? after : before
+    if (at > from && at < url.length) {
+      parts.push(url.slice(from, at))
+      from = at
+    }
+  }
+  parts.push(url.slice(from))
+  return parts
+}

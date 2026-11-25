@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { splitLinks } from './links'
+import { addressParts, splitLinks } from './links'
 
 const hrefs = (t: string) =>
   splitLinks(t)
@@ -50,5 +50,32 @@ describe('splitLinks', () => {
     expect(splitLinks('Boil the potatoes.')).toEqual([
       { text: 'Boil the potatoes.' },
     ])
+  })
+})
+
+describe('addressParts', () => {
+  it('breaks after slashes ("//" kept together)', () => {
+    expect(
+      addressParts('https://tastesbetterfromscratch.com/classic-french-toast/'),
+    ).toEqual([
+      'https://',
+      'tastesbetterfromscratch.com/',
+      'classic-french-toast/',
+    ])
+  })
+
+  it('and before ?, & and #', () => {
+    expect(addressParts('https://a.com/watch?v=1&list=2#t')).toEqual([
+      'https://',
+      'a.com/',
+      'watch',
+      '?v=1',
+      '&list=2',
+      '#t',
+    ])
+  })
+
+  it('no break points: the whole address', () => {
+    expect(addressParts('www.a.com')).toEqual(['www.a.com'])
   })
 })
