@@ -1690,7 +1690,7 @@ function IngredientTable({
 if (typeof document !== 'undefined') void document.fonts?.load('22px Caveat')
 
 const NOTES_MIN_LINES = 6
-const NOTES_HINT = 'Prep tips, substitutions…'
+const NOTES_HINT = 'Steps, tips, substitutions…'
 /** How far the notes' writing is set down from the top of its lines: so
  *  little it stands a touch clear of each line's rule (resting right on it,
  *  the caret dips below the rule, and looks wrong). */
