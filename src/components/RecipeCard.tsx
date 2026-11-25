@@ -540,8 +540,8 @@ function WantBox({
 /**
  * How many times a recipe is wanted, in the card's footer: − ×n +. Always
  * there; ×0 is not wanted (+ from there wants it, − to there doesn't). Only
- * usable on a card in hand (in the box it's just its look). In the star's
- * colours, as the Want box is when ticked.
+ * usable on a card in hand (in the box it's just its look). Coloured as the
+ * Want box is: faint at ×0, in the star's colours once wanted.
  */
 function WantCount({
   recipeId,
@@ -563,7 +563,13 @@ function WantCount({
   return (
     <div
       aria-hidden={!interactive || undefined}
-      className="flex items-center rounded-full border border-star-edge bg-star text-on-star"
+      // (Not wanted, ×0: faint — paper, its outline the line colour, as an
+      // empty Want box is. Wanted: the star's colours, as a ticked one.)
+      className={`flex items-center rounded-full border ${
+        count > 0
+          ? 'border-star-edge bg-star text-on-star'
+          : 'border-line bg-paper text-ink-soft'
+      }`}
     >
       <button
         type="button"
