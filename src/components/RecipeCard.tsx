@@ -144,7 +144,7 @@ function CardBody({
       {!peek && recipe.notes && (
         <>
           <div className="h-[var(--rule)]" />
-          <div className={HEADING}>Notes</div>
+          <div className={HEADING}>Directions</div>
           {/* (A word too long for the line — an address, say — broken
               where it must, as it is when it's written on the back.) */}
           <p className="whitespace-pre-wrap break-words pb-[var(--rule)]">
@@ -2070,7 +2070,7 @@ const RecipeCardBack = forwardRef<
             />
           </label>
           <label className="block">
-            <span className={label}>Notes</span>
+            <span className={label}>Directions</span>
             <span className="relative block">
               {/* The line being written on, tinted as a field is (the caret
                   dips below its line's rule, so it's hard to tell which line
