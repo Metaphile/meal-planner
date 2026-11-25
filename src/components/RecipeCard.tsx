@@ -41,7 +41,7 @@ import { dragRow, dragSection, GripIcon } from './dragLines'
 import { tagKey, TagsOn } from './TagFilter'
 import { ConfirmDialog } from './ui'
 import { arcThrough, sampleTimes, type Arc } from '../lib/arc'
-import { addressParts, splitLinks } from '../lib/links'
+import { splitLinks } from '../lib/links'
 import { useWakeLock } from '../lib/wakeLock'
 import { loadDraft, saveDraft as keepDraft, type RecipeText } from '../lib/draft'
 import {
@@ -176,27 +176,16 @@ function Linked({ text, live }: { text: string; live: boolean }) {
         onClick={(e) => e.stopPropagation()}
         className={LINK}
       >
-        <Address url={p.text} />
+        {p.text}
       </a>
     ) : (
       <span key={i} className={LINK}>
-        <Address url={p.text} />
+        {p.text}
       </span>
     ),
   )
 }
 const LINK = 'text-accent-text underline decoration-1 underline-offset-[3px]'
-
-/** A web address, to be broken (if it must be) where it still reads as one:
- *  see addressParts. (Too long a part for the line is broken anywhere.) */
-function Address({ url }: { url: string }) {
-  return addressParts(url).map((part, i) => (
-    <Fragment key={i}>
-      {i > 0 && <wbr />}
-      {part}
-    </Fragment>
-  ))
-}
 
 /** A card's tags — any the box is narrowed to marked, as with a
  *  highlighter (see `.tag-on`). */
