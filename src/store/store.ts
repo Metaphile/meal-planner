@@ -71,6 +71,8 @@ interface AppState {
     amount?: number,
     line?: { name: string; unit?: string },
   ) => void
+  /** Untick a line, but keep it on the list (see Have's `off`). */
+  setHaveOff: (key: string) => void
 
   // Favorites (the signed-in person's)
   setFavorite: (userId: string, recipeId: string, on: boolean) => void
@@ -268,6 +270,14 @@ export const useStore = create<AppState>((set, get) => ({
       set((s) => ({ haves: s.haves.filter((h) => h.id !== key) }))
       enqueueDelete('haves', key)
     }
+  },
+
+  setHaveOff: (key) => {
+    const was = get().haves.find((h) => h.id === key)
+    if (!was || was.off) return
+    const row: Have = { ...was, off: true }
+    set((s) => ({ haves: s.haves.map((h) => (h.id === key ? row : h)) }))
+    enqueuePut('haves', row)
   },
 
   setFavorite: (userId, recipeId, on) => {

@@ -17,7 +17,8 @@ import { BoxIcon } from './BoxIcon'
  * over, say), it's short: in red, its box –, saying how much of it there
  * is ("3 of 4 cup") — to be looked at again, and a tap
  * confirms there's enough (ticked at what's needed now). Ticked, a tap
- * unticks it.
+ * unticks it — and one no wanted recipe calls for stays on the list,
+ * unticked ("– cup"), to tick again.
  */
 export function IngredientsList({
   ingredients,
@@ -39,7 +40,8 @@ export function IngredientsList({
   const haves = useStore((s) => s.haves)
   const byKey = new Map(haves.map((h) => [h.id, h]))
   // Ticked lines no wanted recipe calls for (any more) stay on the list:
-  // what's on hand is still worth knowing. In among the rest, by name.
+  // what's on hand is still worth knowing. So do ones unticked since (see
+  // Have's `off`), to tick again. In among the rest, by name.
   const lines = useMemo(() => {
     if (!checkable) return ingredients
     const listed = new Set(ingredients.map((i) => haveKey(i.name, i.unit)))
@@ -78,7 +80,7 @@ export function IngredientsList({
                 key={key}
                 ing={ing}
                 haveKey={key}
-                have={checkable ? byKey.get(key) : undefined}
+                row={checkable ? byKey.get(key) : undefined}
                 needed={ing.sources.length > 0 || !checkable}
                 checkable={checkable}
                 canEdit={canEdit}
@@ -95,7 +97,7 @@ export function IngredientsList({
 function IngredientLine({
   ing,
   haveKey: key,
-  have,
+  row,
   needed,
   checkable,
   canEdit,
@@ -103,7 +105,8 @@ function IngredientLine({
 }: {
   ing: AggregatedIngredient
   haveKey: string
-  have: Have | undefined
+  /** Its Have: ticked — or, `off`, unticked but kept on the list. */
+  row: Have | undefined
   /** Some wanted recipe calls for it (else it's here only as ticked). */
   needed: boolean
   checkable: boolean
@@ -112,6 +115,8 @@ function IngredientLine({
   hand: boolean
 }) {
   const setHave = useStore((s) => s.setHave)
+  const setHaveOff = useStore((s) => s.setHaveOff)
+  const have = row && !row.off ? row : undefined
   // Typed, or written by hand: its name, its amount, where it's from.
   const type = hand
     ? {
@@ -156,12 +161,18 @@ function IngredientLine({
           // `.struck`) — its target, as tall as the name's line, set on it
           // and moved down 0.145em of the name.
           className={hand ? 'mt-[calc(0.145*26px)] self-start' : undefined}
-          // Empty: ticked (enough). Short: enough after all (ticked at
-          // what's needed now). Ticked: unticked.
+          // Empty: ticked (enough — or, no recipe calling for it, as
+          // much as there was). Short: enough after all (ticked at what's
+          // needed now). Ticked: unticked — and, no recipe calling for it,
+          // kept on the list ("– cup"), to tick again.
           onChange={() =>
             short
               ? setHave(key, true, need, line)
-              : setHave(key, !have, need, line)
+              : !have
+                ? setHave(key, true, needed ? need : row?.amount, line)
+                : needed
+                  ? setHave(key, false)
+                  : setHaveOff(key)
           }
         />
       )}
@@ -207,7 +218,12 @@ function IngredientLine({
                   unit={ing.unit}
                 />
               ) : (
-                <Unit>{ing.unit}</Unit>
+                // (No recipe calling for it, none needed: "– cup".)
+                <>
+                  {'–'}
+                  {ing.unit && ' '}
+                  <Unit>{ing.unit}</Unit>
+                </>
               )}
             </span>
           )}

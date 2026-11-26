@@ -18,6 +18,16 @@ describe('cleared', () => {
     expect(c.untick).toEqual([haveKey('Carrot'), haveKey('Salt'), haveKey('Leeks')])
     expect(c.remove).toEqual(['a'])
   })
+  it('leaves a line kept on the list unticked', () => {
+    const c = cleared(
+      [
+        { id: haveKey('Capers', 'tbsp'), amount: 3, off: true },
+        { id: haveKey('Leeks'), amount: 2 },
+      ],
+      [],
+    )
+    expect(c.untick).toEqual([haveKey('Leeks')])
+  })
   it('does nothing with nothing ticked', () => {
     expect(cleared([], [{ id: 'b', name: 'Ice', position: 1 }])).toEqual({
       untick: [],

@@ -144,6 +144,9 @@ export interface Have {
    *  wanted recipe calls for it any more. (Absent on older rows: from id.) */
   name?: string
   unit?: string
+  /** Unticked, but kept on the list: a line no wanted recipe calls for,
+   *  unticked — still listed ("– cup"), to tick again (at `amount`). */
+  off?: true
 }
 
 /** A line's key for its Have: its name and unit, trimmed and lowercased. */
