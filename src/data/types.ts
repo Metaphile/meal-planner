@@ -104,15 +104,15 @@ export interface PlanMeal {
 
 /**
  * A recipe the household wants to make, and how many times. One per recipe
- * (its id is the recipe's id). Not wanting it any more keeps the row, with
- * its count, so wanting it again picks up where it left off. Wanted
- * recipes' ingredients make up the Ingredients list.
+ * (its id is the recipe's id). Not wanting it any more keeps the row, marked
+ * not wanted; wanting it again starts over at ×1. Wanted recipes'
+ * ingredients make up the Ingredients list.
  */
 export interface Want {
   id: string
   recipeId: string
-  /** How many times over (at least 1) — when not wanted, the count it will
-   *  have again when it is. */
+  /** How many times over (at least 1). (Not wanted: the count it last had,
+   *  of no use — wanted again, it's ×1.) */
   count: number
   /** False: not wanted just now. (Absent on older rows: wanted.) */
   wanted?: boolean

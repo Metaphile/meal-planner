@@ -45,8 +45,8 @@ interface AppState {
   deleteRecipe: (id: string) => void
 
   // Wants
-  /** Want a recipe, or not any more. Wanting it again brings back the count
-   *  it had (1 the first time) — unless `count` says otherwise. */
+  /** Want a recipe (×1 — or `count`), or not any more. (Wanting it again
+   *  starts over at ×1: no count from last time.) */
   setWanted: (recipeId: string, wanted: boolean, count?: number) => void
   /** How many times over a wanted recipe is wanted (at least 1). */
   setWantCount: (recipeId: string, count: number) => void
@@ -164,10 +164,16 @@ export const useStore = create<AppState>((set, get) => ({
 
   setWanted: (recipeId, wanted, count) => {
     const was = get().wants.find((w) => w.recipeId === recipeId)
-    const n = Math.max(1, Math.round(count ?? was?.count ?? 1))
-    if (was && isWanted(was) === wanted && (!wanted || was.count === n)) return
+    const n = Math.max(1, Math.round(count ?? 1))
+    // (Wanted already, with no count to change it to: as it is.)
+    if (
+      was &&
+      isWanted(was) === wanted &&
+      (!wanted || count === undefined || was.count === n)
+    )
+      return
     if (!was && !wanted) return
-    // (Not wanted, it keeps its count for next time.)
+    // (Not wanted, the row stays — its count no longer counts.)
     const want: Want = wanted
       ? { id: recipeId, recipeId, count: n, wanted: true }
       : { ...was!, wanted: false }
