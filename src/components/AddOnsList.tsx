@@ -26,8 +26,8 @@ const CELL =
  * a blank one just after it, if the next has something on it (as a card's
  * ingredient lines do).
  *
- * Each can be ticked once it's got. Ticked, it's done with: Clear selected (at
- * the foot of the list it's on) takes it off. One with nothing left on it
+ * Each can be ticked once it's got. Ticked, it's done with: Remove
+ * selected (at the foot of the list it's on) takes it off. One with nothing left on it
  * goes — however it got that way — once it's not being written in.
  */
 export function AddOnsList({

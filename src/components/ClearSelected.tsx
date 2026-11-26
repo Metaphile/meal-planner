@@ -2,8 +2,8 @@ import type { AddOn, Have } from '../data/types'
 import { useStore } from '../store/store'
 
 /**
- * Clear selected: done with what's ticked on the list (the shopping put
- * away, say) — at once:
+ * Remove selected (was Clear selected): done with what's ticked on the
+ * list (the shopping put away, say) — at once:
  * - a ticked add-on is taken off;
  * - every ticked line is unticked (and one no wanted recipe calls for any
  *   more goes from the list with it).
@@ -23,7 +23,7 @@ export function ClearSelectedButton({ canEdit }: { canEdit: boolean }) {
         onClick={clearSelected}
         className="rounded-full border border-accent-edge bg-accent px-4 py-1.5 text-sm font-semibold leading-5 text-accent-ink transition active:scale-95"
       >
-        Clear selected
+        Remove selected
       </button>
     </div>
   )
