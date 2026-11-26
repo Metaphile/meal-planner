@@ -133,7 +133,7 @@ function IngredientLine({
   const short =
     !!have && need !== undefined && round(have.amount ?? 0) < need
   // Ticked, with an amount of its own to tell: how much there is of what's
-  // needed ("6 of 6 cup", short "3 of 4 cup", none "3 of 0 cup"). (Not
+  // needed ("6 of 6 cup", short "3 of 4 cup", none "3 of – cup"). (Not
   // when it's needed with no amount to it, "salt": ticked, it says "salt".)
   const counted =
     !!have && (needed ? need !== undefined : have.amount !== undefined)
@@ -181,7 +181,7 @@ function IngredientLine({
           </span>
           {counted ? (
             // How much there is, of how much is needed — "6 of 6 cup";
-            // short, "3 of 4 cup"; nothing calling for it, "3 of 0 cup".
+            // short, "3 of 4 cup"; nothing calling for it, "3 of – cup".
             <span
               className={`shrink-0 whitespace-nowrap ${type.amount} ${
                 short ? 'text-danger' : type.soft
@@ -189,7 +189,7 @@ function IngredientLine({
             >
               <Qty n={round(have.amount ?? 0)} />
               {' of '}
-              <Qty n={needed ? need! : 0} />
+              {needed ? <Qty n={need!} /> : '–'}
               {ing.unit && ' '}
               <Unit>{ing.unit}</Unit>
             </span>
