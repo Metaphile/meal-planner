@@ -13,7 +13,7 @@ import { BoxIcon } from './BoxIcon'
  *
  * With `checkable`, each line has a box to tick when it's on hand. Ticking
  * it takes it you have just what's needed (its name crossed off, its
- * amount as it was: "3 cup"). Needed more since (a recipe wanted more times
+ * amount saying so: "3 of 3 cup"). Needed more since (a recipe wanted more times
  * over, say), it's short: in red, its box –, saying how much of it there
  * is ("3 of 4 cup") — to be looked at again, and a tap
  * confirms there's enough (ticked at what's needed now). Ticked, a tap
@@ -132,10 +132,11 @@ function IngredientLine({
   // Ticked at less than's needed now (needed more since): short.
   const short =
     !!have && need !== undefined && round(have.amount ?? 0) < need
-  // Ticked, with an amount of its own to tell: short of what's needed, or
-  // on hand by itself. (Enough, it says only what's needed, as unticked:
-  // "6", not "6 of 6" — nor "8 of 6".)
-  const counted = !!have && (needed ? short : have.amount !== undefined)
+  // Ticked, with an amount of its own to tell: how much there is of what's
+  // needed ("6 of 6 cup", short "3 of 4 cup"), or on hand by itself. (Not
+  // when it's needed with no amount to it, "salt": ticked, it says "salt".)
+  const counted =
+    !!have && (needed ? need !== undefined : have.amount !== undefined)
   const line = { name: ing.name, unit: ing.unit }
   // Ticked (enough on hand): its name crossed off — by hand (see
   // `.struck`), or typed, struck through. Not its amount: how much there is
@@ -179,9 +180,9 @@ function IngredientLine({
             <OneLine text={ing.name} centred={false} textClass={struck} />
           </span>
           {counted ? (
-            // Short: how much there is, of how much is needed — "3 of 4
-            // cup". (Or, nothing calling for it, how much there is: "3
-            // cup".)
+            // How much there is, of how much is needed — "6 of 6 cup";
+            // short, "3 of 4 cup". (Or, nothing calling for it, how much
+            // there is: "3 cup".)
             <span
               className={`shrink-0 whitespace-nowrap ${type.amount} ${
                 short ? 'text-danger' : type.soft
